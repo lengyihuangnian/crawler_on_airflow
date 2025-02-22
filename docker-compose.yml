@@ -196,6 +196,7 @@ services:
       - "5000:5000"
     volumes:
       - ./:/app
+      - ~/.ssh:/root/.ssh:ro
     working_dir: /app
     command: >
       bash -c "
