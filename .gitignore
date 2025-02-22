@@ -7,3 +7,5 @@
 *.pyw
 *.pyz
 test_*.py
+/database
+/logs
