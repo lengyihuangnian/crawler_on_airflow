@@ -56,7 +56,7 @@ def collect_xhs_notes(**context) -> None:
             print(note)
 
         # 使用XCom存储笔记数据
-        context['task_instance'].xcom_push(key="notes", value=notes, serialize_json=True)
+        context['task_instance'].xcom_push(key="notes", value=notes)
             
     except Exception as e:
         error_msg = f"收集小红书笔记失败: {str(e)}"
