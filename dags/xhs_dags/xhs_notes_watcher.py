@@ -13,10 +13,7 @@ from utils.xhs_appium import XHSOperator
 
 def collect_xhs_notes(**context) -> None:
     """
-    收集小红书笔记
-    
-    从小红书搜索指定关键词的笔记并缓存到Airflow变量中。
-    
+    收集小红书笔记    
     Args:
         **context: Airflow上下文参数字典
     
