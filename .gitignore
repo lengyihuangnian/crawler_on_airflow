@@ -1,0 +1,11 @@
+.env
+/.venv
+*.log
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+test_*.py
+/database
+/logs
