@@ -31,8 +31,7 @@ def collect_xhs_notes(**context) -> None:
                 else 5)
     
     # 获取Appium服务器URL
-    appium_server_url = Variable.get("ZZX_APPIUM_SERVER_URL", "http://129.204.143.82:9000")
-    
+    appium_server_url = Variable.get("ZZX_APPIUM_SERVER_URL", "http://localhost:4723")
     print(f"开始收集关键词 '{keyword}' 的小红书笔记...")
     
     try:
