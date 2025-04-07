@@ -26,6 +26,7 @@ def save_notes_to_db(notes: list) -> None:
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS xhs_notes (
             id INT AUTO_INCREMENT PRIMARY KEY,
+            keyword TEXT,
             title TEXT NOT NULL,
             author TEXT,
             content TEXT,
@@ -34,7 +35,6 @@ def save_notes_to_db(notes: list) -> None:
             comments INT DEFAULT 0,
             note_url TEXT,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            keyword TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
         )
