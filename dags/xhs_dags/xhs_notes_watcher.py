@@ -145,7 +145,7 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id='小红书笔记收集巡检',
+    dag_id='xhs_notes_collector',
     default_args=default_args,
     description='定时收集小红书笔记',
     schedule_interval=None,
