@@ -155,8 +155,9 @@ class XHSOperator:
         self.search_keyword(keyword, filters=filters)
         
         print(f"开始收集笔记,计划收集{max_notes}条...")
-        notes = []
-        while len(notes) < max_notes:
+        collected_notes = []
+        collected_titles = []
+        while len(collected_notes) < max_notes:
             try:
                 # 获取所有笔记标题元素
                 note_titles = self.driver.find_elements(
@@ -165,29 +166,33 @@ class XHSOperator:
                 )
                 
                 for note_element in note_titles:
-                    note_title = note_element.text
-                    if note_title not in notes:
-                        print(f"收集笔记: {note_title}, 当前收集数量: {len(notes)}")
+                    note_title_and_text = note_element.text
+                    if note_title_and_text not in collected_titles:
+                        print(f"收集笔记: {note_title_and_text}, 当前收集数量: {len(collected_notes)}")
 
                         # 点击笔记
                         note_element.click()
                         time.sleep(1)
 
                         # 获取笔记内容
-                        note_data = self.get_note_data(note_title)
-                        notes.append(note_data)
+                        note_data = self.get_note_data(note_title_and_text)
+
+                        # 如果笔记数据不为空，则添加到列表中
+                        if note_data:
+                            collected_notes.append(note_data)
+                            collected_titles.append(note_title_and_text)
 
                         # 返回上一页
                         self.driver.press_keycode(4)  # Android 返回键
                         time.sleep(1)
 
-                        if len(notes) >= max_notes:
+                        if len(collected_notes) >= max_notes:
                             break
                     else:
-                        print(f"笔记已收集过: {note_title}")
+                        print(f"笔记已收集过: {note_title_and_text}")
                 
                 # 滑动到下一页
-                if len(notes) < max_notes:
+                if len(collected_notes) < max_notes:
                     self.scroll_down()
                     time.sleep(1)
             
@@ -198,23 +203,23 @@ class XHSOperator:
                 break
 
         # 打印所有笔记数据
-        for note in notes:
+        for note in collected_notes:
             print("-" * 120)
             print(json.dumps(note, ensure_ascii=False, indent=2))
             print("-" * 120)
 
-        return notes
+        return collected_notes
     
-    def get_note_data(self, note_title: str):
+    def get_note_data(self, note_title_and_text: str):
         """
         获取笔记内容和评论
         Args:
-            note_title: 笔记标题
+            note_title_and_text: 笔记标题和内容
         Returns:
             dict: 笔记数据
         """
         try:
-            print(f"正在获取笔记内容: {note_title}")
+            print(f"正在获取笔记内容: {note_title_and_text}")
             
             # 等待笔记内容加载
             time.sleep(1)
@@ -253,16 +258,26 @@ class XHSOperator:
             max_scroll_attempts = 3  # 最大滑动次数
             scroll_count = 0
             
+            note_title = ""
+            note_content = ""
             while scroll_count < max_scroll_attempts:
                 try:
+                    # 尝试获取标题
+                    title_element = self.driver.find_element(
+                        by=AppiumBy.ID,
+                        value="com.xingin.xhs:id/g6b"
+                    )
+                    note_title = title_element.text
+                    print(f"找到标题: {note_title}")
+
                     # 尝试获取正文内容
                     content_element = self.driver.find_element(
                         by=AppiumBy.ID,
                         value="com.xingin.xhs:id/dod"
                     )
-                    content = content_element.text
-                    if content:
-                        print("找到正文内容")
+                    note_content = content_element.text
+                    if note_content and note_title:
+                        print("找到正文内容和标题")
                         break
                 except:
                     print(f"第 {scroll_count + 1} 次滑动查找正文...")
@@ -270,11 +285,7 @@ class XHSOperator:
                     self.scroll_down()
                     time.sleep(0.5)
                     scroll_count += 1
-            
-            if not content:
-                print("未找到正文内容，使用标题作为内容")
-                content = ""
-          
+
             # 获取互动数据 - 分别处理每个数据
             likes = "0"
             try:
@@ -288,6 +299,7 @@ class XHSOperator:
                     value="com.xingin.xhs:id/g5i"
                 ).text
                 # 如果获取到的是"点赞"文本，则设为0
+                print(f"获取到点赞数: {likes_text}")
                 likes = "0" if likes_text == "点赞" else likes_text
             except Exception as e:
                 print(f"获取点赞数失败: {str(e)}")
@@ -304,6 +316,7 @@ class XHSOperator:
                     value="com.xingin.xhs:id/g3s"
                 ).text
                 # 如果获取到的是"收藏"文本，则设为0
+                print(f"获取到收藏数: {collects_text}")
                 collects = "0" if collects_text == "收藏" else collects_text
             except Exception as e:
                 print(f"获取收藏数失败: {str(e)}")
@@ -320,6 +333,7 @@ class XHSOperator:
                     value="com.xingin.xhs:id/g41"
                 ).text
                 # 如果获取到的是"评论"文本，则设为0
+                print(f"获取到评论数: {comments_text}")
                 comments = "0" if comments_text == "评论" else comments_text
             except Exception as e:
                 print(f"获取评论数失败: {str(e)}")
@@ -455,8 +469,8 @@ class XHSOperator:
 
             note_data = {
                 "title": note_title,
+                "content": note_content,
                 "author": author,
-                "content": content,
                 "likes": int(likes),
                 "collects": int(collects),
                 "comments": int(comments),
@@ -464,6 +478,7 @@ class XHSOperator:
                 "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             
+            print(f"获取笔记数据: {note_data}")
             return note_data
             
         except Exception as e:
@@ -759,11 +774,11 @@ if __name__ == "__main__":
     print(appium_server_url)
     
     # 初始化小红书操作器
-    xhs = XHSOperator(appium_server_url=appium_server_url)
+    xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=False)
 
     xhs.print_all_elements()
 
-    time.sleep(60)
+    # time.sleep(60)
 
     # # 检查是否在首页
     # if xhs.is_at_xhs_home_page():
