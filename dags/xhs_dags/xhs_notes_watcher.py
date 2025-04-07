@@ -35,7 +35,8 @@ def save_notes_to_db(notes: list) -> None:
             note_url TEXT,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             keyword TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
         )
         """)
         db_conn.commit()
@@ -43,7 +44,7 @@ def save_notes_to_db(notes: list) -> None:
         # 准备插入数据的SQL语句
         insert_sql = """
         INSERT INTO xhs_notes 
-        (title, author, content, likes, collects, comments, note_url, collect_time) 
+        (keyword, title, author, content, likes, collects, comments, note_url, collect_time) 
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
@@ -51,6 +52,7 @@ def save_notes_to_db(notes: list) -> None:
         insert_data = []
         for note in notes:
             insert_data.append((
+                note.get('keyword', ''),
                 note.get('title', ''),
                 note.get('author', ''),
                 note.get('content', ''),

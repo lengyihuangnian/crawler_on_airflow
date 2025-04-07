@@ -179,6 +179,7 @@ class XHSOperator:
 
                         # 如果笔记数据不为空，则添加到列表中
                         if note_data:
+                            note_data['keyword'] = keyword
                             collected_notes.append(note_data)
                             collected_titles.append(note_title_and_text)
 
