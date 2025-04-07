@@ -146,8 +146,7 @@ class XHSOperator:
             print(f"搜索或筛选失败: {str(e)}")
             raise
         
-    def collect_notes_by_keyword(self, keyword: str, max_notes: int = 10, filters: dict = None, 
-                                 include_comments: bool = False):
+    def collect_notes_by_keyword(self, keyword: str, max_notes: int = 10, filters: dict = None):
         """
         根据关键词收集笔记
         """
@@ -175,7 +174,7 @@ class XHSOperator:
                         time.sleep(1)
 
                         # 获取笔记内容
-                        note_data = self.get_note_data(note_title, include_comments)
+                        note_data = self.get_note_data(note_title)
                         notes.append(note_data)
 
                         # 返回上一页
@@ -206,12 +205,11 @@ class XHSOperator:
 
         return notes
     
-    def get_note_data(self, note_title: str, max_comments: int = 10, include_comments: bool = False):
+    def get_note_data(self, note_title: str):
         """
         获取笔记内容和评论
         Args:
             note_title: 笔记标题
-            max_comments: 最大收集评论数，设为 None 则收集所有评论
         Returns:
             dict: 笔记数据
         """
@@ -310,7 +308,7 @@ class XHSOperator:
             except Exception as e:
                 print(f"获取收藏数失败: {str(e)}")
 
-            total_comments = "0"
+            comments = "0"
             try:
                 # 获取评论数
                 comments_btn = self.driver.find_element(
@@ -322,94 +320,94 @@ class XHSOperator:
                     value="com.xingin.xhs:id/g41"
                 ).text
                 # 如果获取到的是"评论"文本，则设为0
-                total_comments = "0" if comments_text == "评论" else comments_text
+                comments = "0" if comments_text == "评论" else comments_text
             except Exception as e:
                 print(f"获取评论数失败: {str(e)}")
             
-            # 收集评论数据
-            comments = []
-            if include_comments:
-                print(f"\n开始收集评论 (目标数量: {max_comments})")
-                print("-" * 50)
-                if int(total_comments) > 0:
-                    # 循环滑动收集评论
-                    no_new_comments_count = 0  # 连续没有新评论的次数
-                    max_no_new_comments = 3  # 最大连续无新评论次数
-                    page_num = 1  # 当前页码
+            # # 收集评论数据
+            # comments = []
+            # if include_comments:
+            #     print(f"\n开始收集评论 (目标数量: {max_comments})")
+            #     print("-" * 50)
+            #     if int(total_comments) > 0:
+            #         # 循环滑动收集评论
+            #         no_new_comments_count = 0  # 连续没有新评论的次数
+            #         max_no_new_comments = 3  # 最大连续无新评论次数
+            #         page_num = 1  # 当前页码
                     
-                    while True:
-                        print(f"\n正在处理第 {page_num} 页评论...")
+            #         while True:
+            #             print(f"\n正在处理第 {page_num} 页评论...")
                         
-                        # 检查是否到底或无评论
-                        try:
-                            # 检查"还没有评论哦"文本
-                            no_comments = self.driver.find_element(
-                                by=AppiumBy.ID,
-                                value="com.xingin.xhs:id/es1"
-                            )
-                            if no_comments.text in ["还没有评论哦", "- 到底了 -"]:
-                                print(f">>> 遇到终止条件: {no_comments.text}")
-                                break
-                        except:
-                            pass
+            #             # 检查是否到底或无评论
+            #             try:
+            #                 # 检查"还没有评论哦"文本
+            #                 no_comments = self.driver.find_element(
+            #                     by=AppiumBy.ID,
+            #                     value="com.xingin.xhs:id/es1"
+            #                 )
+            #                 if no_comments.text in ["还没有评论哦", "- 到底了 -"]:
+            #                     print(f">>> 遇到终止条件: {no_comments.text}")
+            #                     break
+            #             except:
+            #                 pass
                         
-                        # 获取当前可见的评论元素
-                        comment_elements = self.driver.find_elements(
-                            by=AppiumBy.ID,
-                            value="com.xingin.xhs:id/j9m"
-                        )
-                        print(f"当前页面发现 {len(comment_elements)} 条评论")
+            #             # 获取当前可见的评论元素
+            #             comment_elements = self.driver.find_elements(
+            #                 by=AppiumBy.ID,
+            #                 value="com.xingin.xhs:id/j9m"
+            #             )
+            #             print(f"当前页面发现 {len(comment_elements)} 条评论")
                         
-                        current_page_has_new = False  # 当前页面是否有新评论
+            #             current_page_has_new = False  # 当前页面是否有新评论
                         
-                        for idx, comment_elem in enumerate(comment_elements, 1):
-                            try:
-                                # 只获取评论内容
-                                comment_text = comment_elem.text
+            #             for idx, comment_elem in enumerate(comment_elements, 1):
+            #                 try:
+            #                     # 只获取评论内容
+            #                     comment_text = comment_elem.text
                                 
-                                # 检查评论内容是否已存在
-                                if comment_text not in comments:
-                                    comments.append(comment_text)
-                                    current_page_has_new = True
-                                    print(f"[{len(comments)}/{max_comments}] 新评论: {comment_text}")
+            #                     # 检查评论内容是否已存在
+            #                     if comment_text not in comments:
+            #                         comments.append(comment_text)
+            #                         current_page_has_new = True
+            #                         print(f"[{len(comments)}/{max_comments}] 新评论: {comment_text}")
                                     
-                                    # 检查是否达到最大评论数
-                                    if max_comments and len(comments) >= max_comments:
-                                        print(">>> 已达到目标评论数量")
-                                        break
-                            except Exception as e:
-                                print(f"处理第 {idx} 条评论出错: {str(e)}")
-                                continue
+            #                         # 检查是否达到最大评论数
+            #                         if max_comments and len(comments) >= max_comments:
+            #                             print(">>> 已达到目标评论数量")
+            #                             break
+            #                 except Exception as e:
+            #                     print(f"处理第 {idx} 条评论出错: {str(e)}")
+            #                     continue
                         
-                        # 如果达到最大评论数，退出循环
-                        if max_comments and len(comments) >= max_comments:
-                            break
+            #             # 如果达到最大评论数，退出循环
+            #             if max_comments and len(comments) >= max_comments:
+            #                 break
                             
-                        # 如果当前页面有新评论，重置计数器
-                        if current_page_has_new:
-                            print(f"第 {page_num} 页发现新评论，继续收集")
-                            no_new_comments_count = 0
-                        else:
-                            no_new_comments_count += 1
-                            print(f"第 {page_num} 页未发现新评论 ({no_new_comments_count}/{max_no_new_comments})")
+            #             # 如果当前页面有新评论，重置计数器
+            #             if current_page_has_new:
+            #                 print(f"第 {page_num} 页发现新评论，继续收集")
+            #                 no_new_comments_count = 0
+            #             else:
+            #                 no_new_comments_count += 1
+            #                 print(f"第 {page_num} 页未发现新评论 ({no_new_comments_count}/{max_no_new_comments})")
                         
-                        # 如果连续多次没有新评论，认为已到底
-                        if no_new_comments_count >= max_no_new_comments:
-                            print(">>> 连续多次未发现新评论，停止收集")
-                            break
+            #             # 如果连续多次没有新评论，认为已到底
+            #             if no_new_comments_count >= max_no_new_comments:
+            #                 print(">>> 连续多次未发现新评论，停止收集")
+            #                 break
                         
-                        # 向下滑动
-                        print("向下滑动加载更多评论...")
-                        self.scroll_down()
-                        time.sleep(0.5)
-                        page_num += 1
+            #             # 向下滑动
+            #             print("向下滑动加载更多评论...")
+            #             self.scroll_down()
+            #             time.sleep(0.5)
+            #             page_num += 1
                     
-                    # 返回笔记详情页
-                    print("\n评论收集完成，返回笔记详情页")
-                print(f"共收集到 {len(comments)} 条评论")
-                print("-" * 50)
-            else:
-                print("不收集评论")
+            #         # 返回笔记详情页
+            #         print("\n评论收集完成，返回笔记详情页")
+            #     print(f"共收集到 {len(comments)} 条评论")
+            #     print("-" * 50)
+            # else:
+            #     print("不收集评论")
 
             # 5. 最后获取分享链接
             note_url = ""
@@ -449,7 +447,7 @@ class XHSOperator:
                     print(f"提取到笔记URL: {note_url}")
                 else:
                     note_url = "未知"
-                    print(f"未能从分享链接中提取URL: {note_link}")
+                    print(f"未能从分享链接中提取URL: {url_start}")
             
             except Exception as e:
                 print(f"获取分享链接失败: {str(e)}")
@@ -461,8 +459,8 @@ class XHSOperator:
                 "content": content,
                 "likes": int(likes),
                 "collects": int(collects),
-                "comments": comments,
-                "url": note_url,
+                "comments": int(comments),
+                "note_url": note_url,
                 "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             

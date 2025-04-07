@@ -7,8 +7,72 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
+from airflow.hooks.base import BaseHook
 
 from utils.xhs_appium import XHSOperator
+
+
+def save_notes_to_db(notes: list) -> None:
+    """
+    保存笔记到数据库(如果表不存在，则初始新建该表)
+    """
+    # 使用get_hook函数获取数据库连接
+    db_hook = BaseHook.get_connection("xhs_db").get_hook()
+    db_conn = db_hook.get_conn()
+    cursor = db_conn.cursor()
+
+    try:
+        # 检查表是否存在，如果不存在则创建
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS xhs_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            author TEXT,
+            content TEXT,
+            likes INTEGER DEFAULT 0,
+            collects INTEGER DEFAULT 0,
+            comments INTEGER DEFAULT 0,
+            note_url TEXT,
+            collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            keyword TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        db_conn.commit()
+        
+        # 准备插入数据的SQL语句
+        insert_sql = """
+        INSERT INTO xhs_notes 
+        (title, author, content, likes, collects, comments, note_url, collect_time) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        
+        # 批量插入笔记数据
+        insert_data = []
+        for note in notes:
+            insert_data.append((
+                note.get('title', ''),
+                note.get('author', ''),
+                note.get('content', ''),
+                note.get('likes', 0),
+                note.get('collects', 0),
+                note.get('comments', 0),
+                note.get('note_url', ''),
+                note.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            ))
+        
+        cursor.executemany(insert_sql, insert_data)
+        db_conn.commit()
+        
+        print(f"成功保存 {len(notes)} 条笔记到数据库")
+        
+    except Exception as e:
+        db_conn.rollback()
+        print(f"保存笔记到数据库失败: {str(e)}")
+        raise
+    finally:
+        cursor.close()
+        db_conn.close()
 
 
 def collect_xhs_notes(**context) -> None:
@@ -42,7 +106,10 @@ def collect_xhs_notes(**context) -> None:
         # 收集笔记
         notes = xhs.collect_notes_by_keyword(
             keyword=keyword,
-            max_notes=max_notes
+            max_notes=max_notes,
+            filters={
+                "note_type": "图文"
+            }
         )
         
         if not notes:
@@ -55,8 +122,8 @@ def collect_xhs_notes(**context) -> None:
         for note in notes:
             print(note)
 
-        # 使用XCom存储笔记数据
-        context['task_instance'].xcom_push(key="notes", value=notes)
+        # 保存笔记到数据库
+        save_notes_to_db(notes)
             
     except Exception as e:
         error_msg = f"收集小红书笔记失败: {str(e)}"
