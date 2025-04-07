@@ -25,13 +25,13 @@ def save_notes_to_db(notes: list) -> None:
         # 检查表是否存在，如果不存在则创建
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS xhs_notes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INT AUTO_INCREMENT PRIMARY KEY,
             title TEXT NOT NULL,
             author TEXT,
             content TEXT,
-            likes INTEGER DEFAULT 0,
-            collects INTEGER DEFAULT 0,
-            comments INTEGER DEFAULT 0,
+            likes INT DEFAULT 0,
+            collects INT DEFAULT 0,
+            comments INT DEFAULT 0,
             note_url TEXT,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             keyword TEXT,
