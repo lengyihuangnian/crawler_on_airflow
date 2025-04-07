@@ -44,7 +44,7 @@ def save_notes_to_db(notes: list) -> None:
         insert_sql = """
         INSERT INTO xhs_notes 
         (title, author, content, likes, collects, comments, note_url, collect_time) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # 批量插入笔记数据
