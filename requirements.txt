@@ -11,4 +11,3 @@ anthropic
 redis
 apache-airflow-providers-redis
 smbprotocol
-ultralytics>=8.0.0
