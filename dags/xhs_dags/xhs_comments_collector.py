@@ -55,22 +55,36 @@ def collect_xhs_comments(n: int = 10, **context):
     # 获取笔记URL
     note_urls = get_note_url(n)
     
-    # 初始化小红书操作器
-    xhs = XHSOperator()
+
+    # 获取Appium服务器URL
+    appium_server_url = Variable.get("APPIUM_SERVER_URL", "http://localhost:4723")
+
+    print("开始收集笔记评论...")
     
-    all_comments = []
-    for note_url in note_urls:
-        try:
-            # 收集评论
-            comments = xhs.collect_comments_by_url(note_url)
-            # 保存评论到数据库
-            save_comments_to_db(comments, note_url)
-            all_comments.extend(comments)
-        except Exception as e:
-            print(f"处理笔记 {note_url} 时出错: {str(e)}")
-            continue
-    
-    return all_comments
+    try:
+         # 初始化小红书操作器
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True)
+        
+        all_comments = []
+        for note_url in note_urls:
+            try:
+                # 收集评论
+                comments = xhs.collect_comments_by_url(note_url)
+                # 保存评论到数据库
+                save_comments_to_db(comments, note_url)
+                all_comments.extend(comments)
+            except Exception as e:
+                print(f"处理笔记 {note_url} 时出错: {str(e)}")
+                continue
+        
+        return all_comments
+    except Exception as e:
+        print(f"运行出错: {str(e)}")
+        raise e
+    finally:
+        # 确保关闭小红书操作器
+        if 'xhs' in locals():
+            xhs.close()
 
 # DAG 定义
 default_args = {
