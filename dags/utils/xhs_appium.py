@@ -14,6 +14,10 @@ import os
 import json
 import time
 
+import requests
+import re
+
+
 from appium.webdriver.webdriver import WebDriver as AppiumWebDriver
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
@@ -751,10 +755,195 @@ class XHSOperator:
             attempts += 1
 
     def publish_note(self, title: str, content: str):
+
         """
         发布笔记
         """
         pass
+
+
+
+    def get_redirect_url(self, short_url):
+        try:
+            # 添加请求头，模拟浏览器请求
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Connection": "keep-alive",
+            }
+            # 发送请求，禁止自动重定向
+            response = requests.get(short_url, headers=headers, allow_redirects=False)
+            # 检查响应状态码
+            if response.status_code in [301, 302, 307]:  # 处理重定向状态码
+                redirect_url = response.headers['Location']  # 获取重定向链接
+                return redirect_url
+            else:
+                return "无法获取重定向链接，状态码: {}".format(response.status_code)
+        except Exception as e:
+            return "请求失败: {}".format(str(e))
+
+    def collect_comments_by_url(self, note_url: str, max_attempts: int = 10) -> list:
+        """
+        根据帖子 URL 获取并解析评论信息
+        Args:
+            note_url: 帖子 URL
+            max_attempts: 最大滑动次数
+        Returns:
+            list: 解析后的评论列表
+        """
+        try:
+            print(f"开始获取并解析评论，帖子 URL: {note_url}")
+
+            # 打开帖子页面
+            self.driver.get(note_url)
+            time.sleep(5)  # 等待页面加载
+
+            # 等待评论区加载
+            print("等待评论区加载...")
+            try:
+                # 查找评论列表
+                try:
+                    WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((
+                            AppiumBy.XPATH,
+                            "//android.widget.TextView[contains(@text, '')]"
+                        ))
+                    )
+                    print("找到评论区")
+                except:
+                    print("未找到评论区")
+                    return []
+            except Exception as e:
+                print(f"等待评论区加载失败: {str(e)}")
+                return []
+
+            last_page_source = None
+            all_comments = []  # 用于存储解析后的评论
+            seen_comments = set()  # 用于去重
+            max_comments = 20  # 最大评论数
+            is_first_comment = True  # 标记是否是第一条评论
+
+            for attempt in range(max_attempts):
+                print(f"第 {attempt + 1} 次滑动加载评论...")
+
+                # 获取当前页面源码
+                page_source = self.driver.page_source
+
+                # 如果页面没有变化，说明已经到底
+                if page_source == last_page_source:
+                    print("页面未发生变化，可能已到底")
+                    break
+
+                # 解析当前页面的评论
+                try:
+                    # 查找评论元素
+                    comment_elements = self.driver.find_elements(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.TextView[contains(@text, '')]"
+                    )
+                    
+                    # 过滤出可能是评论的元素（排除非评论文本）
+                    comment_elements = [
+                        e for e in comment_elements 
+                        if e.text and 
+                        len(e.text) > 10 and 
+                        "Say something" not in e.text and
+                        "说点什么" not in e.text and
+                        "还没有评论哦" not in e.text and
+                        "到底了" not in e.text and
+                        "评论" not in e.text and
+                        not e.text.endswith("comments") and  # 排除评论数
+                        "First comment" not in e.text and  # 排除小红书标识
+                        not re.search(r'View \d+ replies', e.text)  # 排除回复查看文本
+                    ]
+                    
+                    print(f"找到 {len(comment_elements)} 个可能的评论元素")
+                    
+                    # 解析每个评论元素
+                    for comment_elem in comment_elements:
+                        try:
+                            # 获取评论内容
+                            comment_text = comment_elem.text.strip()
+                            
+                            # 跳过第一条评论（文章内容）
+                            if is_first_comment:
+                                is_first_comment = False
+                                continue
+                            
+                            # 如果评论不为空且未见过，则添加到结果中
+                            if comment_text and comment_text not in seen_comments:
+                                # 尝试获取评论者信息
+                                try:
+                                    # 尝试通过相对位置查找作者
+                                    parent = comment_elem.find_element(
+                                        by=AppiumBy.XPATH,
+                                        value=".."
+                                    )
+                                    author_elem = parent.find_element(
+                                        by=AppiumBy.CLASS_NAME,
+                                        value="android.widget.TextView"
+                                    )
+                                    author = author_elem.text.strip()
+                                except:
+                                    author = "未知用户"
+                                
+                                # 尝试获取点赞数
+                                try:
+                                    likes = 0
+                                    # 尝试通过相对位置查找点赞数
+                                    parent = comment_elem.find_element(
+                                        by=AppiumBy.XPATH,
+                                        value=".."
+                                    )
+                                    likes_elem = parent.find_element(
+                                        by=AppiumBy.XPATH,
+                                        value=".//android.widget.TextView[contains(@text, '赞')]"
+                                    )
+                                    likes_text = likes_elem.text.strip()
+                                    likes = int(re.search(r'\d+', likes_text).group()) if re.search(r'\d+', likes_text) else 0
+                                except:
+                                    likes = 0
+                                
+                                # 构建评论数据
+                                comment_data = {
+                                    "author": author,
+                                    "content": comment_text,
+                                    "likes": likes,
+                                    "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
+                                }
+                                
+                                all_comments.append(comment_data)
+                                seen_comments.add(comment_text)
+                                print(f"发现新评论: {comment_text[:50]}...")
+                                
+                                # 如果达到最大评论数，退出循环
+                                if len(all_comments) >= max_comments:
+                                    print(f"已达到最大评论数 {max_comments}，停止收集")
+                                    return all_comments
+                                
+                        except Exception as e:
+                            print(f"解析单个评论失败: {str(e)}")
+                            continue
+                except Exception as e:
+                    print(f"解析页面评论失败: {str(e)}")
+                    continue
+
+                # 更新最后的页面源码
+                last_page_source = page_source
+
+                # 模拟滑动加载更多评论
+                self.scroll_down()
+                time.sleep(2)  # 等待评论加载
+
+            print(f"评论获取完成，共收集到 {len(all_comments)} 条评论")
+            return all_comments
+
+        except Exception as e:
+            print(f"获取评论失败: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return []
 
 
 # 测试代码
@@ -768,16 +957,34 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     # 加载.env文件
     load_dotenv(os.path.join(current_dir, '.env'))
+    print(os.path.join(current_dir, '.env'))
     
     # 获取Appium服务器URL
-    appium_server_url = os.getenv('APPIUM_SERVER_URL')
+    appium_server_url = os.getenv('APPIUM_SERVER_URL', 'http://localhost:4723')
 
     print(appium_server_url)
-    
     # 初始化小红书操作器
     xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=False)
 
     xhs.print_all_elements()
+
+    # 测试收集评论
+    try:
+        note_url = "http://xhslink.com/a/Wi0FvibFkeH9"
+        full_url =  xhs.get_redirect_url(note_url)
+
+        print(f"开始测试收集评论函数，帖子 URL: {full_url}")
+        # 获取页面 XML
+        comments = xhs.collect_comments_by_url(full_url)
+        for comment in comments:
+            print(f"作者: {comment['author']}")
+            print(f"内容: {comment['content']}")
+            print(f"点赞: {comment['likes']}")
+            print(f"时间: {comment['collect_time']}")
+            print("-" * 50)
+
+    except Exception as e:
+        print(f"运行出错: {str(e)}")
 
     # time.sleep(60)
 
