@@ -36,16 +36,52 @@ def save_comments_to_db(comments: list, note_url: str):
     db_hook = BaseHook.get_connection("xhs_db").get_hook()
     db_conn = db_hook.get_conn()
     cursor = db_conn.cursor()
-    
-    for comment in comments:
-        cursor.execute(
-            "INSERT INTO xhs_comments (note_url, author, content, likes, collect_time) VALUES (%s, %s, %s, %s, %s)",
-            (note_url, comment['author'], comment['content'], comment['likes'], comment['collect_time'])
+
+    try:
+        # 检查表是否存在，如果不存在则创建
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS xhs_comments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            author TEXT,
+            content TEXT,
+            likes INT DEFAULT 0,
+            note_url TEXT,
+            collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
         )
-    
-    db_conn.commit()
-    cursor.close()
-    db_conn.close()
+        """)
+        db_conn.commit()
+        
+        # 准备插入数据的SQL语句
+        insert_sql = """
+        INSERT INTO xhs_comments 
+        (note_url, author, content, likes, collect_time) 
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        
+        # 批量插入评论数据
+        insert_data = []
+        for comment in comments:
+            insert_data.append((
+                note_url,
+                comment.get('author', ''),
+                comment.get('content', ''),
+                comment.get('likes', 0),
+                comment.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            ))
+        
+        cursor.executemany(insert_sql, insert_data)
+        db_conn.commit()
+        
+        print(f"成功保存 {len(comments)} 条评论到数据库")
+    except Exception as e:
+        db_conn.rollback()
+        print(f"保存评论到数据库失败: {str(e)}")
+        raise
+    finally:
+        cursor.close()
+        db_conn.close()
 
 def collect_xhs_comments(n: int = 10, **context):
     """收集小红书评论
