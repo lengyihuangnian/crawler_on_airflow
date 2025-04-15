@@ -34,7 +34,7 @@ class XHSOperator:
         capabilities = dict(
             platformName='Android',
             automationName='uiautomator2',
-            deviceName='BH901V3R9E',
+            deviceName='975b1ebf0107',
             appPackage='com.xingin.xhs',
             appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
             noReset=True,  # 保留应用数据
