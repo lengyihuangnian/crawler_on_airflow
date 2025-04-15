@@ -105,7 +105,8 @@ def collect_xhs_comments(n: int = 10, **context):
         for note_url in note_urls:
             try:
                 # 收集评论
-                comments = xhs.collect_comments_by_url(note_url)
+                full_url =  xhs.get_redirect_url(note_url)
+                comments = xhs.collect_comments_by_url(full_url)
                 # 保存评论到数据库
                 save_comments_to_db(comments, note_url)
                 all_comments.extend(comments)
