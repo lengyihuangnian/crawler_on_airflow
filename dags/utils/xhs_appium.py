@@ -13,6 +13,7 @@ Date: 2025-01-09
 import os
 import json
 import time
+import subprocess
 
 import requests
 import re
@@ -26,15 +27,44 @@ from appium.options.android import UiAutomator2Options
 from xml.etree import ElementTree
 
 
+def get_adb_devices():
+    """
+    获取当前连接的Android设备列表
+    Returns:
+        list: 设备序列号列表
+    """
+    try:
+        # 执行adb devices命令
+        result = subprocess.run(['adb', 'devices'], capture_output=True, text=True)
+        # 解析输出，获取设备列表
+        devices = []
+        for line in result.stdout.split('\n')[1:]:  # 跳过第一行标题
+            if '\tdevice' in line:  # 只获取已授权的设备
+                devices.append(line.split('\t')[0])
+        return devices
+    except Exception as e:
+        print(f"获取adb设备列表失败: {str(e)}")
+        return []
+
+
 class XHSOperator:
     def __init__(self, appium_server_url: str = 'http://localhost:4723', force_app_launch: bool = False):
         """
         初始化小红书操作器
         """
+        # 获取adb设备列表
+        devices = get_adb_devices()
+        if not devices:
+            raise Exception("未找到可用的Android设备，请确保设备已连接并已授权")
+        
+        # 使用第一个可用设备
+        device_name = devices[0]
+        print(f"使用设备: {device_name}")
+
         capabilities = dict(
             platformName='Android',
             automationName='uiautomator2',
-            deviceName='01176bc40007',
+            deviceName=device_name,
             appPackage='com.xingin.xhs',
             appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
             noReset=True,  # 保留应用数据
