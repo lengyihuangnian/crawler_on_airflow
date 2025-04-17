@@ -104,8 +104,6 @@ def collect_xhs_notes(**context) -> None:
     try:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True)
-
-        xhs.print_current_page_source()
         
         # 收集笔记
         notes = xhs.collect_notes_by_keyword(
