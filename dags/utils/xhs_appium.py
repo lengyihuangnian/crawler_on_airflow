@@ -52,14 +52,19 @@ class XHSOperator:
         """
         初始化小红书操作器
         """
-        # 获取adb设备列表
-        devices = get_adb_devices()
-        if not devices:
-            raise Exception("未找到可用的Android设备，请确保设备已连接并已授权")
-        
-        # 使用第一个可用设备
-        device_name = devices[0]
-        print(f"使用设备: {device_name}")
+        # 如果是远程连接，跳过adb设备检查
+        if not appium_server_url.startswith('http://localhost'):
+            device_name = 'remote_device'
+            print(f"使用远程设备连接: {appium_server_url}")
+        else:
+            # 获取adb设备列表
+            devices = get_adb_devices()
+            if not devices:
+                raise Exception("未找到可用的Android设备，请确保设备已连接并已授权")
+            
+            # 使用第一个可用设备
+            device_name = devices[0]
+            print(f"使用设备: {device_name}")
 
         capabilities = dict(
             platformName='Android',
