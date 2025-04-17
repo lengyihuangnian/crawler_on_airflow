@@ -46,7 +46,7 @@ class XHSOperator:
             resetKeyboard=True,  # 重置输入法
         )
 
-        print('正在初始化小红书控制器...')
+        print('正在初始化小红书控制器...',appium_server_url)
         self.driver: AppiumWebDriver = AppiumWebDriver(
             command_executor=appium_server_url,
             options=UiAutomator2Options().load_capabilities(capabilities)
