@@ -159,6 +159,7 @@ class XHSOperator:
         self.search_keyword(keyword, filters=filters)
         
         print(f"开始收集笔记,计划收集{max_notes}条...")
+        self.print_current_page_source()
         collected_notes = []
         collected_titles = []
         while len(collected_notes) < max_notes:
