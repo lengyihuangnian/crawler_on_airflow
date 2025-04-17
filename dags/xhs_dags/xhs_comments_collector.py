@@ -93,7 +93,7 @@ def collect_xhs_comments(n: int = 10, **context):
     
 
     # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_SERVER_URL", "http://localhost:4723")
+    appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
 
     print("开始收集笔记评论...")
     

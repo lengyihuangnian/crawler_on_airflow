@@ -960,7 +960,7 @@ if __name__ == "__main__":
     print(os.path.join(current_dir, '.env'))
     
     # 获取Appium服务器URL
-    appium_server_url = os.getenv('APPIUM_LOCAL_SERVER_URL', 'http://localhost:4723')
+    appium_server_url = os.getenv('APPIUM_SERVER_URL', 'http://localhost:4723')
 
     print(appium_server_url)
     # 初始化小红书操作器
