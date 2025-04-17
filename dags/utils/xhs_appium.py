@@ -204,6 +204,14 @@ class XHSOperator:
                     by=AppiumBy.ID,
                     value="com.xingin.xhs:id/g6_"
                 )
+
+                # 如果原有定位方式失败，尝试新的XPath定位
+                if not note_titles:
+                    note_titles = self.driver.find_elements(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
+                    )
+                
                 
                 for note_element in note_titles:
                     note_title_and_text = note_element.text
