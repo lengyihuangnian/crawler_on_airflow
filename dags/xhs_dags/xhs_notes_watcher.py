@@ -92,9 +92,9 @@ def collect_xhs_notes(**context) -> None:
               else '吉他')
     
     # 获取最大收集笔记数，默认为5
-    max_notes = (context['dag_run'].conf.get('max_notes', 5)
+    max_notes = (context['dag_run'].conf.get('max_notes', 2)
                 if context['dag_run'].conf
-                else 5)
+                else 2)
     
     # 获取Appium服务器URL
     appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
