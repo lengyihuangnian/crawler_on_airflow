@@ -337,7 +337,7 @@ class XHSOperator:
 
         return collected_notes
     
-    def get_note_data(self, note_title_and_text: str):
+    def get_note_data_sony(self, note_title_and_text: str):
         """
         获取笔记内容和评论
         Args:
@@ -622,6 +622,292 @@ class XHSOperator:
                 "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
     
+    def get_note_data(self, note_title_and_text: str):
+        """
+        获取笔记内容和评论
+        Args:
+            note_title_and_text: 笔记标题和内容
+        Returns:
+            dict: 笔记数据
+        """
+        try:
+            print(f"正在获取笔记内容: {note_title_and_text}")
+            self.print_current_page_source()
+            
+            # 等待笔记内容加载
+            time.sleep(1)
+            
+            # 获取笔记作者
+            try:
+                # 尝试查找作者元素
+                author_element = None
+                max_scroll_attempts = 3
+                scroll_attempts = 0
+                
+                while not author_element and scroll_attempts < max_scroll_attempts:
+                    try:
+                        author_element = WebDriverWait(self.driver, 2).until(
+                            EC.presence_of_element_located((AppiumBy.ID, "com.xingin.xhs:id/nickNameTV"))
+                        )
+                        print(f"找到作者信息元素: {author_element.text}")
+                        author = author_element.text
+                        break
+                    except:
+                        # 向下滚动一小段距离
+                        self.scroll_down()
+                        scroll_attempts += 1
+                        time.sleep(1)
+                
+                if not author_element:
+                    author = ""
+                    print("未找到作者信息元素")
+                    
+            except Exception as e:
+                author = ""
+                print(f"获取作者信息失败: {str(e)}")
+            
+            # 获取笔记内容 - 需要滑动查找
+            content = ""
+            max_scroll_attempts = 3  # 最大滑动次数
+            scroll_count = 0
+            
+            note_title = ""
+            note_content = ""
+            while scroll_count < max_scroll_attempts:
+                try:
+                    # 尝试获取标题
+                    title_element = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.TextView[contains(@text, '') and string-length(@text) > 0]"
+                    )
+                    note_title = title_element.text
+                    print(f"找到标题: {note_title}")
+
+                    # 尝试获取正文内容
+                    content_element = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.TextView[contains(@text, '') and string-length(@text) > 100]"
+                    )
+                    note_content = content_element.text
+                    if note_content and note_title:
+                        print("找到正文内容和标题")
+                        break
+                except:
+                    print(f"第 {scroll_count + 1} 次滑动查找正文...")
+                    # 向下滑动
+                    self.scroll_down()
+                    time.sleep(0.5)
+                    scroll_count += 1
+
+            # 获取互动数据 - 分别处理每个数据
+            likes = "0"
+            try:
+                # 获取点赞数
+                likes_btn = self.driver.find_element(
+                    by=AppiumBy.XPATH,
+                    value="//android.widget.Button[contains(@content-desc, '点赞')]"
+                )
+                likes_text = likes_btn.find_element(
+                    by=AppiumBy.ID,
+                    value="com.xingin.xhs:id/g5i"
+                ).text
+                # 如果获取到的是"点赞"文本，则设为0
+                print(f"获取到点赞数: {likes_text}")
+                likes = "0" if likes_text == "点赞" else likes_text
+            except Exception as e:
+                print(f"获取点赞数失败: {str(e)}")
+
+            collects = "0"
+            try:
+                # 获取收藏数
+                collects_btn = self.driver.find_element(
+                    by=AppiumBy.XPATH,
+                    value="//android.widget.Button[contains(@content-desc, '收藏')]"
+                )
+                collects_text = collects_btn.find_element(
+                    by=AppiumBy.ID,
+                    value="com.xingin.xhs:id/g3s"
+                ).text
+                # 如果获取到的是"收藏"文本，则设为0
+                print(f"获取到收藏数: {collects_text}")
+                collects = "0" if collects_text == "收藏" else collects_text
+            except Exception as e:
+                print(f"获取收藏数失败: {str(e)}")
+
+            comments = "0"
+            try:
+                # 获取评论数
+                comments_btn = self.driver.find_element(
+                    by=AppiumBy.XPATH,
+                    value="//android.widget.Button[contains(@content-desc, '评论')]"
+                )
+                comments_text = comments_btn.find_element(
+                    by=AppiumBy.ID,
+                    value="com.xingin.xhs:id/g41"
+                ).text
+                # 如果获取到的是"评论"文本，则设为0
+                print(f"获取到评论数: {comments_text}")
+                comments = "0" if comments_text == "评论" else comments_text
+            except Exception as e:
+                print(f"获取评论数失败: {str(e)}")
+            
+            # # 收集评论数据
+            # comments = []
+            # if include_comments:
+            #     print(f"\n开始收集评论 (目标数量: {max_comments})")
+            #     print("-" * 50)
+            #     if int(total_comments) > 0:
+            #         # 循环滑动收集评论
+            #         no_new_comments_count = 0  # 连续没有新评论的次数
+            #         max_no_new_comments = 3  # 最大连续无新评论次数
+            #         page_num = 1  # 当前页码
+                    
+            #         while True:
+            #             print(f"\n正在处理第 {page_num} 页评论...")
+                        
+            #             # 检查是否到底或无评论
+            #             try:
+            #                 # 检查"还没有评论哦"文本
+            #                 no_comments = self.driver.find_element(
+            #                     by=AppiumBy.ID,
+            #                     value="com.xingin.xhs:id/es1"
+            #                 )
+            #                 if no_comments.text in ["还没有评论哦", "- 到底了 -"]:
+            #                     print(f">>> 遇到终止条件: {no_comments.text}")
+            #                     break
+            #             except:
+            #                 pass
+                        
+            #             # 获取当前可见的评论元素
+            #             comment_elements = self.driver.find_elements(
+            #                 by=AppiumBy.ID,
+            #                 value="com.xingin.xhs:id/j9m"
+            #             )
+            #             print(f"当前页面发现 {len(comment_elements)} 条评论")
+                        
+            #             current_page_has_new = False  # 当前页面是否有新评论
+                        
+            #             for idx, comment_elem in enumerate(comment_elements, 1):
+            #                 try:
+            #                     # 只获取评论内容
+            #                     comment_text = comment_elem.text
+                                
+            #                     # 检查评论内容是否已存在
+            #                     if comment_text not in comments:
+            #                         comments.append(comment_text)
+            #                         current_page_has_new = True
+            #                         print(f"[{len(comments)}/{max_comments}] 新评论: {comment_text}")
+                                    
+            #                         # 检查是否达到最大评论数
+            #                         if max_comments and len(comments) >= max_comments:
+            #                             print(">>> 已达到目标评论数量")
+            #                             break
+            #                 except Exception as e:
+            #                     print(f"处理第 {idx} 条评论出错: {str(e)}")
+            #                     continue
+                        
+            #             # 如果达到最大评论数，退出循环
+            #             if max_comments and len(comments) >= max_comments:
+            #                 break
+                            
+            #             # 如果当前页面有新评论，重置计数器
+            #             if current_page_has_new:
+            #                 print(f"第 {page_num} 页发现新评论，继续收集")
+            #                 no_new_comments_count = 0
+            #             else:
+            #                 no_new_comments_count += 1
+            #                 print(f"第 {page_num} 页未发现新评论 ({no_new_comments_count}/{max_no_new_comments})")
+                        
+            #             # 如果连续多次没有新评论，认为已到底
+            #             if no_new_comments_count >= max_no_new_comments:
+            #                 print(">>> 连续多次未发现新评论，停止收集")
+            #                 break
+                        
+            #             # 向下滑动
+            #             print("向下滑动加载更多评论...")
+            #             self.scroll_down()
+            #             time.sleep(0.5)
+            #             page_num += 1
+                    
+            #         # 返回笔记详情页
+            #         print("\n评论收集完成，返回笔记详情页")
+            #     print(f"共收集到 {len(comments)} 条评论")
+            #     print("-" * 50)
+            # else:
+            #     print("不收集评论")
+
+            # 5. 最后获取分享链接
+            note_url = ""
+            try:
+                # 点击分享按钮
+                share_btn = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "//android.widget.Button[@content-desc='分享']"
+                    ))
+                )
+                share_btn.click()
+                time.sleep(1)
+                
+                # 点击复制链接
+                copy_link_btn = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "//android.widget.TextView[@text='复制链接']"
+                    ))
+                )
+                copy_link_btn.click()
+                time.sleep(1)
+                
+                # 获取剪贴板内容
+                clipboard_data = self.driver.get_clipboard_text()
+                share_text = clipboard_data.strip()
+                
+                # 从分享文本中提取URL
+                url_start = share_text.find('http://')
+                if url_start == -1:
+                    url_start = share_text.find('https://')
+                url_end = share_text.find('，', url_start) if url_start != -1 else -1
+                
+                if url_start != -1:
+                    note_url = share_text[url_start:url_end] if url_end != -1 else share_text[url_start:]
+                    print(f"提取到笔记URL: {note_url}")
+                else:
+                    note_url = "未知"
+                    print(f"未能从分享链接中提取URL: {url_start}")
+            
+            except Exception as e:
+                print(f"获取分享链接失败: {str(e)}")
+                note_url = "未知"
+
+            note_data = {
+                "title": note_title,
+                "content": note_content,
+                "author": author,
+                "likes": int(likes),
+                "collects": int(collects),
+                "comments": int(comments),
+                "note_url": note_url,
+                "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            print(f"获取笔记数据: {note_data}")
+            return note_data
+            
+        except Exception as e:
+            import traceback
+            print(f"获取笔记内容失败: {str(e)}")
+            print("异常堆栈信息:")
+            print(traceback.format_exc())
+            self.print_all_elements()
+            return {
+                "title": note_title,
+                "error": str(e),
+                "url": "",
+                "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+    
+
     def scroll_down(self):
         """
         向下滑动页面
