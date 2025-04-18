@@ -185,7 +185,7 @@ class XHSOperator:
             print(f"搜索或筛选失败: {str(e)}")
             raise
         
-    def collect_notes_by_keyword(self, keyword: str, max_notes: int = 10, filters: dict = None):
+    def collect_notes_by_keyword_sony(self, keyword: str, max_notes: int = 10, filters: dict = None):
         """
         根据关键词收集笔记
         """
@@ -204,14 +204,6 @@ class XHSOperator:
                     by=AppiumBy.ID,
                     value="com.xingin.xhs:id/g6_"
                 )
-
-                # 如果原有定位方式失败，尝试新的XPath定位
-                if not note_titles:
-                    note_titles = self.driver.find_elements(
-                        by=AppiumBy.XPATH,
-                        value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
-                    )
-                
                 
                 for note_element in note_titles:
                     note_title_and_text = note_element.text
@@ -239,6 +231,91 @@ class XHSOperator:
                             break
                     else:
                         print(f"笔记已收集过: {note_title_and_text}")
+                
+                # 滑动到下一页
+                if len(collected_notes) < max_notes:
+                    self.scroll_down()
+                    time.sleep(1)
+            
+            except Exception as e:
+                print(f"收集笔记失败: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                break
+
+        # 打印所有笔记数据
+        for note in collected_notes:
+            print("-" * 120)
+            print(json.dumps(note, ensure_ascii=False, indent=2))
+            print("-" * 120)
+
+        return collected_notes
+
+    def collect_notes_by_keyword(self, keyword: str, max_notes: int = 10, filters: dict = None): #xiaomi尝试
+        """
+        根据关键词收集笔记
+        """
+        # 搜索关键词
+        print(f"搜索关键词: {keyword}")
+        self.search_keyword(keyword, filters=filters)
+        
+        print(f"开始收集笔记,计划收集{max_notes}条...")
+        self.print_current_page_source()
+        collected_notes = []
+        collected_titles = []
+        
+        while len(collected_notes) < max_notes:
+            try:
+                # 获取所有笔记卡片元素
+                note_cards = self.driver.find_elements(
+                    by=AppiumBy.XPATH,
+                    value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
+                )
+                
+                for note_card in note_cards:
+                    try:
+                        # 获取笔记标题
+                        title_element = note_card.find_element(
+                            by=AppiumBy.XPATH,
+                            value=".//android.widget.TextView[contains(@text, '')]"
+                        )
+                        note_title_and_text = title_element.text
+                        
+                        # 获取作者信息
+                        author_element = note_card.find_element(
+                            by=AppiumBy.XPATH,
+                            value=".//android.widget.TextView[contains(@text, '')]"
+                        )
+                        author = author_element.text
+                        
+                        if note_title_and_text not in collected_titles:
+                            print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
+
+                            # 点击笔记
+                            note_card.click()
+                            time.sleep(1)
+
+                            # 获取笔记内容
+                            note_data = self.get_note_data(note_title_and_text)
+                            
+                            # 如果笔记数据不为空，则添加到列表中
+                            if note_data:
+                                note_data['keyword'] = keyword
+                                collected_notes.append(note_data)
+                                collected_titles.append(note_title_and_text)
+
+                            # 返回上一页
+                            self.driver.press_keycode(4)  # Android 返回键
+                            time.sleep(1)
+
+                            if len(collected_notes) >= max_notes:
+                                break
+                        else:
+                            print(f"笔记已收集过: {note_title_and_text}")
+                            
+                    except Exception as e:
+                        print(f"处理笔记卡片失败: {str(e)}")
+                        continue
                 
                 # 滑动到下一页
                 if len(collected_notes) < max_notes:
