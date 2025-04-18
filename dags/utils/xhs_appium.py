@@ -632,7 +632,7 @@ class XHSOperator:
         """
         try:
             print(f"正在获取笔记内容: {note_title_and_text}")
-            self.print_current_page_source()
+            self.print_all_elements()
             
             # 等待笔记内容加载
             time.sleep(1)
@@ -690,7 +690,7 @@ class XHSOperator:
                     )
                     note_content = content_element.text
                     if note_content and note_title:
-                        print("找到正文内容和标题")
+                        print("找到正文内容和标题",{note_content})
                         break
                 except:
                     print(f"第 {scroll_count + 1} 次滑动查找正文...")
