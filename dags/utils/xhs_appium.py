@@ -194,7 +194,6 @@ class XHSOperator:
         self.search_keyword(keyword, filters=filters)
         
         print(f"开始收集笔记,计划收集{max_notes}条...")
-        self.print_all_elements()
         collected_notes = []
         collected_titles = []
         while len(collected_notes) < max_notes:
@@ -347,7 +346,6 @@ class XHSOperator:
         """
         try:
             print(f"正在获取笔记内容: {note_title_and_text}")
-            self.print_current_page_source()
             
             # 等待笔记内容加载
             time.sleep(1)
@@ -632,7 +630,6 @@ class XHSOperator:
         """
         try:
             print(f"正在获取笔记内容: {note_title_and_text}")
-            self.print_all_elements()
             
             # 等待笔记内容加载
             time.sleep(1)
