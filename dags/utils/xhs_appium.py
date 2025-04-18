@@ -285,7 +285,7 @@ class XHSOperator:
                         # 获取作者信息
                         author_element = note_card.find_element(
                             by=AppiumBy.XPATH,
-                            value=".//android.widget.TextView[contains(@text, '')] and index='0'"
+                            value=".//android.widget.LinearLayout/android.widget.TextView[1]"
                         )
                         author = author_element.text
                         
