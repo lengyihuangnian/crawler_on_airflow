@@ -260,7 +260,6 @@ class XHSOperator:
         self.search_keyword(keyword, filters=filters)
         
         print(f"开始收集笔记,计划收集{max_notes}条...")
-        self.print_current_page_source()
         collected_notes = []
         collected_titles = []
         
@@ -271,10 +270,12 @@ class XHSOperator:
                     by=AppiumBy.XPATH,
                     value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
                 )
+
                 
                 for note_card in note_cards:
                     try:
                         # 获取笔记标题
+                        print("卡片",note_card)
                         title_element = note_card.find_element(
                             by=AppiumBy.XPATH,
                             value=".//android.widget.TextView[contains(@text, '')]"
@@ -284,7 +285,7 @@ class XHSOperator:
                         # 获取作者信息
                         author_element = note_card.find_element(
                             by=AppiumBy.XPATH,
-                            value=".//android.widget.TextView[contains(@text, '')]"
+                            value=".//android.widget.TextView[contains(@text, '')] and index='0'"
                         )
                         author = author_element.text
                         
