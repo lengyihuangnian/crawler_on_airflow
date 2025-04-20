@@ -48,28 +48,31 @@ def get_adb_devices():
 
 
 class XHSOperator:
-    def __init__(self, appium_server_url: str = 'http://localhost:4723', force_app_launch: bool = False):
+    def __init__(self, appium_server_url: str = 'http://localhost:4723', force_app_launch: bool = False, device_id: str = None, system_port: int = 8200):
         """
         初始化小红书操作器
+        Args:
+            appium_server_url: Appium服务器URL
+            force_app_launch: 是否强制重启应用
+            device_id: 指定的设备ID
+            system_port: Appium服务指定的本地端口，用来转发数据给安卓设备
         """
         # 如果是远程连接，跳过adb设备检查
         if not appium_server_url.startswith('http://localhost'):
             device_name = 'remote_device'
             print(f"使用远程设备连接: {appium_server_url}")
         else:
-            # 获取adb设备列表
-            devices = get_adb_devices()
-            if not devices:
-                raise Exception("未找到可用的Android设备，请确保设备已连接并已授权")
-            
-            # 使用第一个可用设备
-            device_name = devices[0]
+            # 使用指定的设备
+            if not device_id:
+                raise Exception("未指定设备ID")
+            device_name = device_id
             print(f"使用设备: {device_name}")
 
         capabilities = dict(
             platformName='Android',
             automationName='uiautomator2',
             deviceName=device_name,
+            udid=device_name,  # 添加udid参数，值与deviceName相同
             appPackage='com.xingin.xhs',
             appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
             noReset=True,  # 保留应用数据
@@ -79,6 +82,7 @@ class XHSOperator:
             newCommandTimeout=60,  # 命令超时时间
             unicodeKeyboard=True,  # 使用 Unicode 输入法
             resetKeyboard=True,  # 重置输入法
+            systemPort=system_port  # 设置系统端口
         )
 
         print('正在初始化小红书控制器...',appium_server_url)
