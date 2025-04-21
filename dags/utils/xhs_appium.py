@@ -1273,7 +1273,6 @@ class XHSOperator:
 
 # 测试代码
 if __name__ == "__main__":
-
     # 加载.env文件
     from dotenv import load_dotenv
     import os
@@ -1289,19 +1288,48 @@ if __name__ == "__main__":
 
     print(appium_server_url)
     # 初始化小红书操作器
-    xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=False)
+    xhs = XHSOperator(
+        appium_server_url=appium_server_url,
+        force_app_launch=True,
+        device_id="97266a1f0107",
+        system_port=8200
+    )
 
-    xhs.print_all_elements()
-
-    # 测试收集评论
     try:
-        note_url = "http://xhslink.com/a/Wi0FvibFkeH9"
-        full_url =  xhs.get_redirect_url(note_url)
+        # 测试收集文章
+        print("\n开始测试收集文章...")
+        notes = xhs.collect_notes_by_keyword(
+            keyword="文字游戏",
+            max_notes=10,
+            filters={
+                "note_type": "图文",  # 只收集图文笔记
+                "sort_by": "最新"  # 按最新排序
+            }
+        )
+        
+        print(f"\n共收集到 {len(notes)} 条笔记:")
+        for i, note in enumerate(notes, 1):
+            print(f"\n笔记 {i}:")
+            print(f"标题: {note.get('title', 'N/A')}")
+            print(f"作者: {note.get('author', 'N/A')}")
+            print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
+            print(f"URL: {note.get('note_url', 'N/A')}")
+            print(f"点赞: {note.get('likes', 'N/A')}")
+            print(f"收藏: {note.get('collects', 'N/A')}")
+            print(f"评论: {note.get('comments', 'N/A')}")
+            print(f"收集时间: {note.get('collect_time', 'N/A')}")
+            print("-" * 50)
 
-        print(f"开始测试收集评论函数，帖子 URL: {full_url}")
-        # 获取页面 XML
+        # 测试收集评论
+        print("\n开始测试收集评论...")
+        note_url = "http://xhslink.com/a/Wi0FvibFkeH9"
+        full_url = xhs.get_redirect_url(note_url)
+        print(f"帖子 URL: {full_url}")
+        
         comments = xhs.collect_comments_by_url(full_url)
-        for comment in comments:
+        print(f"\n共收集到 {len(comments)} 条评论:")
+        for i, comment in enumerate(comments, 1):
+            print(f"\n评论 {i}:")
             print(f"作者: {comment['author']}")
             print(f"内容: {comment['content']}")
             print(f"点赞: {comment['likes']}")
@@ -1310,24 +1338,8 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"运行出错: {str(e)}")
-
-    # time.sleep(60)
-
-    # # 检查是否在首页
-    # if xhs.is_at_xhs_home_page():
-    #     print("在首页")
-    # else:
-    #     # 重新进入首页
-    #     xhs.return_to_home_page()
-    #     if xhs.is_at_xhs_home_page():
-    #         print("重新进入首页成功")
-    #     else:
-    #         raise Exception("重新进入首页失败")
-    
-    # try:
-    #     notes = xhs.collect_notes_by_keyword("mac mini", max_notes=3)
-    # except Exception as e:
-    #     print(f"运行出错: {str(e)}")
-    # finally:
-    #     # 关闭操作器
-    #     xhs.close()
+        import traceback
+        print(traceback.format_exc())
+    finally:
+        # 关闭操作器
+        xhs.close()
