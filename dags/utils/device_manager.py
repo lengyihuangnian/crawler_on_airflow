@@ -48,13 +48,17 @@ class DeviceManager:
             }
     """
     def __init__(self, devices_pool: List[Dict]):
-        self.devices_pool = devices_pool  # 设备池
-        self.device_status = {}  # 设备状态
+        self.devices_pool = devices_pool
+        self.device_status = {}
         self.lock = threading.Lock()
         
         # 初始化设备状态
         for device in devices_pool:
-            self.device_status[device['device_id']] = 'idle'
+            self.device_status[device['device_id']] = {
+                'status': 'idle',
+                'last_used': 0,  # 初始化为0
+                'current_task': None
+            }
     
     def update_devices(self, devices: List[str]):
         """更新设备列表"""
@@ -63,7 +67,11 @@ class DeviceManager:
             for device in self.devices_pool:
                 if device['device_id'] in devices:
                     if device['device_id'] not in self.device_status:
-                        self.device_status[device['device_id']] = 'idle'
+                        self.device_status[device['device_id']] = {
+                            'status': 'idle',
+                            'last_used': 0,
+                            'current_task': None
+                        }
                 else:
                     if device['device_id'] in self.device_status:
                         del self.device_status[device['device_id']]
@@ -71,29 +79,64 @@ class DeviceManager:
     def get_available_device(self) -> Optional[Dict]:
         """获取一个空闲的设备及其配置信息"""
         with self.lock:
+            current_time = time.time()
             for device in self.devices_pool:
-                if self.device_status[device['device_id']] == 'idle':
-                    self.device_status[device['device_id']] = 'busy'
+                device_id = device['device_id']
+                status_info = self.device_status[device_id]
+                
+                # 检查设备状态
+                if status_info['status'] == 'idle':
+                    self.device_status[device_id] = {
+                        'status': 'busy',
+                        'last_used': current_time,
+                        'current_task': None
+                    }
                     return device
+                
+                # 检查设备是否超时（5分钟）
+                if (status_info['status'] == 'busy' and 
+                    current_time - status_info['last_used'] > 300):
+                    print(f"设备 {device_id} 任务超时，重置状态")
+                    self.device_status[device_id] = {
+                        'status': 'idle',
+                        'last_used': 0,
+                        'current_task': None
+                    }
+                    return device
+                    
         return None
     
     def release_device(self, device_id: str):
         """释放设备"""
         with self.lock:
             if device_id in self.device_status:
-                self.device_status[device_id] = 'idle'
+                self.device_status[device_id] = {
+                    'status': 'idle',
+                    'last_used': 0,
+                    'current_task': None
+                }
 
 class TaskDistributor:
     """任务分配器，负责分配任务给设备"""
     def __init__(self, device_manager: DeviceManager):
         self.device_manager = device_manager
-        self.task_queue = Queue() # 任务队列
-        self.results = [] # 结果列表
-        self.lock = threading.Lock() # 锁
-        self.device_task_count = {}  # 记录每个设备处理的任务数量
+        self.task_queue = Queue()
+        self.results = []
+        self.lock = threading.Lock()
+        self.active_workers = 0
+        self.max_workers = len(device_manager.devices_pool)
+        self.task_status = {}  # 记录任务状态
+        self.collected_urls = set()  # 所有设备共享的URL集合
+        self.url_lock = threading.Lock()  # URL集合的锁
     
     def add_task(self, task_data: Dict):
         """添加任务到队列"""
+        task_id = task_data['task_id']
+        self.task_status[task_id] = {
+            'status': 'pending',
+            'device_id': None,
+            'start_time': None
+        }
         self.task_queue.put(task_data)
     
     def get_task(self) -> Optional[Dict]:
@@ -108,69 +151,109 @@ class TaskDistributor:
         with self.lock:
             self.results.append(result)
     
+    def add_url(self, url: str) -> bool:
+        """
+        添加URL到集合，如果URL已存在则返回False
+        Args:
+            url: 要添加的URL
+        Returns:
+            bool: 是否成功添加（True表示新URL，False表示重复URL）
+        """
+        with self.url_lock:
+            if url in self.collected_urls:
+                return False
+            self.collected_urls.add(url)
+            return True
+    
+    def get_collected_urls(self) -> set:
+        """获取已收集的URL集合"""
+        with self.url_lock:
+            return self.collected_urls.copy()
+    
+    def get_collected_urls_count(self) -> int:
+        """获取已收集的URL数量"""
+        with self.url_lock:
+            return len(self.collected_urls)
+    
     def worker(self, task_processor: Callable):
         """工作线程，处理任务队列中的任务"""
-        while True:
-            # 获取任务
-            task = self.get_task()
-            if not task:
-                break
+        with self.lock:
+            self.active_workers += 1
+            
+        try:
+            while True:
+                # 获取任务
+                task = self.get_task()
+                if not task:
+                    break
+                    
+                task_id = task['task_id']
                 
-            # 获取可用设备及其配置
-            device_info = None
-            while not device_info:
+                # 获取可用设备
                 device_info = self.device_manager.get_available_device()
                 if not device_info:
-                    print("等待可用设备...")
-                    time.sleep(1)  # 等待1秒后重试
+                    print("没有可用设备，等待...")
+                    time.sleep(1)
                     continue
                 
-            try:
-                print(f"使用设备 {device_info['device_id']} (端口: {device_info['port']}) 处理任务 {task['task_id']}")
+                # 更新任务状态
+                with self.lock:
+                    self.task_status[task_id] = {
+                        'status': 'running',
+                        'device_id': device_info['device_id'],
+                        'start_time': time.time()
+                    }
                 
-                # 使用设备配置创建XHSOperator实例，确保使用正确的端口
-                xhs = XHSOperator(
-                    appium_server_url=f"http://localhost:{device_info['port']}",
-                    force_app_launch=True,  # 强制重启应用以确保干净状态
-                    device_id=device_info['device_id'],
-                    system_port=device_info['system_port']  # 传入系统端口
-                )
                 try:
-                    # 执行任务处理函数
-                    result = task_processor(task, device_info, xhs)
-                    self.add_result(result)
-                    print(f"任务 {task['task_id']} 在设备 {device_info['device_id']} 上执行完成")
+                    print(f"使用设备 {device_info['device_id']} 处理任务 {task_id}")
+                    
+                    # 创建XHSOperator实例
+                    xhs = XHSOperator(
+                        appium_server_url=device_info['appium_server_url'],
+                        force_app_launch=True,
+                        device_id=device_info['device_id'],
+                        system_port=device_info['system_port']
+                    )
+                    
+                    try:
+                        # 执行任务，传入URL集合
+                        result = task_processor(task, device_info, xhs, self)
+                        self.add_result(result)
+                        
+                        # 更新任务状态为完成
+                        with self.lock:
+                            self.task_status[task_id]['status'] = 'completed'
+                    finally:
+                        xhs.close()
+                except Exception as e:
+                    print(f"任务 {task_id} 执行失败: {str(e)}")
+                    self.add_result({
+                        "device": device_info['device_id'],
+                        "status": "error",
+                        "error": str(e)
+                    })
+                    # 更新任务状态为失败
+                    with self.lock:
+                        self.task_status[task_id]['status'] = 'failed'
                 finally:
-                    xhs.close()
-            except Exception as e:
-                print(f"处理任务 {task['task_id']} 时出错: {str(e)}")
-                # 添加错误信息到结果中
-                self.add_result({
-                    "device": device_info['device_id'],
-                    "status": "error",
-                    "error": str(e)
-                })
-            finally:
-                # 释放设备
-                self.device_manager.release_device(device_info['device_id'])
-                print(f"设备 {device_info['device_id']} 已释放")
+                    # 释放设备
+                    self.device_manager.release_device(device_info['device_id'])
+        finally:
+            with self.lock:
+                self.active_workers -= 1
     
     def run_tasks(self, task_processor: Callable, max_workers: int = None):
         """运行所有任务"""
-        # 获取当前可用的设备数量
-        available_devices = len(self.device_manager.devices_pool)
-        if not available_devices:
-            print("No devices available")
-            return []
-            
-        # 如果没有指定最大工作线程数，则使用可用设备数
         if max_workers is None:
-            max_workers = available_devices
+            max_workers = self.max_workers
             
-        # 创建线程池
+        print(f"启动 {max_workers} 个工作线程...")
+        
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # 提交任务
-            futures = [executor.submit(self.worker, task_processor) for _ in range(max_workers)]
+            futures = []
+            for _ in range(max_workers):
+                future = executor.submit(self.worker, task_processor)
+                futures.append(future)
             
             # 等待所有任务完成
             for future in futures:
@@ -193,25 +276,27 @@ class TaskProcessorManager:
             raise ValueError(f"Unknown task type: {task_type}")
         return self.processors[task_type]
     
-    def process_task(self, task: Dict, device_info: Dict, xhs: XHSOperator) -> Dict:
+    def process_task(self, task: Dict, device_info: Dict, xhs: XHSOperator, task_distributor: TaskDistributor) -> Dict:
         """处理任务"""
         processor = self.get_processor(task['type'])
-        return processor(task, device_info, xhs)
+        return processor(task, device_info, xhs, task_distributor)
 
 # 定义任务处理器
-def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator) -> Dict:
+def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, task_distributor: TaskDistributor) -> Dict:
     """收集笔记任务处理器"""
-    print(f"Processing collect_notes task on device {device_info['device_id']}")
+    print(f"正在设备 {device_info['device_id']}上收集笔记")
     max_retries = 3
     retry_count = 0
     
+    # 获取目标URL数量
+    target_url_count = task.get('target_url_count', 20)
+    
     while retry_count < max_retries:
         try:
-            # 确保设备在首页
-            if not xhs.is_at_xhs_home_page():
-                print(f"设备 {device_info['device_id']} 不在首页，尝试返回首页...")
-                xhs.return_to_home_page()
-                time.sleep(2)  # 等待页面加载
+            # 检查是否已达到目标URL数量
+            if task_distributor.get_collected_urls_count() >= target_url_count:
+                print(f"已达到目标URL数量 {target_url_count}，停止收集")
+                break
             
             # 使用XHSOperator的collect_notes_by_keyword方法收集笔记
             notes = xhs.collect_notes_by_keyword(
@@ -231,11 +316,23 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator) -> 
                     "output_file": None
                 }
             
-           
+            # 处理收集到的笔记
+            valid_notes = []
+            for note in notes:
+                if note.get('note_url'):
+                    # 尝试添加URL，如果成功（不重复）则保留笔记
+                    if task_distributor.add_url(note['note_url']):
+                        valid_notes.append(note)
+                        print(f"设备 {device_info['device_id']} 收集到新笔记: {note['note_url']}")
+                    else:
+                        print(f"设备 {device_info['device_id']} 跳过重复笔记: {note['note_url']}")
+            
             return {
                 "device": device_info['device_id'],
                 "status": "success",
-                "notes_count": len(notes),
+                "notes_count": len(valid_notes),
+                "notes": valid_notes,
+                "collected_urls": list(task_distributor.get_collected_urls())
             }
         except Exception as e:
             retry_count += 1
@@ -250,6 +347,14 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator) -> 
                     "status": "error",
                     "error": str(e)
                 }
+    
+    # 返回最终结果
+    return {
+        "device": device_info['device_id'],
+        "status": "success",
+        "notes_count": task_distributor.get_collected_urls_count(),
+        "collected_urls": list(task_distributor.get_collected_urls())
+    }
 
 if __name__ == "__main__":
     # 加载.env文件
@@ -279,38 +384,16 @@ if __name__ == "__main__":
             "task_id": 1,
             "type": "collect_notes",
             "keyword": "文字游戏",
-            "start_index": 0,
-            "notes_per_device": 5
+            "notes_per_device": 10,
+            "target_url_count": 20  # 目标收集20条不重复的笔记
         },
-         {
+        {
             "task_id": 2,
             "type": "collect_notes",
             "keyword": "文字游戏",
-            "start_index": 5,
-            "notes_per_device": 5
-        },
-         {
-            "task_id": 3,
-            "type": "collect_notes",
-            "keyword": "文字游戏",
-            "start_index": 10,
-            "notes_per_device": 5
-        },
-         {
-            "task_id": 4,
-            "type": "collect_notes",
-            "keyword": "文字游戏",
-            "start_index": 15,
-            "notes_per_device": 5
-        },
-         {
-            "task_id": 5,
-            "type": "collect_notes",
-            "keyword": "文字游戏",
-            "start_index": 20,
-            "notes_per_device": 5
-        },
-        
+            "notes_per_device": 10,
+            "target_url_count": 20
+        }
     ]
     
     for task in test_tasks:
@@ -327,7 +410,21 @@ if __name__ == "__main__":
         print(f"Status: {result['status']}")
         if result['status'] == 'success':
             print(f"Notes collected: {result['notes_count']}")
-            print(f"Output file: {result['output_file']}")
+            if 'notes' in result:
+                print("\nCollected Notes:")
+                for note in result['notes']:
+                    print(f"- Title: {note.get('title', 'N/A')}")
+                    print(f"  Author: {note.get('author', 'N/A')}")
+                    print(f"  URL: {note.get('note_url', 'N/A')}")
+                    print(f"  Likes: {note.get('likes', 'N/A')}")
+                    print(f"  Collects: {note.get('collects', 'N/A')}")
+                    print(f"  Comments: {note.get('comments', 'N/A')}")
+                    print("  " + "-" * 50)
         else:
             print(f"Error: {result['error']}")
+    
+    # 打印所有收集到的URL
+    print("\nAll collected URLs:")
+    for url in task_distributor.get_collected_urls():
+        print(f"- {url}")
     
