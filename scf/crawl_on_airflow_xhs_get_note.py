@@ -12,48 +12,15 @@ import urllib.parse
 import time
 
 # 配置信息
-AIRFLOW_HOST = os.environ.get('AIRFLOW_HOST', 'http://175.178.21.44:8080')
-AIRFLOW_USERNAME = os.environ.get('AIRFLOW_USERNAME', 'claude89757')
-AIRFLOW_PASSWORD = os.environ.get('AIRFLOW_PASSWORD', 'claude@airflow')
+AIRFLOW_HOST = os.environ.get('AIRFLOW_HOST')
+AIRFLOW_USERNAME = os.environ.get('AIRFLOW_USERNAME')
+AIRFLOW_PASSWORD = os.environ.get('AIRFLOW_PASSWORD')
 DAG_ID = 'xhs_notes_collector'
 TASK_ID = 'collect_xhs_notes'
 
 # 腾讯云API配置
 SECRET_ID = os.environ.get('TENCENT_SECRET_ID', '')
 SECRET_KEY = os.environ.get('TENCENT_SECRET_KEY', '')
-
-
-def get_airflow_auth_token():
-    """
-    获取Airflow REST API的认证令牌
-    """
-    # 尝试使用基本认证方式
-    try:
-        # 首先尝试检查API是否可用
-        response = requests.get(f"{AIRFLOW_HOST}/api/v1/health")
-        print(f"Airflow API健康检查状态: {response.status_code}")
-        
-        # 尝试使用新的认证端点
-        auth_url = f"{AIRFLOW_HOST}/api/v1/security/login"
-        auth_data = {
-            "username": AIRFLOW_USERNAME,
-            "password": AIRFLOW_PASSWORD
-        }
-        
-        response = requests.post(auth_url, json=auth_data)
-        
-        if response.status_code == 404:
-            # 如果认证端点不存在，返回None表示使用基本认证
-            print("认证端点不存在，将使用基本认证方式...")
-            return None
-        
-        response.raise_for_status()
-        return response.json()['access_token']
-    except Exception as e:
-        print(f"获取Airflow认证令牌失败: {str(e)}")
-        print("将使用基本认证方式...")
-        return None
-
 
 def trigger_dag_run(keyword=None, max_notes=None):
     """
@@ -64,23 +31,13 @@ def trigger_dag_run(keyword=None, max_notes=None):
         max_notes: 最大笔记数量
     
     Returns:
-        DAG运行ID
+        DAG运行响应数据
     """
-    token = get_airflow_auth_token()
-    
-    # 根据是否获取到令牌决定使用哪种认证方式
-    if token:
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
-        auth = None
-    else:
-        # 使用基本认证
-        headers = {
-            "Content-Type": "application/json"
-        }
-        auth = (AIRFLOW_USERNAME, AIRFLOW_PASSWORD)
+    # 使用基本认证
+    headers = {
+        "Content-Type": "application/json"
+    }
+    auth = (AIRFLOW_USERNAME, AIRFLOW_PASSWORD)
     
     # 准备DAG运行配置
     conf = {}
@@ -96,14 +53,11 @@ def trigger_dag_run(keyword=None, max_notes=None):
     }
     
     try:
-        # 根据认证方式发送请求
-        if auth:
-            response = requests.post(dag_run_url, headers=headers, json=dag_run_data, auth=auth)
-        else:
-            response = requests.post(dag_run_url, headers=headers, json=dag_run_data)
-        
+        # 使用基本认证发送请求
+        response = requests.post(dag_run_url, headers=headers, json=dag_run_data, auth=auth)
         response.raise_for_status()
-        return response.json()['dag_run_id']
+        # 返回完整的响应数据，而不仅仅是dag_run_id
+        return response.json()
     except Exception as e:
         print(f"触发DAG运行失败: {str(e)}")
         raise
@@ -119,28 +73,16 @@ def check_dag_run_status(dag_run_id):
     Returns:
         DAG运行状态
     """
-    token = get_airflow_auth_token()
-    
-    if token:
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
-        auth = None
-    else:
-        headers = {
-            "Content-Type": "application/json"
-        }
-        auth = (AIRFLOW_USERNAME, AIRFLOW_PASSWORD)
+    # 使用基本认证
+    headers = {
+        "Content-Type": "application/json"
+    }
+    auth = (AIRFLOW_USERNAME, AIRFLOW_PASSWORD)
     
     status_url = f"{AIRFLOW_HOST}/api/v1/dags/{DAG_ID}/dagRuns/{dag_run_id}"
     
     try:
-        if auth:
-            response = requests.get(status_url, headers=headers, auth=auth)
-        else:
-            response = requests.get(status_url, headers=headers)
-        
+        response = requests.get(status_url, headers=headers, auth=auth)
         response.raise_for_status()
         return response.json()['state']
     except Exception as e:
@@ -158,28 +100,16 @@ def get_task_logs(dag_run_id):
     Returns:
         任务日志内容
     """
-    token = get_airflow_auth_token()
-    
-    if token:
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
-        auth = None
-    else:
-        headers = {
-            "Content-Type": "application/json"
-        }
-        auth = (AIRFLOW_USERNAME, AIRFLOW_PASSWORD)
+    # 使用基本认证
+    headers = {
+        "Content-Type": "application/json"
+    }
+    auth = (AIRFLOW_USERNAME, AIRFLOW_PASSWORD)
     
     logs_url = f"{AIRFLOW_HOST}/api/v1/dags/{DAG_ID}/dagRuns/{dag_run_id}/taskInstances/{TASK_ID}/logs"
     
     try:
-        if auth:
-            response = requests.get(logs_url, headers=headers, auth=auth)
-        else:
-            response = requests.get(logs_url, headers=headers)
-        
+        response = requests.get(logs_url, headers=headers, auth=auth)
         response.raise_for_status()
         return response.text
     except Exception as e:
@@ -265,62 +195,41 @@ def main_handler(event, context):
     
     try:
         # 解析事件参数
-        params = {}
+        query_params = {}
         if 'queryString' in event:
-            params = event['queryString']
+            query_params = event['queryString']
         elif 'body' in event:
             try:
-                params = json.loads(event['body'])
+                # 尝试解析body为JSON
+                if isinstance(event['body'], str):
+                    query_params = json.loads(event['body'])
+                else:
+                    query_params = event['body']
             except:
-                params = {}
+                pass
         
         # 获取关键词和最大笔记数
-        keyword = params.get('keyword')
-        max_notes = params.get('max_notes')
+        keyword = query_params.get('keyword')
+        max_notes = query_params.get('max_notes')
         
         if not keyword:
-            keyword = '电脑'  # 默认关键词
+            keyword = '旅游'  # 默认关键词
         
         if max_notes:
             try:
                 max_notes = int(max_notes)
             except:
-                max_notes = 2  # 默认最大笔记数
+                max_notes = 1  # 默认最大笔记数
         
         # 触发DAG运行
         print(f"触发DAG运行，关键词: {keyword}, 最大笔记数: {max_notes}")
-        dag_run_id = trigger_dag_run(keyword=keyword, max_notes=max_notes)
-        print(f"DAG运行ID: {dag_run_id}")
+        dag_run_response = trigger_dag_run(keyword=keyword, max_notes=max_notes)
+        print(f"DAG运行响应: {dag_run_response}")
         
-        # 等待DAG运行完成（可选，根据实际需求调整）
-        # 注意：云函数执行时间有限制，如果DAG运行时间较长，可能需要异步处理
-        max_wait_time = 60  # 最大等待时间（秒）
-        wait_interval = 5   # 检查间隔（秒）
-        waited_time = 0
-        
-        while waited_time < max_wait_time:
-            status = check_dag_run_status(dag_run_id)
-            print(f"DAG运行状态: {status}")
-            
-            if status in ['success', 'failed']:
-                break
-                
-            time.sleep(wait_interval)
-            waited_time += wait_interval
-        
-        # 获取任务日志（可选）
-        if waited_time < max_wait_time:
-            logs = get_task_logs(dag_run_id)
-            print("任务日志:")
-            print(logs)
-        
+        # 直接返回API响应结果
         return {
             'statusCode': 200,
-            'body': json.dumps({
-                'message': '小红书笔记收集任务已触发',
-                'dag_run_id': dag_run_id,
-                'status': status if waited_time < max_wait_time else 'running'
-            })
+            'body': json.dumps(dag_run_response)
         }
         
     except Exception as e:
