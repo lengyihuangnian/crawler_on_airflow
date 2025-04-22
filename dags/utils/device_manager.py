@@ -8,6 +8,31 @@ from dotenv import load_dotenv
 import os
 import json
 from appium.webdriver.common.appiumby import AppiumBy
+import subprocess
+
+def start_appium_servers(devices, base_port=4723):
+    """
+    启动与设备数量对应的Appium服务，每个设备一个端口。
+    :param devices: 设备ID列表
+    :param base_port: 起始端口号
+    :return: 端口号列表
+    """
+    ports = []
+    for idx, device_id in enumerate(devices):
+        port = base_port + idx * 4
+        ports.append(port)
+        # 检查端口是否已被占用（可选）
+        # 启动Appium服务
+        cmd = [
+            "appium",
+            "-p", str(port),
+            "--session-override"
+        ]
+        # 只在主进程启动，不阻塞
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"已为设备 {device_id} 启动 Appium 服务，端口 {port}")
+        time.sleep(2)  # 给Appium服务一点启动时间
+    return ports
 
 def get_device_pool(port=4723, system_port=8200):
     """
@@ -18,20 +43,21 @@ def get_device_pool(port=4723, system_port=8200):
     """
     # 获取当前连接的所有设备
     devices = get_adb_devices()
+    if not devices:
+        return []
+    # 启动Appium服务
+    start_appium_servers(devices, base_port=port)
     devs_pool = []
-    
-    # 为每个设备配置端口信息
-    if devices:
-        for device_id in devices:
-            new_dict = {
-                "device_id": device_id,
-                "port": port,
-                "system_port": system_port,
-                "appium_server_url": f"http://localhost:{port}"
-            }
-            devs_pool.append(new_dict)
-            port += 4
-            system_port += 4  # 每个设备使用不同的system_port
+    for idx, device_id in enumerate(devices):
+        dev_port = port + idx * 4
+        dev_system_port = system_port + idx * 4
+        new_dict = {
+            "device_id": device_id,
+            "port": dev_port,
+            "system_port": dev_system_port,
+            "appium_server_url": f"http://localhost:{dev_port}"
+        }
+        devs_pool.append(new_dict)
     return devs_pool
 
 class DeviceManager:
@@ -361,7 +387,7 @@ if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     load_dotenv(os.path.join(current_dir, '.env'))
     
-    # 获取设备池
+    # 获取设备池（会自动启动Appium服务）
     devices_pool = get_device_pool()
     if not devices_pool:
         print("No devices available")
@@ -383,16 +409,16 @@ if __name__ == "__main__":
         {
             "task_id": 1,
             "type": "collect_notes",
-            "keyword": "文字游戏",
-            "notes_per_device": 10,
-            "target_url_count": 20  # 目标收集20条不重复的笔记
+            "keyword": "古诗词",
+            "notes_per_device": 2,
+            "target_url_count": 2 
         },
         {
             "task_id": 2,
             "type": "collect_notes",
-            "keyword": "文字游戏",
-            "notes_per_device": 10,
-            "target_url_count": 20
+            "keyword": "汉语言",
+            "notes_per_device": 2,
+            "target_url_count": 2
         }
     ]
     
