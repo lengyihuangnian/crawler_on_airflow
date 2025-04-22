@@ -195,34 +195,30 @@ def main_handler(event, context):
     
     try:
         # 解析事件参数
-        query_params = {}
-        if 'queryString' in event:
-            query_params = event['queryString']
-        elif 'body' in event:
+        conf = {}
+        if 'body' in event:
             try:
                 # 尝试解析body为JSON
-                if isinstance(event['body'], str):
-                    query_params = json.loads(event['body'])
-                else:
-                    query_params = event['body']
-            except:
-                pass
+                body_data = event['body'] if isinstance(event['body'], dict) else json.loads(event['body'])
+                if 'conf' in body_data:
+                    conf = body_data['conf']
+            except Exception as e:
+                print(f"解析请求体失败: {str(e)}")
+                conf = {}
         
-        # 获取关键词和最大笔记数
-        keyword = query_params.get('keyword')
-        max_notes = query_params.get('max_notes')
+        # 获取配置参数
+        keyword = conf.get('keyword', '旅游')  # 默认关键词为"旅游"
+        max_notes = conf.get('max_notes', 1)  # 默认最大笔记数为1
+        note = conf.get('note')  # 获取note字段
         
-        if not keyword:
-            keyword = '旅游'  # 默认关键词
-        
-        if max_notes:
-            try:
-                max_notes = int(max_notes)
-            except:
-                max_notes = 1  # 默认最大笔记数
+        # 确保max_notes是整数
+        try:
+            max_notes = int(max_notes)
+        except (TypeError, ValueError):
+            max_notes = 1
         
         # 触发DAG运行
-        print(f"触发DAG运行，关键词: {keyword}, 最大笔记数: {max_notes}")
+        print(f"触发DAG运行，关键词: {keyword}, 最大笔记数: {max_notes}, 备注: {note}")
         dag_run_response = trigger_dag_run(keyword=keyword, max_notes=max_notes)
         print(f"DAG运行响应: {dag_run_response}")
         
