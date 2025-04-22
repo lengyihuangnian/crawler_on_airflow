@@ -22,13 +22,14 @@ TASK_ID = 'collect_xhs_notes'
 SECRET_ID = os.environ.get('TENCENT_SECRET_ID', '')
 SECRET_KEY = os.environ.get('TENCENT_SECRET_KEY', '')
 
-def trigger_dag_run(keyword=None, max_notes=None):
+def trigger_dag_run(keyword=None, max_notes=None, note=None):
     """
     触发DAG运行
     
     Args:
         keyword: 搜索关键词
         max_notes: 最大笔记数量
+        note: 笔记内容
     
     Returns:
         DAG运行响应数据
@@ -45,6 +46,8 @@ def trigger_dag_run(keyword=None, max_notes=None):
         conf['keyword'] = keyword
     if max_notes:
         conf['max_notes'] = max_notes
+    if note:
+        conf['note'] = note
     
     dag_run_url = f"{AIRFLOW_HOST}/api/v1/dags/{DAG_ID}/dagRuns"
     dag_run_data = {
@@ -208,9 +211,10 @@ def main_handler(event, context):
             except:
                 pass
         
-        # 获取关键词和最大笔记数
+        # 获取关键词、最大笔记数和笔记内容
         keyword = query_params.get('keyword')
         max_notes = query_params.get('max_notes')
+        note = query_params.get('note')  # 新增获取note参数
         
         if not keyword:
             keyword = '旅游'  # 默认关键词
@@ -222,8 +226,8 @@ def main_handler(event, context):
                 max_notes = 1  # 默认最大笔记数
         
         # 触发DAG运行
-        print(f"触发DAG运行，关键词: {keyword}, 最大笔记数: {max_notes}")
-        dag_run_response = trigger_dag_run(keyword=keyword, max_notes=max_notes)
+        print(f"触发DAG运行，关键词: {keyword}, 最大笔记数: {max_notes}, 笔记内容: {note}")
+        dag_run_response = trigger_dag_run(keyword=keyword, max_notes=max_notes, note=note)  # 增加note参数
         print(f"DAG运行响应: {dag_run_response}")
         
         # 直接返回API响应结果
@@ -242,21 +246,3 @@ def main_handler(event, context):
                 'message': error_msg
             })
         }
-
-
-# 本地测试用
-if __name__ == "__main__":
-    # 模拟云函数事件
-    test_event = {
-        'queryString': {
-            'keyword': '旅游',
-            'max_notes': '3'
-        }
-    }
-    
-    # 模拟云函数上下文
-    test_context = {}
-    
-    # 执行云函数
-    result = main_handler(test_event, test_context)
-    print(result)
