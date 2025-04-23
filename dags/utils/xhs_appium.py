@@ -59,7 +59,7 @@ class XHSOperator:
         """
         # 如果是远程连接，跳过adb设备检查
         if not appium_server_url.startswith('http://localhost'):
-            device_name = '97266a1f0107'
+            device_name = '17d7497e9907'
             print(f"使用远程设备连接: {appium_server_url}")
         else:
             # 使用指定的设备
