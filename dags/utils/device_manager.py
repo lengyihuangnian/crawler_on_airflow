@@ -29,7 +29,11 @@ def start_appium_servers(devices, base_port=4723):
             "--session-override"
         ]
         # 只在主进程启动，不阻塞
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        #print(cmd)
+        #subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        env = os.environ.copy()  # 获取当前环境变量
+        #print(env)
+        subprocess.Popen(cmd, env=env, shell=True,stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(f"已为设备 {device_id} 启动 Appium 服务，端口 {port}")
         time.sleep(2)  # 给Appium服务一点启动时间
     return ports
@@ -382,6 +386,75 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
         "collected_urls": list(task_distributor.get_collected_urls())
     }
 
+def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, task_distributor: TaskDistributor) -> Dict:
+    """评论收集任务处理器"""
+    print(f"正在设备 {device_info['device_id']} 上收集评论")
+    max_retries = 3
+    retry_count = 0
+    
+    # 获取要处理的URL
+    note_url = task.get('note_url')
+    if not note_url:
+        return {
+            "device": device_info['device_id'],
+            "status": "error",
+            "error": "未提供笔记URL"
+        }
+    
+    while retry_count < max_retries:
+        try:
+            # 获取完整URL（处理短链接）
+            full_url = xhs.get_redirect_url(note_url)
+            print(f"处理笔记URL: {full_url}")
+            
+            # 收集评论
+            comments = xhs.collect_comments_by_url(full_url)
+            
+            if not comments:
+                print(f"笔记 {note_url} 未找到评论")
+                return {
+                    "device": device_info['device_id'],
+                    "status": "success",
+                    "note_url": note_url,
+                    "comments_count": 0,
+                    "comments": []
+                }
+            
+            # 处理收集到的评论
+            print(f"设备 {device_info['device_id']} 从笔记 {note_url} 收集到 {len(comments)} 条评论")
+            
+            return {
+                "device": device_info['device_id'],
+                "status": "success",
+                "note_url": note_url,
+                "comments_count": len(comments),
+                "comments": comments
+            }
+            
+        except Exception as e:
+            retry_count += 1
+            print(f"设备 {device_info['device_id']} 第 {retry_count} 次尝试失败: {str(e)}")
+            if retry_count < max_retries:
+                print(f"等待 5 秒后重试...")
+                time.sleep(5)
+                continue
+            else:
+                return {
+                    "device": device_info['device_id'],
+                    "status": "error",
+                    "note_url": note_url,
+                    "error": str(e)
+                }
+    
+    # 返回最终结果
+    return {
+        "device": device_info['device_id'],
+        "status": "success",
+        "note_url": note_url,
+        "comments_count": 0,
+        "comments": []
+    }
+
 if __name__ == "__main__":
     # 加载.env文件
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -400,8 +473,10 @@ if __name__ == "__main__":
     # 初始化任务分配器
     task_distributor = TaskDistributor(device_manager)
     
+
+    #测试并发收集笔记
     # 初始化任务处理器管理器
-    task_processor_manager = TaskProcessorManager()
+    """ task_processor_manager = TaskProcessorManager()
     task_processor_manager.register_processor('collect_notes', collect_notes_processor)
     
     # 添加测试任务
@@ -453,4 +528,52 @@ if __name__ == "__main__":
     print("\nAll collected URLs:")
     for url in task_distributor.get_collected_urls():
         print(f"- {url}")
+    
+ """
+    #测试并发收集评论
+    # 初始化任务处理器管理器
+    task_processor_manager = TaskProcessorManager()
+    task_processor_manager.register_processor('collect_comments', collect_comments_processor)
+    
+    # 添加评论收集任务
+    test_tasks = [
+        {
+            "task_id": 1,
+            "type": "collect_comments",
+            "note_url": "http://xhslink.com/a/GwOsyhYy4vQab"
+        },
+        {
+            "task_id": 2,
+            "type": "collect_comments",
+            "note_url": "http://xhslink.com/a/yt5rUtal8vQab"
+        }
+    ]
+    
+    # 添加任务到分发器
+    for task in test_tasks:
+        task_distributor.add_task(task)
+    
+    # 运行任务
+    results = task_distributor.run_tasks(task_processor=task_processor_manager.process_task)
+    
+    # 打印结果
+    print("\n评论收集结果:")
+    for result in results:
+        print(f"\n设备: {result['device']}")
+        print(f"状态: {result['status']}")
+        if result['status'] == 'success':
+            print(f"笔记URL: {result['note_url']}")
+            print(f"评论数量: {result['comments_count']}")
+            if result['comments']:
+                print("\n收集到的评论:")
+                for comment in result['comments']:
+                    print(f"作者: {comment['author']}")
+                    print(f"内容: {comment['content']}")
+                    print(f"点赞: {comment['likes']}")
+                    print(f"时间: {comment['collect_time']}")
+                    print("-" * 50)
+        else:
+            print(f"错误: {result['error']}")
+    
+
     
