@@ -87,9 +87,9 @@ def collect_xhs_notes(**context) -> None:
         None
     """
     # 获取关键词，默认为"AI客服"
-    keyword = (context['dag_run'].conf.get('keyword', '电脑') 
+    keyword = (context['dag_run'].conf.get('keyword', '广州探店') 
               if context['dag_run'].conf 
-              else '电脑')
+              else '广州探店')
     
     # 获取最大收集笔记数，默认为5
     max_notes = (context['dag_run'].conf.get('max_notes', 2)
