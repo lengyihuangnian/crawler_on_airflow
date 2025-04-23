@@ -700,7 +700,7 @@ class XHSOperator:
                     time.sleep(0.5)
                     scroll_count += 1
 
-                        # 获取互动数据 - 分别处理每个数据
+            # 获取互动数据 - 分别处理每个数据
             likes = "0"
             try:
                 # 获取点赞数
@@ -1187,9 +1187,26 @@ class XHSOperator:
                     
                     # 解析每个评论元素
                     for comment_elem in comment_elements:
+                        # 获取当前元素的基本信息
+                        # print("当前元素属性:", {
+                        #     "text": comment_elem.text,
+                        #     "resource-id": comment_elem.get_attribute("resource-id"),
+                        #     "class": comment_elem.get_attribute("class"),
+                        #     "bounds": comment_elem.get_attribute("bounds"),
+                        #     "content-desc": comment_elem.get_attribute("content-desc")
+                        # })
+                        
                         try:
                             # 获取评论内容
                             comment_text = comment_elem.text.strip()
+                            
+                            # 移除日期和回复后缀
+                            # 匹配格式如：2024-11-07  回复
+                            comment_text = re.sub(r'\d{4}-\d{2}-\d{2}\s*回复$', '', comment_text)
+                            # 匹配格式如：2024-11-07
+                            comment_text = re.sub(r'\d{4}-\d{2}-\d{2}$', '', comment_text)
+                            # 移除末尾的空白字符
+                            comment_text = comment_text.strip()
                             
                             # 跳过第一条评论（文章内容）
                             if is_first_comment:
@@ -1199,24 +1216,59 @@ class XHSOperator:
                             # 如果评论不为空且未见过，则添加到结果中
                             if comment_text and comment_text not in seen_comments:
                                 # 尝试获取评论者信息
+                                author = "未知作者"
                                 try:
-                                    # 尝试通过相对位置查找作者
-                                    parent = comment_elem.find_element(
+                                    # 获取评论元素的位置
+                                    comment_loc = comment_elem.location
+                                    if not comment_loc:
+                                        print("无法获取评论元素位置")
+                                        continue
+                                    
+                                    # 在整个页面中查找作者信息
+                                    # 作者通常位于评论上方，且是独立的TextView
+                                    author_elements = self.driver.find_elements(
                                         by=AppiumBy.XPATH,
-                                        value=".."
+                                        value="//android.widget.TextView[not(contains(@text, '评论')) and not(contains(@text, '回复')) and not(contains(@text, '点赞')) and not(contains(@text, '收藏'))]"
                                     )
-                                    author_elem = parent.find_element(
-                                        by=AppiumBy.CLASS_NAME,
-                                        value="android.widget.TextView"
-                                    )
-                                    author = author_elem.text.strip()
-                                except:
-                                    author = "未知用户"
+                                    
+                                    if not author_elements:
+                                        print("未找到任何可能的作者元素")
+                                        continue
+                                    
+                                    # 找到在评论上方的最近的作者元素
+                                    closest_author = None
+                                    min_distance = float('inf')
+                                    
+                                    for author_elem in author_elements:
+                                        try:
+                                            author_loc = author_elem.location
+                                            if not author_loc:
+                                                continue
+                                            
+                                            # 计算垂直距离
+                                            distance = comment_loc['y'] - author_loc['y']
+                                            # 只考虑上方的元素，且距离要合理（比如不超过200像素）
+                                            if 0 < distance < 200 and distance < min_distance:
+                                                closest_author = author_elem
+                                                min_distance = distance
+                                        except Exception as e:
+                                            print(f"处理作者元素时出错: {str(e)}")
+                                            continue
+                                    
+                                    if closest_author:
+                                        author = closest_author.text.strip()
+                                        if not author:
+                                            print("找到的作者元素文本为空")
+                                            author = "未知作者"
+                                    else:
+                                        print("未找到合适的作者元素")
+                                except Exception as e:
+                                    print(f"获取作者信息时出错: {str(e)}")
                                 
-                                # 尝试获取点赞数
+                                # 获取点赞数
                                 try:
                                     likes = 0
-                                    # 尝试通过相对位置查找点赞数
+                                    # 通过相对位置查找点赞数
                                     parent = comment_elem.find_element(
                                         by=AppiumBy.XPATH,
                                         value=".."
@@ -1291,12 +1343,12 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="97266a1f0107",
+        device_id="63ebd8370906",
         system_port=8200
     )
 
     try:
-        # 测试收集文章
+        """ # 测试收集文章
         print("\n开始测试收集文章...")
         notes = xhs.collect_notes_by_keyword(
             keyword="文字游戏",
@@ -1318,7 +1370,7 @@ if __name__ == "__main__":
             print(f"收藏: {note.get('collects', 'N/A')}")
             print(f"评论: {note.get('comments', 'N/A')}")
             print(f"收集时间: {note.get('collect_time', 'N/A')}")
-            print("-" * 50)
+            print("-" * 50) """
 
         # 测试收集评论
         print("\n开始测试收集评论...")
