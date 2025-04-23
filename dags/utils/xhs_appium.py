@@ -125,12 +125,24 @@ class XHSOperator:
             time.sleep(3)
 
             if filters:
-                # 点击筛选按钮
-                filter_btn = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@text='筛选']"))
-                )
-                filter_btn.click()
-                time.sleep(1)
+                try:
+                    # 先尝试点击筛选按钮
+                    filter_btn = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '筛选') or contains(@content-desc, '筛选')]"))
+                    )
+                    filter_btn.click()
+                    time.sleep(1)
+                except:
+                    # 如果找不到筛选按钮，尝试点击全部按钮
+                    try:
+                        all_btn = WebDriverWait(self.driver, 5).until(
+                            EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '全部') or contains(@content-desc, '全部')]"))
+                        )
+                        all_btn.click()
+                        time.sleep(1)
+                    except Exception as e:
+                        print(f"找不到筛选按钮和全部按钮: {str(e)}")
+                        return
 
                 # 应用排序方式
                 if filters.get('sort_by'):
@@ -1343,15 +1355,15 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="63ebd8370906",
+        device_id="c2c56d1b0107",
         system_port=8200
     )
 
     try:
-        """ # 测试收集文章
+        # 测试收集文章
         print("\n开始测试收集文章...")
         notes = xhs.collect_notes_by_keyword(
-            keyword="文字游戏",
+            keyword="龙图",
             max_notes=10,
             filters={
                 "note_type": "图文",  # 只收集图文笔记
@@ -1370,23 +1382,23 @@ if __name__ == "__main__":
             print(f"收藏: {note.get('collects', 'N/A')}")
             print(f"评论: {note.get('comments', 'N/A')}")
             print(f"收集时间: {note.get('collect_time', 'N/A')}")
-            print("-" * 50) """
+            print("-" * 50) 
 
         # 测试收集评论
-        print("\n开始测试收集评论...")
-        note_url = "http://xhslink.com/a/Wi0FvibFkeH9"
-        full_url = xhs.get_redirect_url(note_url)
-        print(f"帖子 URL: {full_url}")
+        # print("\n开始测试收集评论...")
+        # note_url = "http://xhslink.com/a/Wi0FvibFkeH9"
+        # full_url = xhs.get_redirect_url(note_url)
+        # print(f"帖子 URL: {full_url}")
         
-        comments = xhs.collect_comments_by_url(full_url)
-        print(f"\n共收集到 {len(comments)} 条评论:")
-        for i, comment in enumerate(comments, 1):
-            print(f"\n评论 {i}:")
-            print(f"作者: {comment['author']}")
-            print(f"内容: {comment['content']}")
-            print(f"点赞: {comment['likes']}")
-            print(f"时间: {comment['collect_time']}")
-            print("-" * 50)
+        # comments = xhs.collect_comments_by_url(full_url)
+        # print(f"\n共收集到 {len(comments)} 条评论:")
+        # for i, comment in enumerate(comments, 1):
+        #     print(f"\n评论 {i}:")
+        #     print(f"作者: {comment['author']}")
+        #     print(f"内容: {comment['content']}")
+        #     print(f"点赞: {comment['likes']}")
+        #     print(f"时间: {comment['collect_time']}")
+        #     print("-" * 50)
 
     except Exception as e:
         print(f"运行出错: {str(e)}")
