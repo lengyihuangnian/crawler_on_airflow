@@ -8,10 +8,10 @@ from airflow.hooks.base import BaseHook
 from utils.xhs_appium import XHSOperator
 
 
-def get_note_url(n: int = 10, keyword: str = None, **context):
+def get_note_url(max_comments: int = 10, keyword: str = None, **context):
     """从数据库获取笔记URL和关键词
     Args:
-        n: 要获取的URL数量
+        max_comments: 要获取的URL数量
         keyword: 筛选的关键词
     Returns:
         包含note_url和keyword的字典列表
@@ -23,9 +23,9 @@ def get_note_url(n: int = 10, keyword: str = None, **context):
     
     # 根据是否有关键词来构建不同的SQL查询
     if keyword:
-        cursor.execute("SELECT note_url, keyword FROM xhs_notes WHERE keyword = %s LIMIT %s", (keyword, n))
+        cursor.execute("SELECT note_url, keyword FROM xhs_notes WHERE keyword = %s LIMIT %s", (keyword, max_comments))
     else:
-        cursor.execute("SELECT note_url, keyword FROM xhs_notes LIMIT %s", (n,))
+        cursor.execute("SELECT note_url, keyword FROM xhs_notes LIMIT %s", (max_comments,))
     results = [{'note_url': row[0], 'keyword': row[1]} for row in cursor.fetchall()]
     
     cursor.close()
@@ -98,7 +98,7 @@ def collect_xhs_comments(**context):
         **context: Airflow上下文参数字典
     """
     # 从DAG运行配置中获取参数，如果没有则使用默认值
-    n = (context['dag_run'].conf.get('n', 10) 
+    max_comments = (context['dag_run'].conf.get('max_comments', 10) 
         if context['dag_run'].conf 
         else 1)
     
@@ -107,7 +107,7 @@ def collect_xhs_comments(**context):
               else '番茄')
     
     # 获取笔记URL和关键词
-    notes_data = get_note_url(n, keyword)
+    notes_data = get_note_url(max_comments, keyword)
     
 
     # 获取Appium服务器URL
