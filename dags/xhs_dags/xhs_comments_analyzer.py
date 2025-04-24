@@ -10,8 +10,22 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-# 初始化 OpenAI 客户端
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# 在运行时初始化 OpenAI 客户端
+def get_openai_client():
+    """获取 OpenAI 客户端实例"""
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        # 尝试从 Airflow 变量中获取
+        try:
+            from airflow.models import Variable
+            api_key = Variable.get("OPENAI_API_KEY", default_var=None)
+        except Exception as e:
+            print(f"Failed to get API key from Airflow Variable: {e}")
+    
+    if not api_key:
+        raise ValueError("OpenAI API key not found in environment or Airflow variables")
+        
+    return OpenAI(api_key=api_key)
 
 def analyze_comments_intent(comments: List[Dict[str, str]], profile_sentence: str) -> List[Dict[str, str]]:
     """
@@ -54,7 +68,8 @@ def _analyze_single_comment(content: str, author: str, profile_sentence: str) ->
 
 请直接返回"高意向"、"中意向"或"低意向"。
 """
-    # 使用新版 OpenAI API
+    # 获取 OpenAI 客户端并使用新版 API
+    client = get_openai_client()
     response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
