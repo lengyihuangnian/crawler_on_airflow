@@ -92,12 +92,20 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
         cursor.close()
         db_conn.close()
 
-def collect_xhs_comments(n: int = 10, keyword: str = None, **context):
+def collect_xhs_comments(**context):
     """收集小红书评论
     Args:
-        n: 要收集的笔记数量
-        keyword: 筛选的关键词
+        **context: Airflow上下文参数字典
     """
+    # 从DAG运行配置中获取参数，如果没有则使用默认值
+    n = (context['dag_run'].conf.get('n', 10) 
+        if context['dag_run'].conf 
+        else 10)
+    
+    keyword = (context['dag_run'].conf.get('keyword', None) 
+              if context['dag_run'].conf 
+              else None)
+    
     # 获取笔记URL和关键词
     notes_data = get_note_url(n, keyword)
     
@@ -154,10 +162,6 @@ dag = DAG(
 collect_comments_task = PythonOperator(
     task_id='collect_xhs_comments',
     python_callable=collect_xhs_comments,
-    op_kwargs={
-        'n': 3, 
-        'keyword': '螺狮粉', 
-    },
     provide_context=True,
     dag=dag,
 )
