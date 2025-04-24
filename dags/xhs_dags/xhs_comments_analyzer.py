@@ -98,7 +98,7 @@ def get_comments_from_db(comment_ids=None, limit=100):
         # 获取列名
         columns = [desc[0] for desc in cursor.description]
         
-        # 将元组结果转换为字典列表，以保持与前面使用dictionary=True时相同的返回形式
+        # 将元组结果转换为字典列表
         comments = []
         for row in result:
             comment = dict(zip(columns, row))
@@ -127,7 +127,7 @@ def run_comments_analysis(**context):
         # 从dag run配置或参数中获取评论 ID 列表
         comment_ids = context.get('dag_run').conf.get('comment_ids') \
             if context.get('dag_run') and context.get('dag_run').conf \
-            else [1, 2, 3, 4]
+            else [1158, 1159]
         
         # 获取评论数据
         if comment_ids:
