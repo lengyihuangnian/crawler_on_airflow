@@ -92,6 +92,9 @@ def collect_xhs_comments(n: int = 10, **context):
     # 获取笔记URL
     note_urls = get_note_url(n)
 
+        # 获取Appium服务器URL
+    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+
     # 获取设备池-test
     devices_pool = [
         {
@@ -118,9 +121,6 @@ def collect_xhs_comments(n: int = 10, **context):
     # 初始化任务分配器
     task_distributor = TaskDistributor(device_manager)
     
-
-    # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
 
     print("开始收集笔记评论...")
     

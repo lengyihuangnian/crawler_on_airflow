@@ -162,23 +162,34 @@ class TaskDistributor:
     def add_task(self, task_data: Dict):
         """添加任务到队列"""
         task_id = task_data['task_id']
-        # 计算每个设备应该处理的笔记数量
-        total_notes = task_data['notes_per_device']
-        num_devices = len(self.device_manager.devices_pool)
-        notes_per_device = max(1, total_notes // num_devices)
         
-        # 为每个设备创建子任务
-        for device_idx in range(num_devices):
-            sub_task = task_data.copy()
-            sub_task['task_id'] = f"{task_id}_{device_idx}"
-            sub_task['notes_per_device'] = notes_per_device
-            sub_task['device_idx'] = device_idx
-            self.task_status[sub_task['task_id']] = {
+        # 根据任务类型决定如何处理
+        if task_data['type'] == 'collect_notes':
+            # 笔记收集任务需要分配笔记数量
+            total_notes = task_data['notes_per_device']
+            num_devices = len(self.device_manager.devices_pool)
+            notes_per_device = max(1, total_notes // num_devices)
+            
+            # 为每个设备创建子任务
+            for device_idx in range(num_devices):
+                sub_task = task_data.copy()
+                sub_task['task_id'] = f"{task_id}_{device_idx}"
+                sub_task['notes_per_device'] = notes_per_device
+                sub_task['device_idx'] = device_idx
+                self.task_status[sub_task['task_id']] = {
+                    'status': 'pending',
+                    'device_id': None,
+                    'start_time': None
+                }
+                self.task_queue.put(sub_task)
+        else:
+            # 其他类型的任务（如评论收集）直接添加到队列
+            self.task_status[task_id] = {
                 'status': 'pending',
                 'device_id': None,
                 'start_time': None
             }
-            self.task_queue.put(sub_task)
+            self.task_queue.put(task_data)
     
     def get_task(self) -> Optional[Dict]:
         """获取一个任务"""
