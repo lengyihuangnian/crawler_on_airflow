@@ -1,5 +1,5 @@
 import os
-import openai
+from openai import OpenAI
 from typing import List, Dict
 from datetime import datetime
 from airflow import DAG
@@ -10,8 +10,8 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-# 从环境变量获取 API Key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# 初始化 OpenAI 客户端
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def analyze_comments_intent(comments: List[Dict[str, str]], profile_sentence: str) -> List[Dict[str, str]]:
     """
@@ -54,7 +54,8 @@ def _analyze_single_comment(content: str, author: str, profile_sentence: str) ->
 
 请直接返回"高意向"、"中意向"或"低意向"。
 """
-    response = openai.ChatCompletion.create(
+    # 使用新版 OpenAI API
+    response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
