@@ -83,9 +83,11 @@ def get_comments_from_db(comment_ids=None, limit=100):
         # 构建查询
         if comment_ids and len(comment_ids) > 0:
             # 如果提供了具体的comment_ids，则只获取这些评论
-            placeholders = ", ".join(["%%s"] * len(comment_ids))
-            query = f"SELECT id, author, content, note_url FROM xhs_comments WHERE id IN ({placeholders})"
-            params = comment_ids
+            # 注意：将 comment_ids 列表展平传递给 SQL 查询
+            format_strings = ','.join(['%s'] * len(comment_ids))
+            query = f"SELECT id, author, content, note_url FROM xhs_comments WHERE id IN ({format_strings})"
+            # 确保 params 是一个元组
+            params = tuple(comment_ids)
         else:
             # 如果没有提供具体的comment_ids，则获取最新的一定数量评论
             query = f"SELECT id, author, content, note_url FROM xhs_comments ORDER BY id DESC LIMIT {limit}"
