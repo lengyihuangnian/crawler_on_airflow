@@ -9,7 +9,7 @@ from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
 
-from ..utils.device_manager import DeviceManager, TaskDistributor, TaskProcessorManager, collect_notes_processor
+from dags.utils.device_manager import DeviceManager, TaskDistributor, TaskProcessorManager, collect_notes_processor
 
 
 
