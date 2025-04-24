@@ -8,10 +8,11 @@ from airflow.hooks.base import BaseHook
 from utils.xhs_appium import XHSOperator
 
 
-def get_note_url(n: int = 10, **context):
+def get_note_url(n: int = 10, keyword: str = None, **context):
     """从数据库获取笔记URL和关键词
     Args:
         n: 要获取的URL数量
+        keyword: 筛选的关键词
     Returns:
         包含note_url和keyword的字典列表
     """
@@ -20,8 +21,11 @@ def get_note_url(n: int = 10, **context):
     db_conn = db_hook.get_conn()
     cursor = db_conn.cursor()
     
-    # 查询前n条笔记的URL和关键词
-    cursor.execute("SELECT note_url, keyword FROM xhs_notes LIMIT %s", (n,))
+    # 根据是否有关键词来构建不同的SQL查询
+    if keyword:
+        cursor.execute("SELECT note_url, keyword FROM xhs_notes WHERE keyword = %s LIMIT %s", (keyword, n))
+    else:
+        cursor.execute("SELECT note_url, keyword FROM xhs_notes LIMIT %s", (n,))
     results = [{'note_url': row[0], 'keyword': row[1]} for row in cursor.fetchall()]
     
     cursor.close()
@@ -88,13 +92,14 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
         cursor.close()
         db_conn.close()
 
-def collect_xhs_comments(n: int = 10, **context):
+def collect_xhs_comments(n: int = 10, keyword: str = None, **context):
     """收集小红书评论
     Args:
         n: 要收集的笔记数量
+        keyword: 筛选的关键词
     """
     # 获取笔记URL和关键词
-    notes_data = get_note_url(n)
+    notes_data = get_note_url(n, keyword)
     
 
     # 获取Appium服务器URL
@@ -149,6 +154,10 @@ dag = DAG(
 collect_comments_task = PythonOperator(
     task_id='collect_xhs_comments',
     python_callable=collect_xhs_comments,
+    op_kwargs={
+        'n': 3, 
+        'keyword': '网球', 
+    },
     provide_context=True,
     dag=dag,
 )
