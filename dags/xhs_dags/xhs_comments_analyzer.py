@@ -76,7 +76,7 @@ def get_comments_from_db(comment_ids=None, limit=100):
     # 使用Airflow的BaseHook获取数据库连接
     db_hook = BaseHook.get_connection("xhs_db").get_hook()
     db_conn = db_hook.get_conn()
-    cursor = db_conn.cursor(dictionary=True)  # 使用字典游标，等效于pymysql的DictCursor
+    cursor = db_conn.cursor()  # 标准游标
     
     comments = []
     try:
@@ -93,7 +93,16 @@ def get_comments_from_db(comment_ids=None, limit=100):
         
         # 执行查询
         cursor.execute(query, params)
-        comments = cursor.fetchall()
+        result = cursor.fetchall()
+        
+        # 获取列名
+        columns = [desc[0] for desc in cursor.description]
+        
+        # 将元组结果转换为字典列表，以保持与前面使用dictionary=True时相同的返回形式
+        comments = []
+        for row in result:
+            comment = dict(zip(columns, row))
+            comments.append(comment)
         
         print(f"从数据库获取了 {len(comments)} 条评论")
         
