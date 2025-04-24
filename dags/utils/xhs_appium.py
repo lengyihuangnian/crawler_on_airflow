@@ -80,8 +80,8 @@ class XHSOperator:
             forceAppLaunch=force_app_launch,  # 是否强制重启应用
             autoGrantPermissions=True,  # 自动授予权限
             newCommandTimeout=60,  # 命令超时时间
-            unicodeKeyboard=True,  # 使用 Unicode 输入法
-            resetKeyboard=True,  # 重置输入法
+            unicodeKeyboard=False,  # 禁用 Unicode 输入法
+            resetKeyboard=False,  # 禁用重置输入法
             systemPort=system_port  # 设置系统端口
         )
 
@@ -1334,6 +1334,190 @@ class XHSOperator:
             print(traceback.format_exc())
             return []
 
+    def comments_reply(self, note_url: str, comment_id: str, comment_content: str, reply_content: str):
+        """
+        回复评论
+        Args:
+            note_url: 帖子URL
+            comment_id: 评论者ID
+            comment_content: 评论内容
+            reply_content: 回复内容
+        Returns:
+            bool: 是否回复成功
+        """
+        try:
+            # 获取完整URL（处理短链接）
+            full_url = self.get_redirect_url(note_url)
+            print(f"处理笔记URL: {full_url}")
+            
+            # 打开笔记
+            self.driver.get(full_url)
+            time.sleep(5)  # 等待页面加载
+            
+            # 等待评论区加载
+            print("等待评论区加载...")
+            try:
+                # 查找评论列表
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((
+                            AppiumBy.XPATH,
+                            "//android.widget.TextView[contains(@text, '')]"
+                        ))
+                    )
+                    print("找到评论区")
+                except:
+                    print("未找到评论区")
+                    return False
+            except Exception as e:
+                print(f"等待评论区加载失败: {str(e)}")
+                return False
+            
+            # 查找目标评论
+            # 先找到评论内容
+            comment_found = False
+            comment_element = None
+            max_scroll_attempts = 10
+            scroll_attempt = 0
+            
+            while scroll_attempt < max_scroll_attempts:
+                try:
+                    # 查找所有评论内容元素
+                    comment_elements = self.driver.find_elements(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.TextView[contains(@text, '')]"
+                    )
+                    
+                    # 过滤出可能是评论的元素
+                    comment_elements = [
+                        e for e in comment_elements 
+                        if e.text and 
+                        len(e.text) > 10 and 
+                        "Say something" not in e.text and
+                        "说点什么" not in e.text and
+                        "还没有评论哦" not in e.text and
+                        "到底了" not in e.text and
+                        "评论" not in e.text and
+                        not e.text.endswith("comments") and
+                        "First comment" not in e.text and
+                        not re.search(r'View \d+ replies', e.text)
+                    ]
+                    
+                    # 遍历评论元素，查找匹配的评论
+                    for elem in comment_elements:
+                        # 获取评论文本并清理
+                        elem_text = elem.text.strip()
+                        # 移除表情符号和特殊字符
+                        elem_text = re.sub(r'\[.*?\]', '', elem_text)  # 移除表情符号
+                        elem_text = re.sub(r'\s+', ' ', elem_text)  # 合并多个空格
+                        elem_text = elem_text.strip()
+                        
+                        # 清理目标评论内容
+                        target_content = re.sub(r'\[.*?\]', '', comment_content)  # 移除表情符号
+                        target_content = re.sub(r'\s+', ' ', target_content)  # 合并多个空格
+                        target_content = target_content.strip()
+                        
+                        # 使用部分匹配
+                        if target_content in elem_text or elem_text in target_content:
+                            print(f"找到匹配评论: {elem_text}")
+                            # 找到评论内容后，向上查找作者
+                            comment_loc = elem.location
+                            if not comment_loc:
+                                continue
+                                
+                            # 在整个页面中查找作者信息
+                            author_elements = self.driver.find_elements(
+                                by=AppiumBy.XPATH,
+                                value="//android.widget.TextView[not(contains(@text, '评论')) and not(contains(@text, '回复')) and not(contains(@text, '点赞')) and not(contains(@text, '收藏'))]"
+                            )
+                            
+                            if not author_elements:
+                                continue
+                            
+                            # 找到在评论上方的最近的作者元素
+                            closest_author = None
+                            min_distance = float('inf')
+                            
+                            for author_elem in author_elements:
+                                try:
+                                    author_loc = author_elem.location
+                                    if not author_loc:
+                                        continue
+                                    
+                                    # 计算垂直距离
+                                    distance = comment_loc['y'] - author_loc['y']
+                                    # 只考虑上方的元素，且距离要合理（比如不超过200像素）
+                                    if 0 < distance < 200 and distance < min_distance:
+                                        closest_author = author_elem
+                                        min_distance = distance
+                                except Exception as e:
+                                    print(f"处理作者元素时出错: {str(e)}")
+                                    continue
+                            
+                            if closest_author and closest_author.text.strip() == comment_id:
+                                comment_element = elem
+                                comment_found = True
+                                print(f"找到匹配的作者: {comment_id}")
+                                break
+                    
+                    if comment_found:
+                        break
+                        
+                    # 如果没找到，向下滚动
+                    self.driver.swipe(500, 1000, 500, 500, 1000)
+                    time.sleep(1)
+                    scroll_attempt += 1
+                    
+                except Exception as e:
+                    print(f"查找评论时出错: {str(e)}")
+                    # 如果没找到，向下滚动
+                    self.driver.swipe(500, 1000, 500, 500, 1000)
+                    time.sleep(1)
+                    scroll_attempt += 1
+            
+            if not comment_found:
+                print(f"未找到评论: {comment_content}")
+                return False
+            
+            # 点击评论
+            comment_element.click()
+            time.sleep(1)
+            
+            # 等待输入框出现并输入内容
+            try:
+                # 等待输入框出现
+                reply_input = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.CLASS_NAME,
+                        "android.widget.EditText"
+                    ))
+                )
+                # 输入回复内容
+                reply_input.clear()
+                reply_input.send_keys(reply_content)
+                time.sleep(1)
+                
+                # 点击发送按钮
+                send_button = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "//android.widget.TextView[@text='发送']"
+                    ))
+                )
+                send_button.click()
+                time.sleep(2)
+                
+                print(f"成功回复评论: {reply_content}")
+                return True
+                
+            except Exception as e:
+                print(f"输入回复内容失败: {str(e)}")
+                return False
+            
+        except Exception as e:
+            print(f"回复评论失败: {str(e)}")
+            return False
+
 
 # 测试代码
 if __name__ == "__main__":
@@ -1355,36 +1539,36 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="c2c56d1b0107",
+        device_id="01176bc40007",
         system_port=8200
     )
 
     try:
-        # 测试收集文章
-        print("\n开始测试收集文章...")
-        notes = xhs.collect_notes_by_keyword(
-            keyword="龙图",
-            max_notes=10,
-            filters={
-                "note_type": "图文",  # 只收集图文笔记
-                "sort_by": "最新"  # 按最新排序
-            }
-        )
+        # 1 测试收集文章
+        # print("\n开始测试收集文章...")
+        # notes = xhs.collect_notes_by_keyword(
+        #     keyword="龙图",
+        #     max_notes=10,
+        #     filters={
+        #         "note_type": "图文",  # 只收集图文笔记
+        #         "sort_by": "最新"  # 按最新排序
+        #     }
+        # )
         
-        print(f"\n共收集到 {len(notes)} 条笔记:")
-        for i, note in enumerate(notes, 1):
-            print(f"\n笔记 {i}:")
-            print(f"标题: {note.get('title', 'N/A')}")
-            print(f"作者: {note.get('author', 'N/A')}")
-            print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
-            print(f"URL: {note.get('note_url', 'N/A')}")
-            print(f"点赞: {note.get('likes', 'N/A')}")
-            print(f"收藏: {note.get('collects', 'N/A')}")
-            print(f"评论: {note.get('comments', 'N/A')}")
-            print(f"收集时间: {note.get('collect_time', 'N/A')}")
-            print("-" * 50) 
+        # print(f"\n共收集到 {len(notes)} 条笔记:")
+        # for i, note in enumerate(notes, 1):
+        #     print(f"\n笔记 {i}:")
+        #     print(f"标题: {note.get('title', 'N/A')}")
+        #     print(f"作者: {note.get('author', 'N/A')}")
+        #     print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
+        #     print(f"URL: {note.get('note_url', 'N/A')}")
+        #     print(f"点赞: {note.get('likes', 'N/A')}")
+        #     print(f"收藏: {note.get('collects', 'N/A')}")
+        #     print(f"评论: {note.get('comments', 'N/A')}")
+        #     print(f"收集时间: {note.get('collect_time', 'N/A')}")
+        #     print("-" * 50) 
 
-        # 测试收集评论
+        # 2 测试收集评论
         # print("\n开始测试收集评论...")
         # note_url = "http://xhslink.com/a/Wi0FvibFkeH9"
         # full_url = xhs.get_redirect_url(note_url)
@@ -1399,6 +1583,28 @@ if __name__ == "__main__":
         #     print(f"点赞: {comment['likes']}")
         #     print(f"时间: {comment['collect_time']}")
         #     print("-" * 50)
+
+        #3 测试根据评论者id和评论内容定位该条评论并回复
+        note_url = "http://xhslink.com/a/wH9PqOUmpd0ab"
+        comment_id = "滑嫩鸡蛋羹"  # 替换为实际的评论者ID
+        comment_content = "我跟博主的饮食习惯好像[偷笑R]"  # 替换为实际的评论内容
+        reply_content = "真的很健康，羡慕TT"  # 替换为要回复的内容
+        
+        print("\n开始测试评论回复功能...")
+        success = xhs.comments_reply(
+            note_url=note_url,
+            comment_id=comment_id,
+            comment_content=comment_content,
+            reply_content=reply_content
+        )
+        
+        if success:
+            print("评论回复成功！")
+        else:
+            print("评论回复失败！")
+            
+        print("-" * 50)
+
 
     except Exception as e:
         print(f"运行出错: {str(e)}")
