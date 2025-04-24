@@ -147,7 +147,7 @@ def collect_xhs_notes(**context) -> None:
         None
     """
     # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
+    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
      # 获取设备池-test
     devices_pool = [
         {
