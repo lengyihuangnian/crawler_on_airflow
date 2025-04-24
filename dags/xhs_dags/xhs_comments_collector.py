@@ -9,29 +9,32 @@ from utils.xhs_appium import XHSOperator
 
 
 def get_note_url(n: int = 10, **context):
-    """从数据库获取笔记URL
+    """从数据库获取笔记URL和关键词
     Args:
         n: 要获取的URL数量
+    Returns:
+        包含note_url和keyword的字典列表
     """
     # 使用get_hook函数获取数据库连接
     db_hook = BaseHook.get_connection("xhs_db").get_hook()
     db_conn = db_hook.get_conn()
     cursor = db_conn.cursor()
     
-    # 查询前n条笔记的URL
-    cursor.execute("SELECT note_url FROM xhs_notes LIMIT %s", (n,))
-    note_urls = [row[0] for row in cursor.fetchall()]
+    # 查询前n条笔记的URL和关键词
+    cursor.execute("SELECT note_url, keyword FROM xhs_notes LIMIT %s", (n,))
+    results = [{'note_url': row[0], 'keyword': row[1]} for row in cursor.fetchall()]
     
     cursor.close()
     db_conn.close()
     
-    return note_urls
+    return results
 
-def save_comments_to_db(comments: list, note_url: str):
+def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
     """保存评论到数据库
     Args:
         comments: 评论列表
         note_url: 笔记URL
+        keyword: 笔记关键词
     """
     db_hook = BaseHook.get_connection("xhs_db").get_hook()
     db_conn = db_hook.get_conn()
@@ -46,6 +49,7 @@ def save_comments_to_db(comments: list, note_url: str):
             content TEXT,
             likes INT DEFAULT 0,
             note_url TEXT,
+            keyword TEXT,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
@@ -56,8 +60,8 @@ def save_comments_to_db(comments: list, note_url: str):
         # 准备插入数据的SQL语句
         insert_sql = """
         INSERT INTO xhs_comments 
-        (note_url, author, content, likes, collect_time) 
-        VALUES (%s, %s, %s, %s, %s)
+        (note_url, author, content, likes, keyword, collect_time) 
+        VALUES (%s, %s, %s, %s, %s, %s)
         """
         
         # 批量插入评论数据
@@ -68,6 +72,7 @@ def save_comments_to_db(comments: list, note_url: str):
                 comment.get('author', ''),
                 comment.get('content', ''),
                 comment.get('likes', 0),
+                keyword,
                 comment.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             ))
         
@@ -88,8 +93,8 @@ def collect_xhs_comments(n: int = 10, **context):
     Args:
         n: 要收集的笔记数量
     """
-    # 获取笔记URL
-    note_urls = get_note_url(n)
+    # 获取笔记URL和关键词
+    notes_data = get_note_url(n)
     
 
     # 获取Appium服务器URL
@@ -102,13 +107,15 @@ def collect_xhs_comments(n: int = 10, **context):
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='97266a1f0107')
         
         all_comments = []
-        for note_url in note_urls:
+        for note_data in notes_data:
+            note_url = note_data['note_url']
+            keyword = note_data['keyword']
             try:
                 # 收集评论
-                full_url =  xhs.get_redirect_url(note_url)
+                full_url = xhs.get_redirect_url(note_url)
                 comments = xhs.collect_comments_by_url(full_url)
                 # 保存评论到数据库
-                save_comments_to_db(comments, note_url)
+                save_comments_to_db(comments, note_url, keyword)
                 all_comments.extend(comments)
             except Exception as e:
                 print(f"处理笔记 {note_url} 时出错: {str(e)}")

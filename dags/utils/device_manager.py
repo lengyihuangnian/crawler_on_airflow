@@ -380,6 +380,7 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
                 return {
                     "device": device_info['device_id'],
                     "status": "success",
+                    "keyword": keyword,
                     "notes_count": 0,
                     "output_file": None
                 }
@@ -416,6 +417,7 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
             else:
                 return {
                     "device": device_info['device_id'],
+                    "keyword": keyword,
                     "status": "error",
                     "error": str(e)
                 }
@@ -434,14 +436,16 @@ def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, 
     max_retries = 3
     retry_count = 0
     
-    # 获取要处理的URL
+    # 获取要处理的URL和关键词
     note_url = task.get('note_url')
+    keyword = task.get('keyword')
     if not note_url:
         return {
             "device": device_info['device_id'],
             "status": "error",
             "error": "未提供笔记URL",
-            "note_url": note_url  # 添加note_url到错误响应中
+            "note_url": note_url,  # 添加note_url到错误响应中
+            "keyword": keyword     # 添加keyword到错误响应中
         }
     
     while retry_count < max_retries:
@@ -458,6 +462,7 @@ def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, 
                 return {
                     "device": device_info['device_id'],
                     "status": "success",
+                    "keyword": keyword,
                     "note_url": note_url,
                     "comments_count": 0,
                     "comments": []
@@ -470,6 +475,7 @@ def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, 
                 "device": device_info['device_id'],
                 "status": "success",
                 "note_url": note_url,
+                "keyword": keyword,
                 "comments_count": len(comments),
                 "comments": comments
             }
@@ -484,6 +490,7 @@ def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, 
             else:
                 return {
                     "device": device_info['device_id'],
+                    "keyword": keyword,
                     "status": "error",
                     "note_url": note_url,  # 添加note_url到错误响应中
                     "error": str(e)
