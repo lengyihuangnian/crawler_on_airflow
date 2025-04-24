@@ -156,7 +156,7 @@ collect_comments_task = PythonOperator(
     python_callable=collect_xhs_comments,
     op_kwargs={
         'n': 3, 
-        'keyword': '网球', 
+        'keyword': '螺狮粉', 
     },
     provide_context=True,
     dag=dag,
