@@ -100,11 +100,11 @@ def collect_xhs_comments(**context):
     # 从DAG运行配置中获取参数，如果没有则使用默认值
     n = (context['dag_run'].conf.get('n', 10) 
         if context['dag_run'].conf 
-        else 10)
+        else 1)
     
     keyword = (context['dag_run'].conf.get('keyword', None) 
               if context['dag_run'].conf 
-              else None)
+              else '番茄')
     
     # 获取笔记URL和关键词
     notes_data = get_note_url(n, keyword)
