@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Callable
 import threading
 from queue import Queue
 import time
-from utils.xhs_appium import XHSOperator, get_adb_devices
+from .xhs_appium import XHSOperator, get_adb_devices
 from dotenv import load_dotenv
 import os
 import json
