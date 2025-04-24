@@ -58,15 +58,15 @@ class XHSOperator:
             system_port: Appium服务指定的本地端口，用来转发数据给安卓设备
         """
         # 如果是远程连接，跳过adb设备检查
-        if not appium_server_url.startswith('http://localhost'):
-            device_name = '97266a1f0107'
-            print(f"使用远程设备连接: {appium_server_url}")
-        else:
-            # 使用指定的设备
-            if not device_id:
-                raise Exception("未指定设备ID")
-            device_name = device_id
-            print(f"使用设备: {device_name}")
+        # if not appium_server_url.startswith('http://localhost'):
+        #     device_name = '97266a1f0107'
+        #     print(f"使用远程设备连接: {appium_server_url}")
+        # else:
+        # 使用指定的设备
+        if not device_id:
+            raise Exception("未指定设备ID")
+        device_name = device_id
+        print(f"使用设备: {device_name}")
 
         capabilities = dict(
             platformName='Android',
