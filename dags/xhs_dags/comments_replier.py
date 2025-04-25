@@ -50,13 +50,13 @@ def reply_high_intent_comments(**context):
         
     """
     # 从DAG运行配置中获取参数，如果没有则使用默认值
-    comment_ids = (context['dag_run'].conf.get('comment_ids', []) 
+    comment_ids = (context['dag_run'].conf.get('comment_ids', [1158,1096]) 
         if context['dag_run'].conf 
         else [])
     
-    max_comments = (context['dag_run'].conf.get('max_comments', 5) 
+    max_comments = (context['dag_run'].conf.get('max_comments', 2) 
         if context['dag_run'].conf 
-        else 5)
+        else 2)
     
     # 获取评论内容
     reply_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
