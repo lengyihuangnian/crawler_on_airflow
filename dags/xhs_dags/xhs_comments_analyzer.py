@@ -174,6 +174,90 @@ def _analyze_single_comment(content: str, author: str, profile_sentence: str) ->
             print(f"处理评论时发生异常: {str(e)}")
             return "中意向"  # 异常情况下的默认结果
 
+def save_results_to_db(results, profile_sentence):
+    """
+    将分析结果保存到数据库的customer_intent表中
+    
+    :param results: 分析结果列表，每个元素包含评论信息和意向分析
+    :param profile_sentence: 用于分析的行业及客户定位描述
+    :return: 成功保存的记录数
+    """
+    # 使用Airflow的BaseHook获取数据库连接
+    db_hook = BaseHook.get_connection("xhs_db").get_hook()
+    db_conn = db_hook.get_conn()
+    cursor = db_conn.cursor()
+    
+    saved_count = 0
+    errors = 0
+    
+    try:
+        # 确保customer_intent表存在
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customer_intent (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            comment_id INT NOT NULL,
+            author VARCHAR(255),
+            note_url VARCHAR(512),
+            intent VARCHAR(50) NOT NULL,
+            profile_sentence TEXT,
+            analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_comment (comment_id)
+        )
+        """)
+        db_conn.commit()
+        
+        # 插入或更新记录
+        for result in results:
+            try:
+                comment_id = result.get('id')
+                if not comment_id:
+                    print(f"警告: 跳过没有ID的评论记录")
+                    continue
+                
+                # 使用INSERT...ON DUPLICATE KEY UPDATE确保更新已存在的记录
+                query = """
+                INSERT INTO customer_intent 
+                (comment_id, author, note_url, intent, profile_sentence)
+                VALUES (%s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE 
+                author = VALUES(author),
+                note_url = VALUES(note_url),
+                intent = VALUES(intent),
+                profile_sentence = VALUES(profile_sentence),
+                analyzed_at = CURRENT_TIMESTAMP
+                """
+                
+                # 准备参数
+                params = (
+                    comment_id,
+                    result.get('author', ''),
+                    result.get('note_url', ''),
+                    result.get('intent', '未知'),
+                    profile_sentence
+                )
+                
+                # 执行插入/更新
+                cursor.execute(query, params)
+                saved_count += 1
+                
+            except Exception as e:
+                print(f"保存评论ID {result.get('id', 'unknown')} 时出错: {str(e)}")
+                errors += 1
+        
+        # 提交事务
+        db_conn.commit()
+        print(f"成功保存 {saved_count} 条记录到customer_intent表，{errors} 条失败")
+        
+    except Exception as e:
+        db_conn.rollback()
+        print(f"数据库操作失败: {str(e)}")
+        raise
+    finally:
+        cursor.close()
+        db_conn.close()
+    
+    return saved_count
+
 def get_comments_from_db(comment_ids=None, limit=100):
     """
     从数据库获取评论数据
@@ -223,7 +307,7 @@ def get_comments_from_db(comment_ids=None, limit=100):
         cursor.close()
         db_conn.close()
     
-    return comments
+    return saved_count
 
 def run_comments_analysis(**context):
     """
@@ -233,7 +317,7 @@ def run_comments_analysis(**context):
         # 从dag run配置或参数中获取分析句子
         profile_sentence = context.get('dag_run').conf.get('profile_sentence') \
             if context.get('dag_run') and context.get('dag_run').conf \
-            else "我是做猪肠碌的，我要寻找想想吃猪肠碌的客户"
+            else "我是做运动培训的，我要寻找想提高运动能力的客户"
         
         # 从dag run配置或参数中获取评论 ID 列表
         comment_ids = context.get('dag_run').conf.get('comment_ids') \
@@ -276,10 +360,40 @@ def run_comments_analysis(**context):
             percentage = (count / total) * 100 if total > 0 else 0
             print(f"{intent}: {count}条 ({percentage:.1f}%)")
         
+        # 将分析结果传递到下一个任务
+        context['ti'].xcom_push(key='analysis_results', value=results)
+        context['ti'].xcom_push(key='profile_sentence', value=profile_sentence)
+        
         return results
         
     except Exception as e:
         error_msg = f"评论意向分析失败: {str(e)}"
+        print(error_msg)
+        raise
+
+def save_analysis_results(**context):
+    """
+    Airflow任务：保存分析结果到数据库
+    """
+    try:
+        # 从上一个任务获取结果
+        ti = context['ti']
+        results = ti.xcom_pull(task_ids='analyze_comments', key='analysis_results')
+        profile_sentence = ti.xcom_pull(task_ids='analyze_comments', key='profile_sentence')
+        
+        if not results:
+            print("没有找到分析结果，无法保存到数据库")
+            return 0
+        
+        print(f"准备保存 {len(results)} 条分析结果到数据库...")
+        
+        # 保存结果到数据库
+        saved_count = save_results_to_db(results, profile_sentence)
+        
+        return saved_count
+        
+    except Exception as e:
+        error_msg = f"保存分析结果失败: {str(e)}"
         print(error_msg)
         raise
 
@@ -306,4 +420,12 @@ analyze_comments_task = PythonOperator(
     dag=dag,
 )
 
-analyze_comments_task
+save_results_task = PythonOperator(
+    task_id='save_results',
+    python_callable=save_analysis_results,
+    provide_context=True,
+    dag=dag,
+)
+
+# 设置任务依赖关系
+analyze_comments_task >> save_results_task
