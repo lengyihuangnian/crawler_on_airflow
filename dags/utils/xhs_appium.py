@@ -1251,6 +1251,13 @@ class XHSOperator:
                                     closest_author = None
                                     min_distance = float('inf')
                                     
+                                    # 如果作者是"未知作者"，直接使用当前评论元素
+                                    if author == "未知作者":
+                                        comment_element = elem
+                                        comment_found = True
+                                        print("作者为未知作者，跳过作者匹配")
+                                        break
+                                    
                                     for author_elem in author_elements:
                                         try:
                                             author_loc = author_elem.location
