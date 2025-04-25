@@ -50,7 +50,7 @@ def reply_high_intent_comments(**context):
         
     """
     # 从DAG运行配置中获取参数，如果没有则使用默认值
-    comment_ids = (context['dag_run'].conf.get('comment_ids', [1158,1133,1136,1096,1131]) 
+    comment_ids = (context['dag_run'].conf.get('comment_ids', []) 
         if context['dag_run'].conf 
         else [])
     
@@ -124,7 +124,7 @@ def update_reply_status(comment_id: int):
         # 更新评论的回复状态
         cursor.execute(
             "UPDATE comment_reply SET is_sent = 1 WHERE comment_id = %s",
-            (comment_id)
+            (comment_id,)
         )
         
         # 提交事务
