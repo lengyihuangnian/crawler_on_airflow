@@ -299,7 +299,7 @@ def run_replies_generation(**context):
         # 从dag run配置或参数中获取回复提示
         reply_prompt = context.get('dag_run').conf.get('reply_prompt') \
             if context.get('dag_run') and context.get('dag_run').conf \
-            else "友善、专业地回复，尽量提供有价值的信息，并邀请用户继续关注"
+            else "友善、专业地回复，我是卖网球拍的，尽量提供有价值的信息，并邀请用户继续关注"
         
         # 从dag run配置或参数中获取评论 ID 列表
         comment_ids = context.get('dag_run').conf.get('comment_ids') \
