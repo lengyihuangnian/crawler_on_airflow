@@ -8,7 +8,7 @@ from airflow.hooks.base import BaseHook
 
 from utils.xhs_appium import XHSOperator
 
-def get_reply_contents_from_db(ids: list, max_comments: int = 10, **context):
+def get_reply_contents_from_db(comment_ids: list, max_comments: int = 10, **context):
     """从数据库获取高意向评论
     Args:
         ids: 评论ID列表
@@ -22,19 +22,19 @@ def get_reply_contents_from_db(ids: list, max_comments: int = 10, **context):
     cursor = db_conn.cursor()
 
     # 如果ids列表不为空，添加ID限制条件
-    if ids:
-        placeholders = ','.join(['%s'] * len(ids))
+    if comment_ids:
+        placeholders = ','.join(['%s'] * len(comment_ids))
         cursor.execute(
-            f"SELECT note_url, author, content, reply, comment_id FROM comment_reply WHERE id IN ({placeholders}) AND is_sent = 0 LIMIT %s",
-            (*ids, max_comments)
+            f"SELECT comment_id, note_url, author, content, reply FROM comment_reply WHERE comment_id IN ({placeholders}) AND is_sent = 0 LIMIT %s",
+            (*comment_ids, max_comments)
         )
     else:
         cursor.execute(
-            "SELECT note_url, author, content, reply FROM comment_reply WHERE is_sent = 0 LIMIT %s",
+            "SELECT comment_id, note_url, author, content, reply FROM comment_reply WHERE is_sent = 0 LIMIT %s",
             (max_comments,)
         )
 
-    results = [{'note_url': row[0], 'author': row[1], 'content': row[2], 'reply': row[3], 'comment_id': row[4]} for row in cursor.fetchall()]
+    results = [{'comment_id': row[0], 'note_url': row[1], 'author': row[2], 'content': row[3], 'reply': row[4]} for row in cursor.fetchall()]
 
     cursor.close()
     db_conn.close()
@@ -50,7 +50,7 @@ def reply_high_intent_comments(**context):
         
     """
     # 从DAG运行配置中获取参数，如果没有则使用默认值
-    ids = (context['dag_run'].conf.get('ids', []) 
+    comment_ids = (context['dag_run'].conf.get('comment_ids', []) 
         if context['dag_run'].conf 
         else [])
     
@@ -59,7 +59,7 @@ def reply_high_intent_comments(**context):
         else 5)
     
     # 获取评论内容
-    reply_contents = get_reply_contents_from_db(ids=ids, max_comments=max_comments)
+    reply_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
     
     # 获取Appium服务器URL
     appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
@@ -74,16 +74,16 @@ def reply_high_intent_comments(**context):
         for content in reply_contents:
             try:
                 note_url = content['note_url']
-                comment_id = content['author']
+                author = content['author']
                 comment_content = content['content']
                 reply_content = content['reply']
                 
-                print(f"正在回复评论 - 作者: {comment_id}, 内容: {comment_content}")
+                print(f"正在回复评论 - 作者: {author}, 内容: {comment_content}")
                 
                 # 调用评论回复功能
                 success = xhs.comments_reply(
                     note_url=note_url,
-                    comment_id=comment_id,
+                    author=author,
                     comment_content=comment_content,
                     reply_content=reply_content
                 )
