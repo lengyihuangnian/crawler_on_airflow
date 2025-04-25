@@ -256,7 +256,7 @@ def save_results_to_db(results, profile_sentence):
         cursor.close()
         db_conn.close()
     
-    return comments
+    return saved_count
 
 def get_comments_from_db(comment_ids=None, limit=100):
     """
