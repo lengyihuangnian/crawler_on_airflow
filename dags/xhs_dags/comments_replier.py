@@ -25,7 +25,7 @@ def get_reply_contents_from_db(ids: list, max_comments: int = 10, **context):
     if ids:
         placeholders = ','.join(['%s'] * len(ids))
         cursor.execute(
-            f"SELECT note_url, author, content, reply FROM comment_reply WHERE id IN ({placeholders}) AND is_sent = 0 LIMIT %s",
+            f"SELECT note_url, author, content, reply, comment_id FROM comment_reply WHERE id IN ({placeholders}) AND is_sent = 0 LIMIT %s",
             (*ids, max_comments)
         )
     else:
@@ -34,7 +34,7 @@ def get_reply_contents_from_db(ids: list, max_comments: int = 10, **context):
             (max_comments,)
         )
 
-    results = [{'note_url': row[0], 'author': row[1], 'content': row[2], 'reply': row[3]} for row in cursor.fetchall()]
+    results = [{'note_url': row[0], 'author': row[1], 'content': row[2], 'reply': row[3], 'comment_id': row[4]} for row in cursor.fetchall()]
 
     cursor.close()
     db_conn.close()
@@ -75,8 +75,8 @@ def reply_high_intent_comments(**context):
             try:
                 note_url = content['note_url']
                 comment_id = content['author']
-                comment_content = content['comment_content']
-                reply_content = content['reply_content']
+                comment_content = content['content']
+                reply_content = content['reply']
                 
                 print(f"正在回复评论 - 作者: {comment_id}, 内容: {comment_content}")
                 
@@ -91,7 +91,7 @@ def reply_high_intent_comments(**context):
                 if success:
                     print(f"成功回复评论: {comment_content}")
                     # 更新数据库中的回复状态
-                    update_reply_status(content['id'])
+                    update_reply_status(content['comment_id'])
                 else:
                     print(f"回复评论失败: {comment_content}")
                 
@@ -123,8 +123,8 @@ def update_reply_status(comment_id: int):
         
         # 更新评论的回复状态
         cursor.execute(
-            "UPDATE comment_reply SET is_replied = TRUE, reply_time = %s WHERE id = %s",
-            (datetime.now(), comment_id)
+            "UPDATE comment_reply SET is_sent = 1 WHERE comment_id = %s",
+            (comment_id)
         )
         
         # 提交事务
