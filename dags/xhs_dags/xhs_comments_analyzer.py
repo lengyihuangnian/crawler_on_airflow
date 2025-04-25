@@ -154,7 +154,6 @@ def _analyze_single_comment(content: str, author: str, profile_sentence: str) ->
                 # 如果仍然无法提取，则根据内容长度返回默认级别
                 print(f"无法解析模型返回的结果 '{result}'，使用默认级别代替")
                 return "中意向"
-            
             return result
             
         except RequestException as e:
@@ -200,6 +199,7 @@ def save_results_to_db(results, profile_sentence):
             note_url VARCHAR(512),
             intent VARCHAR(50) NOT NULL,
             profile_sentence TEXT,
+            keyword VARCHAR(255) NOT NULL,
             analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY unique_comment (comment_id)
         )
@@ -217,13 +217,14 @@ def save_results_to_db(results, profile_sentence):
                 # 使用INSERT...ON DUPLICATE KEY UPDATE确保更新已存在的记录
                 query = """
                 INSERT INTO customer_intent 
-                (comment_id, author, note_url, intent, profile_sentence)
-                VALUES (%s, %s, %s, %s, %s)
+                (comment_id, author, note_url, intent, profile_sentence, keyword)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE 
                 author = VALUES(author),
                 note_url = VALUES(note_url),
                 intent = VALUES(intent),
                 profile_sentence = VALUES(profile_sentence),
+                keyword = VALUES(keyword),
                 analyzed_at = CURRENT_TIMESTAMP
                 """
                 
@@ -233,7 +234,8 @@ def save_results_to_db(results, profile_sentence):
                     result.get('author', ''),
                     result.get('note_url', ''),
                     result.get('intent', '未知'),
-                    profile_sentence
+                    profile_sentence,
+                    result.get('keyword', '')
                 )
                 
                 # 执行插入/更新
@@ -278,12 +280,12 @@ def get_comments_from_db(comment_ids=None, limit=100):
             # 如果提供了具体的comment_ids，则只获取这些评论
             # 注意：将 comment_ids 列表展平传递给 SQL 查询
             format_strings = ','.join(['%s'] * len(comment_ids))
-            query = f"SELECT id, author, content, note_url FROM xhs_comments WHERE id IN ({format_strings})"
+            query = f"SELECT id, author, content, note_url, keyword FROM xhs_comments WHERE id IN ({format_strings})"
             # 确保 params 是一个元组
             params = tuple(comment_ids)
         else:
             # 如果没有提供具体的comment_ids，则获取最新的一定数量评论
-            query = f"SELECT id, author, content, note_url FROM xhs_comments ORDER BY id DESC LIMIT {limit}"
+            query = f"SELECT id, author, content, note_url, keyword FROM xhs_comments ORDER BY id DESC LIMIT {limit}"
             params = []
         
         # 执行查询
