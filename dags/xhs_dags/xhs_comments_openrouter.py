@@ -16,17 +16,20 @@ OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 # 在运行时初始化 OpenRouter 客户端
 def get_openrouter_key():
     """获取 OpenRouter API key"""
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    # 优先从 Airflow 变量中获取
+    try:
+        from airflow.models import Variable
+        api_key = Variable.get("OPENROUTER_API_KEY", default_var=None)
+    except Exception as e:
+        print(f"从Airflow Variable获取API key失败: {e}")
+        api_key = None
+    
+    # 如果Airflow变量中没有，尝试从环境变量获取（作为备选方案）
     if not api_key:
-        # 尝试从 Airflow 变量中获取
-        try:
-            from airflow.models import Variable
-            api_key = Variable.get("OPENROUTER_API_KEY", default_var=None)
-        except Exception as e:
-            print(f"Failed to get API key from Airflow Variable: {e}")
+        api_key = os.getenv("OPENROUTER_API_KEY")
     
     if not api_key:
-        raise ValueError("OpenRouter API key not found in environment or Airflow variables")
+        raise ValueError("在Airflow变量和环境变量中均未找到OpenRouter API key")
         
     return api_key
 
