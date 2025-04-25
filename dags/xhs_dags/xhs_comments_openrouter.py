@@ -144,7 +144,7 @@ def get_comments_from_db(comment_ids=None, limit=100):
             comment = dict(zip(columns, row))
             comments.append(comment)
         
-        print(f"从数据库获取了 {len(comments)} 条评论")
+        print(f"从数据库获取了 {len(comments)} 条评论，是{comments}")
         
     except Exception as e:
         print(f"数据库查询失败: {str(e)}")
