@@ -1334,12 +1334,12 @@ class XHSOperator:
             print(traceback.format_exc())
             return []
 
-    def comments_reply(self, note_url: str, comment_id: str, comment_content: str, reply_content: str):
+    def comments_reply(self, note_url: str, author: str, comment_content: str, reply_content: str):
         """
         回复评论
         Args:
             note_url: 帖子URL
-            comment_id: 评论者ID
+            author: 评论者
             comment_content: 评论内容
             reply_content: 回复内容
         Returns:
@@ -1454,10 +1454,10 @@ class XHSOperator:
                                     print(f"处理作者元素时出错: {str(e)}")
                                     continue
                             
-                            if closest_author and closest_author.text.strip() == comment_id:
+                            if closest_author and closest_author.text.strip() == author:
                                 comment_element = elem
                                 comment_found = True
-                                print(f"找到匹配的作者: {comment_id}")
+                                print(f"找到匹配的作者: {author}")
                                 break
                     
                     if comment_found:
@@ -1586,14 +1586,14 @@ if __name__ == "__main__":
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
         note_url = "http://xhslink.com/a/wH9PqOUmpd0ab"
-        comment_id = "滑嫩鸡蛋羹"  # 替换为实际的评论者ID
+        author = "滑嫩鸡蛋羹"  # 替换为实际的评论者ID
         comment_content = "我跟博主的饮食习惯好像[偷笑R]"  # 替换为实际的评论内容
         reply_content = "真的很健康，羡慕TT"  # 替换为要回复的内容
         
         print("\n开始测试评论回复功能...")
         success = xhs.comments_reply(
             note_url=note_url,
-            comment_id=comment_id,
+            author=author,
             comment_content=comment_content,
             reply_content=reply_content
         )
