@@ -138,21 +138,21 @@ def generate_single_reply(content: str, author: str, reply_prompt: str) -> str:
     :param content: 评论内容
     :param author: 评论作者
     :param reply_prompt: 回复提示
-    :return: 生成的回复内容
+    :return: 生成的回复内容，控制在20个字符以内
     """
     # 如果评论为空，返回默认回复
     if not content or content.strip() == "":
         print("评论内容为空，返回默认回复")
-        return "感谢您的关注！"
+        return "感谢关注！"
     
     prompt = f"""
-请作为小红书博主，根据以下用户评论生成一个友善、专业的回复。你的回复应该简洁美观，可以欢快的语气，并且建立连接感。
+请作为小红书博主，根据以下用户评论生成一个最多20个字符的简短回复。回复必须非常简洁，少于20个中文字符。
 
 评论作者: {author}
 评论内容: {content}
 回复建议: {reply_prompt}
 
-请直接给出回复内容，不要包含任何形式的引导或解释。回复应少于100个字。
+请直接给出回复内容，不要包含任何形式的引导或解释。回复必须控制在2-20个中文字符之内！
 """
     # 获取 OpenRouter API key
     api_key = get_openrouter_key()
@@ -167,11 +167,11 @@ def generate_single_reply(content: str, author: str, reply_prompt: str) -> str:
     data = {
         "model": "deepseek/deepseek-chat",  # 使用 Deepseek 聊天模型
         "messages": [
-            {"role": "system", "content": "你是一个小红书博主，无论什么都要用中文回答，并且注重示好和语调。"}, 
+            {"role": "system", "content": "你是一个小红书博主，无论什么都要用中文回答，并且注重示好和语调。你的回复必须控制在2-20个字符之内。"}, 
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.7,
-        "max_tokens": 150  # 限制生成的回复长度
+        "max_tokens": 50  # 限制生成的回复长度
     }
     
     # 最多尝试3次
@@ -187,6 +187,12 @@ def generate_single_reply(content: str, author: str, reply_prompt: str) -> str:
             
             # 解析响应
             result = response.json()["choices"][0]["message"]["content"].strip()
+            
+            # 确保回复在20个字符以内
+            if len(result) > 20:
+                print(f"生成的回复超过20个字符({len(result)})，进行截断: {result}")
+                result = result[:20]
+            
             return result
             
         except RequestException as e:
@@ -334,10 +340,6 @@ def run_replies_generation(**context):
             print(f"回复: {result.get('reply', '')}")
             print("----------------------")
         
-        # 将生成的回复保存到数据库
-        saved_count = save_replies_to_db(results)
-        print(f"成功保存 {saved_count} 条回复到数据库")
-        
         # 将分析结果传递到下一个任务
         context['ti'].xcom_push(key='reply_results', value=results)
         context['ti'].xcom_push(key='reply_prompt', value=reply_prompt)
@@ -346,6 +348,31 @@ def run_replies_generation(**context):
         
     except Exception as e:
         error_msg = f"生成评论回复失败: {str(e)}"
+        print(error_msg)
+        raise
+
+def save_replies_to_database(**context):
+    """
+    Airflow任务：保存生成的回复到数据库
+    """
+    try:
+        # 从上一个任务获取结果
+        ti = context['ti']
+        results = ti.xcom_pull(task_ids='generate_replies', key='reply_results')
+        
+        if not results:
+            print("没有找到生成的回复结果，无法保存到数据库")
+            return 0
+        
+        print(f"准备保存 {len(results)} 条回复结果到数据库...")
+        
+        # 保存结果到数据库
+        saved_count = save_replies_to_db(results)
+        
+        return saved_count
+        
+    except Exception as e:
+        error_msg = f"保存回复结果失败: {str(e)}"
         print(error_msg)
         raise
 
@@ -365,6 +392,7 @@ dag = DAG(
     catchup=False,
 )
 
+# 任务1: 生成回复内容
 generate_replies_task = PythonOperator(
     task_id='generate_replies',
     python_callable=run_replies_generation,
@@ -372,4 +400,13 @@ generate_replies_task = PythonOperator(
     dag=dag,
 )
 
-generate_replies_task  # 设置为 DAG 的主要任务
+# 任务2: 保存回复到数据库
+save_replies_task = PythonOperator(
+    task_id='save_replies',
+    python_callable=save_replies_to_database,
+    provide_context=True,
+    dag=dag,
+)
+
+# 设置任务依赖关系
+generate_replies_task >> save_replies_task
