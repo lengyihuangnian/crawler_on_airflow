@@ -153,9 +153,9 @@ def reply_with_template(**context):
         **context: Airflow上下文参数字典
     """
     # 从DAG运行配置中获取参数，如果没有则使用默认值
-    comment_ids = (context['dag_run'].conf.get('comment_ids', [1158, 1096]) 
+    comment_ids = (context['dag_run'].conf.get('comment_ids', [970, 971]) 
         if context['dag_run'].conf 
-        else [1158, 1096])
+        else [970, 971])
     
     max_comments = (context['dag_run'].conf.get('max_comments', 2) 
         if context['dag_run'].conf 
