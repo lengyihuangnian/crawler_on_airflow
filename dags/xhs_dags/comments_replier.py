@@ -22,6 +22,7 @@ def get_reply_contents_from_db(comment_ids: list, max_comments: int = 10, **cont
     cursor = db_conn.cursor()
 
     # 如果ids列表不为空，添加ID限制条件
+    print("conf参数",comment_ids,max_comments)
     if comment_ids:
         placeholders = ','.join(['%s'] * len(comment_ids))
         cursor.execute(
