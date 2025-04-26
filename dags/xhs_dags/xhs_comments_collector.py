@@ -117,7 +117,7 @@ def collect_xhs_comments(**context):
     
     try:
          # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='975b1ebf0107')
         
         all_comments = []
         for note_data in notes_data:
