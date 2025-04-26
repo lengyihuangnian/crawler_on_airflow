@@ -68,7 +68,7 @@ def reply_high_intent_comments(**context):
     
     try:
         # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='01176bc40007')
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
         
         # 遍历每条评论进行回复
         for content in reply_contents:
