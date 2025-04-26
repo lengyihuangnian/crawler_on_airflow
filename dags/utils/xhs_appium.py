@@ -1546,7 +1546,7 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="01176bc40007",
+        device_id="63ebd8370906",
         system_port=8200
     )
 
