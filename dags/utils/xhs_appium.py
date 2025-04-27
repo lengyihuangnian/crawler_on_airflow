@@ -10,6 +10,7 @@
 Author: claude89757
 Date: 2025-01-09
 """
+from datetime import datetime, timedelta
 import os
 import json
 import time
@@ -1120,7 +1121,7 @@ class XHSOperator:
         except Exception as e:
             return "请求失败: {}".format(str(e))
 
-    def collect_comments_by_url(self, note_url: str, max_attempts: int = 10) -> list:
+    def collect_comments_by_url(self, note_url: str, max_comments: int = 10, max_attempts: int = 10) -> list:
         """
         根据帖子 URL 获取并解析评论信息
         Args:
@@ -1141,7 +1142,7 @@ class XHSOperator:
             try:
                 # 查找评论列表
                 try:
-                    WebDriverWait(self.driver, 10).until(
+                    WebDriverWait(self.driver, 1).until(
                         EC.presence_of_element_located((
                             AppiumBy.XPATH,
                             "//android.widget.TextView[contains(@text, '')]"
@@ -1158,7 +1159,7 @@ class XHSOperator:
             last_page_source = None
             all_comments = []  # 用于存储解析后的评论
             seen_comments = set()  # 用于去重
-            max_comments = 20  # 最大评论数
+            max_comments = max_comments  # 最大评论数
             is_first_comment = True  # 标记是否是第一条评论
 
             for attempt in range(max_attempts):
@@ -1192,8 +1193,12 @@ class XHSOperator:
                         "评论" not in e.text and
                         not e.text.endswith("comments") and  # 排除评论数
                         "First comment" not in e.text and  # 排除小红书标识
-                        not re.search(r'View \d+ replies', e.text)  # 排除回复查看文本
+                        not re.search(r'#\S+', e.text)  # 排除包含话题标签的文本（通常是笔记正文）
                     ]
+                    
+                    # 跳过笔记正文（通常是第一条）
+                    if comment_elements and re.search(r'#\S+', comment_elements[0].text):
+                        comment_elements = comment_elements[1:]
                     
                     print(f"找到 {len(comment_elements)} 个可能的评论元素")
                     
@@ -1212,10 +1217,31 @@ class XHSOperator:
                             # 获取评论内容
                             comment_text = comment_elem.text.strip()
                             
-                            # 移除日期和回复后缀
-                            # 匹配格式如：2024-11-07  回复
-                            comment_text = re.sub(r'\d{4}-\d{2}-\d{2}\s*回复$', '', comment_text)
-                            # 匹配格式如：2024-11-07
+                            # 移除日期和回复后缀，并提取时间信息
+                            time_pattern = r'(?P<date>\d{4}-\d{2}-\d{2})|(?P<yesterday>昨天\s*(?P<yesterday_time>\d{2}:\d{2}))|(?P<relative>(?P<value>\d+)\s*(?P<unit>小时|分钟)前)'
+                            time_match = re.search(time_pattern, comment_text)
+                            collect_time = None
+                            
+                            if time_match:
+                                if time_match.group('date'):
+                                    # 标准日期格式，添加默认时间
+                                    collect_time = f"{time_match.group('date')} 00:00:00"
+                                elif time_match.group('yesterday'):
+                                    # 昨天格式，获取当前日期并减一天
+                                    yesterday = datetime.now() - timedelta(days=1)
+                                    collect_time = f"{yesterday.strftime('%Y-%m-%d')} {time_match.group('yesterday_time')}:00"
+                                elif time_match.group('relative'):
+                                    # 相对时间格式（X小时/分钟前）
+                                    now = datetime.now()
+                                    value = int(time_match.group('value'))  # 直接使用捕获的数字
+                                    unit = time_match.group('unit')
+                                    if unit == '小时':
+                                        collect_time = (now - timedelta(hours=value)).strftime('%Y-%m-%d %H:%M:%S')
+                                    else:  # 分钟
+                                        collect_time = (now - timedelta(minutes=value)).strftime('%Y-%m-%d %H:%M:%S')
+                            
+                            # 移除时间信息
+                            comment_text = re.sub(time_pattern + r'\s*(?:\S+\s*)*回复$', '', comment_text)
                             comment_text = re.sub(r'\d{4}-\d{2}-\d{2}$', '', comment_text)
                             # 移除末尾的空白字符
                             comment_text = comment_text.strip()
@@ -1226,7 +1252,7 @@ class XHSOperator:
                                 continue
                             
                             # 如果评论不为空且未见过，则添加到结果中
-                            if comment_text and comment_text not in seen_comments:
+                            if comment_text and comment_text not in seen_comments and collect_time != "time unknown":
 
                                 # 获取点赞数
                                 try:
@@ -1328,7 +1354,7 @@ class XHSOperator:
                                     "author": author,
                                     "content": comment_text,
                                     "likes": likes,
-                                    "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
+                                    "collect_time": collect_time or "time unknown"
                                 }
                                 
                                 all_comments.append(comment_data)
@@ -1610,7 +1636,7 @@ if __name__ == "__main__":
         full_url = xhs.get_redirect_url(note_url)
         print(f"帖子 URL: {full_url}")
         
-        comments = xhs.collect_comments_by_url(full_url)
+        comments = xhs.collect_comments_by_url(full_url,max_comments=10)
         print(f"\n共收集到 {len(comments)} 条评论:")
         for i, comment in enumerate(comments, 1):
             print(f"\n评论 {i}:")
