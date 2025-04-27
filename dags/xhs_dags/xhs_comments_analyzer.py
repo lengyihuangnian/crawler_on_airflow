@@ -200,6 +200,7 @@ def save_results_to_db(results, profile_sentence):
             intent VARCHAR(50) NOT NULL,
             profile_sentence TEXT,
             keyword VARCHAR(255) NOT NULL,
+            content TEXT NOT NULL,
             analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY unique_comment (comment_id)
         )
@@ -217,14 +218,15 @@ def save_results_to_db(results, profile_sentence):
                 # 使用INSERT...ON DUPLICATE KEY UPDATE确保更新已存在的记录
                 query = """
                 INSERT INTO customer_intent 
-                (comment_id, author, note_url, intent, profile_sentence, keyword)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                (comment_id, author, note_url, intent, profile_sentence, keyword, content)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE 
                 author = VALUES(author),
                 note_url = VALUES(note_url),
                 intent = VALUES(intent),
                 profile_sentence = VALUES(profile_sentence),
                 keyword = VALUES(keyword),
+                content = VALUES(content),
                 analyzed_at = CURRENT_TIMESTAMP
                 """
                 
@@ -235,7 +237,8 @@ def save_results_to_db(results, profile_sentence):
                     result.get('note_url', ''),
                     result.get('intent', '未知'),
                     profile_sentence,
-                    result.get('keyword', '')
+                    result.get('keyword', ''),
+                    result.get('content', '')
                 )
                 
                 # 执行插入/更新
