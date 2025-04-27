@@ -322,7 +322,7 @@ def run_comments_analysis(**context):
         # 从dag run配置或参数中获取分析句子
         profile_sentence = context.get('dag_run').conf.get('profile_sentence') \
             if context.get('dag_run') and context.get('dag_run').conf \
-            else "我是做运动培训的，我要寻找想提高运动能力的客户"
+            else "我是做医美的，我要寻找做项目的客户"
         
         # 从dag run配置或参数中获取评论 ID 列表
         comment_ids = context.get('dag_run').conf.get('comment_ids') \
