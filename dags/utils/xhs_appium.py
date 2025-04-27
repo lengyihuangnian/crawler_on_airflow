@@ -1227,6 +1227,50 @@ class XHSOperator:
                             
                             # 如果评论不为空且未见过，则添加到结果中
                             if comment_text and comment_text not in seen_comments:
+
+                                # 获取点赞数
+                                try:
+                                    # 获取评论元素的位置
+                                    comment_loc = comment_elem.location
+                                    if not comment_loc:
+                                        continue
+
+                                    # 获取评论元素下方一定范围内的所有TextView
+                                    all_text_views = self.driver.find_elements(
+                                        by=AppiumBy.XPATH,
+                                        value="//android.widget.TextView[string-length(@text) > 0]"
+                                    )
+
+                                    # 找到评论下方最近的纯数字文本
+                                    closest_likes = None
+                                    min_distance = float('inf')
+
+                                    for text_view in all_text_views:
+                                        try:
+                                            # 获取元素位置
+                                            loc = text_view.location
+                                            if not loc:
+                                                continue
+                                                
+                                            # 计算垂直距离（只考虑下方的元素）
+                                            distance = loc['y'] - comment_loc['y']
+                                            
+                                            # 检查是否是纯数字且在下方的合理范围内
+                                            if (0 < distance < 200 and  # 在评论下方200像素内
+                                                text_view.text.strip().isdigit() and  # 是纯数字
+                                                distance < min_distance):  # 是最近的
+                                                closest_likes = text_view
+                                                min_distance = distance
+                                        except:
+                                            continue
+
+                                    # 获取赞数
+                                    likes = 0
+                                    if closest_likes:
+                                        likes = int(closest_likes.text.strip())
+                                except:
+                                    likes = 0
+
                                 # 尝试获取评论者信息
                                 author = "未知作者"
                                 try:
@@ -1277,22 +1321,7 @@ class XHSOperator:
                                 except Exception as e:
                                     print(f"获取作者信息时出错: {str(e)}")
                                 
-                                # 获取点赞数
-                                try:
-                                    likes = 0
-                                    # 通过相对位置查找点赞数
-                                    parent = comment_elem.find_element(
-                                        by=AppiumBy.XPATH,
-                                        value=".."
-                                    )
-                                    likes_elem = parent.find_element(
-                                        by=AppiumBy.XPATH,
-                                        value=".//android.widget.TextView[contains(@text, '赞')]"
-                                    )
-                                    likes_text = likes_elem.text.strip()
-                                    likes = int(re.search(r'\d+', likes_text).group()) if re.search(r'\d+', likes_text) else 0
-                                except:
-                                    likes = 0
+                            
                                 
                                 # 构建评论数据
                                 comment_data = {
@@ -1546,7 +1575,7 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="63ebd8370906",
+        device_id="975b1ebf0107",
         system_port=8200
     )
 
@@ -1576,41 +1605,41 @@ if __name__ == "__main__":
         #     print("-" * 50) 
 
         # 2 测试收集评论
-        # print("\n开始测试收集评论...")
-        # note_url = "http://xhslink.com/a/Wi0FvibFkeH9"
-        # full_url = xhs.get_redirect_url(note_url)
-        # print(f"帖子 URL: {full_url}")
+        print("\n开始测试收集评论...")
+        note_url = "http://xhslink.com/a/FTt1urwQK1dbb"
+        full_url = xhs.get_redirect_url(note_url)
+        print(f"帖子 URL: {full_url}")
         
-        # comments = xhs.collect_comments_by_url(full_url)
-        # print(f"\n共收集到 {len(comments)} 条评论:")
-        # for i, comment in enumerate(comments, 1):
-        #     print(f"\n评论 {i}:")
-        #     print(f"作者: {comment['author']}")
-        #     print(f"内容: {comment['content']}")
-        #     print(f"点赞: {comment['likes']}")
-        #     print(f"时间: {comment['collect_time']}")
-        #     print("-" * 50)
+        comments = xhs.collect_comments_by_url(full_url)
+        print(f"\n共收集到 {len(comments)} 条评论:")
+        for i, comment in enumerate(comments, 1):
+            print(f"\n评论 {i}:")
+            print(f"作者: {comment['author']}")
+            print(f"内容: {comment['content']}")
+            print(f"点赞: {comment['likes']}")
+            print(f"时间: {comment['collect_time']}")
+            print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
-        note_url = "http://xhslink.com/a/wH9PqOUmpd0ab"
-        author = "滑嫩鸡蛋羹"  # 替换为实际的评论者ID
-        comment_content = "我跟博主的饮食习惯好像[偷笑R]"  # 替换为实际的评论内容
-        reply_content = "真的很健康，羡慕TT"  # 替换为要回复的内容
+        # note_url = "http://xhslink.com/a/wH9PqOUmpd0ab"
+        # author = "滑嫩鸡蛋羹"  # 替换为实际的评论者ID
+        # comment_content = "我跟博主的饮食习惯好像[偷笑R]"  # 替换为实际的评论内容
+        # reply_content = "真的很健康，羡慕TT"  # 替换为要回复的内容
         
-        print("\n开始测试评论回复功能...")
-        success = xhs.comments_reply(
-            note_url=note_url,
-            author=author,
-            comment_content=comment_content,
-            reply_content=reply_content
-        )
+        # print("\n开始测试评论回复功能...")
+        # success = xhs.comments_reply(
+        #     note_url=note_url,
+        #     author=author,
+        #     comment_content=comment_content,
+        #     reply_content=reply_content
+        # )
         
-        if success:
-            print("评论回复成功！")
-        else:
-            print("评论回复失败！")
+        # if success:
+        #     print("评论回复成功！")
+        # else:
+        #     print("评论回复失败！")
             
-        print("-" * 50)
+        # print("-" * 50)
 
 
     except Exception as e:
