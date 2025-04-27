@@ -1134,7 +1134,7 @@ class XHSOperator:
 
             # 打开帖子页面
             self.driver.get(note_url)
-            time.sleep(5)  # 等待页面加载
+            time.sleep(1)  # 等待页面加载
 
             # 等待评论区加载
             print("等待评论区加载...")
@@ -1323,7 +1323,7 @@ class XHSOperator:
 
                 # 模拟滑动加载更多评论
                 self.scroll_down()
-                time.sleep(2)  # 等待评论加载
+                time.sleep(1)  # 等待评论加载
 
             print(f"评论获取完成，共收集到 {len(all_comments)} 条评论")
             return all_comments
@@ -1352,7 +1352,7 @@ class XHSOperator:
             
             # 打开笔记
             self.driver.get(full_url)
-            time.sleep(5)  # 等待页面加载
+            time.sleep(1)  # 等待页面加载
             
             # 等待评论区加载
             print("等待评论区加载...")
@@ -1512,7 +1512,7 @@ class XHSOperator:
                     ))
                 )
                 send_button.click()
-                time.sleep(2)
+                time.sleep(1)
                 
                 print(f"成功回复评论: {reply_content}")
                 return True
