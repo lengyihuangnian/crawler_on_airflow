@@ -8,8 +8,11 @@ from airflow.models.variable import Variable
 def get_remote_devices():
     """通过SSH获取远程主机上的设备列表"""
     try:
+        remote_host = Variable.get("REMOTE_TEST_HOST") #user@192.168.1.103
+        ssh_key_path = Variable.get("SSH_KEY_PATH", default_var="~/.ssh/id_rsa") 
+        
         # 执行SSH命令获取设备列表
-        cmd = "ssh remote_host 'adb devices'"
+        cmd = f"ssh -i {ssh_key_path} {remote_host} 'adb devices'"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         
         if result.returncode != 0:
@@ -44,7 +47,7 @@ dag = DAG(
     dag_id='update_device_list',
     default_args=default_args,
     description='定期更新设备列表',
-    schedule_interval='*/5 * * * *',  # 每5分钟执行一次
+    schedule_interval='*/10 * * * *',  # 每10分钟执行一次
     tags=['设备管理'],
     catchup=False,
 )
