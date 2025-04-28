@@ -9,7 +9,7 @@ def get_remote_devices():
     """通过SSH获取远程主机上的设备列表"""
     try:
         remote_host = Variable.get("REMOTE_TEST_HOST") #user@192.168.1.103
-        ssh_key_path = Variable.get("SSH_KEY_PATH", default_var="/root/.sh/id_rsa") 
+        ssh_key_path = Variable.get("SSH_KEY_PATH", default_var="/root/.ssh/id_rsa") 
         
         # 执行SSH命令获取设备列表
         cmd = f"ssh -i {ssh_key_path} {remote_host} 'adb devices'"
