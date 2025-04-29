@@ -1480,11 +1480,11 @@ class XHSOperator:
                             if not comment_loc:
                                 continue
                                 
-                            # 如果作者是"未知作者"，直接匹配评论内容
-                            if author == "未知作者":
+                            # 如果作者是"未知用户"，直接匹配评论内容
+                            if author == "未知用户":
                                 comment_element = elem
                                 comment_found = True
-                                print("作者为未知作者，直接匹配评论内容")
+                                print("作者为未知用户，直接匹配评论内容")
                                 break
                                 
                             # 在整个页面中查找作者信息
@@ -1601,7 +1601,7 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="975b1ebf0107",
+        device_id="97266a1f0107",
         system_port=8200
     )
 
@@ -1631,41 +1631,41 @@ if __name__ == "__main__":
         #     print("-" * 50) 
 
         # 2 测试收集评论
-        print("\n开始测试收集评论...")
-        note_url = "http://xhslink.com/a/FTt1urwQK1dbb"
-        full_url = xhs.get_redirect_url(note_url)
-        print(f"帖子 URL: {full_url}")
+        # print("\n开始测试收集评论...")
+        # note_url = "http://xhslink.com/a/FTt1urwQK1dbb"
+        # full_url = xhs.get_redirect_url(note_url)
+        # print(f"帖子 URL: {full_url}")
         
-        comments = xhs.collect_comments_by_url(full_url,max_comments=10)
-        print(f"\n共收集到 {len(comments)} 条评论:")
-        for i, comment in enumerate(comments, 1):
-            print(f"\n评论 {i}:")
-            print(f"作者: {comment['author']}")
-            print(f"内容: {comment['content']}")
-            print(f"点赞: {comment['likes']}")
-            print(f"时间: {comment['collect_time']}")
-            print("-" * 50)
+        # comments = xhs.collect_comments_by_url(full_url,max_comments=10)
+        # print(f"\n共收集到 {len(comments)} 条评论:")
+        # for i, comment in enumerate(comments, 1):
+        #     print(f"\n评论 {i}:")
+        #     print(f"作者: {comment['author']}")
+        #     print(f"内容: {comment['content']}")
+        #     print(f"点赞: {comment['likes']}")
+        #     print(f"时间: {comment['collect_time']}")
+        #     print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
-        # note_url = "http://xhslink.com/a/wH9PqOUmpd0ab"
-        # author = "滑嫩鸡蛋羹"  # 替换为实际的评论者ID
-        # comment_content = "我跟博主的饮食习惯好像[偷笑R]"  # 替换为实际的评论内容
-        # reply_content = "真的很健康，羡慕TT"  # 替换为要回复的内容
+        note_url = "http://xhslink.com/a/w1yibx5dzJcbb"
+        author = "湖北泽特医疗器械"  # 替换为实际的评论者ID
+        comment_content = "[偷笑R]我这都🈶 一盒也是批发价认准小🍠蓝v认证正规医疗器械"  # 替换为实际的评论内容
+        reply_content = "有兴趣的私我"  # 替换为要回复的内容
         
-        # print("\n开始测试评论回复功能...")
-        # success = xhs.comments_reply(
-        #     note_url=note_url,
-        #     author=author,
-        #     comment_content=comment_content,
-        #     reply_content=reply_content
-        # )
+        print("\n开始测试评论回复功能...")
+        success = xhs.comments_reply(
+            note_url=note_url,
+            author=author,
+            comment_content=comment_content,
+            reply_content=reply_content
+        )
         
-        # if success:
-        #     print("评论回复成功！")
-        # else:
-        #     print("评论回复失败！")
+        if success:
+            print("评论回复成功！")
+        else:
+            print("评论回复失败！")
             
-        # print("-" * 50)
+        print("-" * 50)
 
 
     except Exception as e:
