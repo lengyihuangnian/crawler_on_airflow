@@ -75,7 +75,7 @@ def get_remote_devices():
 # DAG 定义
 dag = DAG(
     dag_id='update_device_list',
-    default_args={'owner': 'airflow', 'depends_on_past': False},
+    default_args={'owner': 'yueyang', 'start_date': datetime(2025, 4, 30)},
     description='定期更新设备列表',
     schedule_interval='*/10 * * * *',  # 每10分钟执行一次
     tags=['设备管理'],
