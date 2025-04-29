@@ -27,8 +27,9 @@ from airflow.models.variable import Variable
 def get_remote_devices():
     """通过SSH获取远程主机上的设备列表"""
     xhs_host_list = Variable.get("XHS_HOST_LIST", default_var=[], deserialize_json=True)
-    print(f"xhs_host_list: {xhs_host_list}")
+    print(f"xhs_host_list: {len(xhs_host_list)}")
 
+    device_info_list = []
     for host_info in xhs_host_list:
         print(f"checking host: {host_info}")
         device_ip = host_info['device_ip']
@@ -61,7 +62,15 @@ def get_remote_devices():
                     device_id = line.split()[0]
                     devices.append(device_id.strip())
             print(f"devices: {devices}")
-                
+
+            device_info_list.append({
+                'device_ip': device_ip,
+                'username': username,
+                'password': password,
+                'port': port,
+                'phone_device_list': devices,
+            })
+
         except Exception as e:
             print(f"An error occurred: {e}")
             return None
@@ -70,7 +79,10 @@ def get_remote_devices():
             if ssh_client:
                 ssh_client.close()
                 print("SSH connection closed")
-            
+    
+    # 更新Airflow变量
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    Variable.set("XHS_DEVICE_INFO_LIST", device_info_list, serialize_json=True, description=f"更新时间: {timestamp}")
 
 # DAG 定义
 dag = DAG(
