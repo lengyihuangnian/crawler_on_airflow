@@ -34,17 +34,11 @@ def check_port_availability(ssh_client, port):
     stdin, stdout, stderr = ssh_client.exec_command(command)
     output = stdout.read().decode('utf-8')
     
-    # 如果输出不为空，表示端口被占用
+    # 如果输出不为空，表示端口启动了Appium服务
     if output.strip():
-        # 检查是否是Appium服务
-        appium_check_command = f"ps -ef | grep -v grep | grep 'appium.*-p {port}'"
-        stdin, stdout, stderr = ssh_client.exec_command(appium_check_command)
-        appium_output = stdout.read().decode('utf-8')
-        # 如果找到Appium进程，则返回True表示这是一个Appium端口
-        return bool(appium_output.strip())
-    
-    # 如果端口未被占用，则不是Appium服务
-    return False
+        return True
+    else:
+        return False
 
 
 def get_remote_devices():
