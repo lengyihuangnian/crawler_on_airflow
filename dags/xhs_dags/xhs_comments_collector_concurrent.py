@@ -89,14 +89,15 @@ def start_remote_appium_servers(devices, base_port=6001):
     :param base_port: 起始端口号
     :return: 端口号列表
     """
+    remote_host = Variable.get("REMOTE_TEST_HOST", "localhost")
     ports = []
     for idx, device_id in enumerate(devices):
         port = base_port + idx
         ports.append(port)
         # 使用SSH在远程主机上启动Appium服务
-        cmd = f"ssh remote_host 'appium -p {port} --session-override'"
+        cmd = f"ssh {remote_host} 'appium -p {port} --session-override'"
         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(f"已在远程主机上为设备 {device_id} 启动 Appium 服务，端口 {port}")
+        print(f"已在远程主机 {remote_host} 上为设备 {device_id} 启动 Appium 服务，端口 {port}")
         time.sleep(1)  # 给Appium服务一点启动时间
     return ports
 
