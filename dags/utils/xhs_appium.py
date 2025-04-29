@@ -1252,8 +1252,7 @@ class XHSOperator:
                                 continue
                             
                             # 如果评论不为空且未见过，则添加到结果中
-                            if comment_text and comment_text not in seen_comments and collect_time != "time unknown":
-
+                            if comment_text and comment_text not in seen_comments and collect_time :
                                 # 获取点赞数
                                 try:
                                     # 获取评论元素的位置
@@ -1354,7 +1353,7 @@ class XHSOperator:
                                     "author": author,
                                     "content": comment_text,
                                     "likes": likes,
-                                    "collect_time": collect_time or "time unknown"
+                                    "collect_time": collect_time
                                 }
                                 
                                 all_comments.append(comment_data)
