@@ -21,6 +21,25 @@
 3. **安卓手机**
    - 运行小红书\抖音\微信APP
 
+4. **树莓派设备**
+   - 作为Appium服务器运行环境
+   - 安装步骤：
+     1. 获取树莓派IP：运行 `hostname -I`
+     2. 传输安装脚本：`scp install_appium_frp.sh pi@<树莓派IP>:~/`
+     3. 执行安装脚本：
+        ```bash
+        chmod +x ~/install_appium_frp.sh
+        ./install_appium_frp.sh
+        ```
+     4. 验证安装：
+        ```bash
+        source ~/.bashrc
+        appium -v
+        adb version
+        java -version
+        appium driver list
+        ```
+
 ### 部署架构
 
 ```
