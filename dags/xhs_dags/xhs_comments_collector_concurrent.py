@@ -122,6 +122,7 @@ def get_adb_devices_from_remote(appium_server_url, **context):
 def get_devices_pool_from_remote(port=6001, system_port=8200, **context): 
     """远程控制设备启动参数管理池。含启动参数和对应的端口号"""
     appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+    remote_host = Variable.get("REMOTE_TEST_HOST", "localhost")
     #获取远程主机连接的设备
     devices_pool = get_adb_devices_from_remote(appium_server_url)
     device_ids = [device["device_id"] for device in devices_pool]
@@ -137,7 +138,7 @@ def get_devices_pool_from_remote(port=6001, system_port=8200, **context):
             "device_id": device["device_id"],
             "port": dev_port,
             "system_port": dev_system_port,
-            "appium_server_url": f"http://localhost:{dev_port}"  # 使用远程主机地址
+            "appium_server_url": f"http://{remote_host}:{dev_port}"  # 使用远程主机地址
         }
         devs_pool.append(new_dict)
         print(f"设备 {device['device_id']} 配置: {new_dict}")
