@@ -82,24 +82,24 @@ def save_comments_to_db(comments: list, note_url: str):
         db_conn.close()
 
 
-def start_remote_appium_servers(devices, base_port=6001):
-    """
-    在远程主机上启动与设备数量对应的Appium服务，每个设备一个端口。
-    :param devices: 设备ID列表
-    :param base_port: 起始端口号
-    :return: 端口号列表
-    """
-    remote_host = Variable.get("REMOTE_TEST_HOST", "localhost")
-    ports = []
-    for idx, device_id in enumerate(devices):
-        port = base_port + idx
-        ports.append(port)
-        # 使用SSH在远程主机上启动Appium服务
-        cmd = f"ssh {remote_host} 'appium -p {port} --session-override'"
-        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(f"已在远程主机 {remote_host} 上为设备 {device_id} 启动 Appium 服务，端口 {port}")
-        time.sleep(1)  # 给Appium服务一点启动时间
-    return ports
+# def start_remote_appium_servers(devices, base_port=6001):
+#     """
+#     在远程主机上启动与设备数量对应的Appium服务，每个设备一个端口。
+#     :param devices: 设备ID列表
+#     :param base_port: 起始端口号
+#     :return: 端口号列表
+#     """
+#     remote_host = Variable.get("REMOTE_TEST_HOST", "localhost")
+#     ports = []
+#     for idx, device_id in enumerate(devices):
+#         port = base_port + idx
+#         ports.append(port)
+#         # 使用SSH在远程主机上启动Appium服务
+#         cmd = f"ssh {remote_host} 'appium -p {port} --session-override'"
+#         subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+#         print(f"已在远程主机 {remote_host} 上为设备 {device_id} 启动 Appium 服务，端口 {port}")
+#         time.sleep(1)  # 给Appium服务一点启动时间
+#     return ports
 
 def get_adb_devices_from_remote(appium_server_url, **context):
     """调用dag，从远程主机获取设备池"""
@@ -126,9 +126,6 @@ def get_devices_pool_from_remote(port=6001, system_port=8200, **context):
     remote_host = Variable.get("REMOTE_TEST_HOST", "localhost")
     #获取远程主机连接的设备
     devices_pool = get_adb_devices_from_remote(appium_server_url)
-    device_ids = [device["device_id"] for device in devices_pool]
-    #远程启动appium服务
-    start_remote_appium_servers(device_ids)
     
     # 构建设备池
     devs_pool = []
@@ -218,14 +215,6 @@ get_note_urls_task = PythonOperator(
     dag=dag,
 )
 
-# 启动远程Appium服务的任务
-start_appium_task = PythonOperator(
-    task_id='start_remote_appium_servers',
-    python_callable=get_devices_pool_from_remote,
-    provide_context=True,
-    dag=dag,
-)
-
 # 定义任务组
 @task_group(group_id="device_tasks", dag=dag)
 def create_device_tasks():
@@ -249,4 +238,4 @@ def create_device_tasks():
 device_tasks = create_device_tasks()
 
 # 设置任务依赖关系
-get_note_urls_task >> start_appium_task >> device_tasks
+get_note_urls_task >> device_tasks
