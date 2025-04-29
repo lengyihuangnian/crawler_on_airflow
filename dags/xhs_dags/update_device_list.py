@@ -26,7 +26,7 @@ from airflow.models.variable import Variable
 
 def get_remote_devices():
     """通过SSH获取远程主机上的设备列表"""
-    xhs_host_list = Variable.get("XHS_HOST_LIST", default_var=[])
+    xhs_host_list = Variable.get("XHS_HOST_LIST", default_var=[], deserialize_json=True)
     print(f"xhs_host_list: {xhs_host_list}")
 
     for host_info in xhs_host_list:
