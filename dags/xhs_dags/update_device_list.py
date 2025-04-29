@@ -28,13 +28,23 @@ from airflow.operators.python import PythonOperator
 
 
 def check_port_availability(ssh_client, port):
-    """检查远程主机上的端口是否可用"""
-    # 使用netstat命令检查端口是否被占用
+    """检查远程主机上的端口是否正在运行Appium服务"""
+    # 使用netstat命令检查端口是否被Appium占用
     command = f"netstat -tuln | grep :{port}"
     stdin, stdout, stderr = ssh_client.exec_command(command)
     output = stdout.read().decode('utf-8')
-    # 如果输出为空，表示端口未被占用，可用
-    return not output.strip()
+    
+    # 如果输出不为空，表示端口被占用
+    if output.strip():
+        # 检查是否是Appium服务
+        appium_check_command = f"ps -ef | grep -v grep | grep 'appium.*-p {port}'"
+        stdin, stdout, stderr = ssh_client.exec_command(appium_check_command)
+        appium_output = stdout.read().decode('utf-8')
+        # 如果找到Appium进程，则返回True表示这是一个Appium端口
+        return bool(appium_output.strip())
+    
+    # 如果端口未被占用，则不是Appium服务
+    return False
 
 
 def get_remote_devices():
