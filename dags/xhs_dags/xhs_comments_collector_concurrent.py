@@ -101,41 +101,33 @@ def save_comments_to_db(comments: list, note_url: str):
 #         time.sleep(1)  # 给Appium服务一点启动时间
 #     return ports
 
-def get_adb_devices_from_remote(appium_server_url, **context):
+def get_adb_devices_from_remote(remote_host, **context):
     """调用dag，从远程主机获取设备池"""
-    #test用
-    devices_pool = [
-        {
-            "device_id": "01176bc40007",
-            "port": 6001,
-            "system_port": 8200,
-            "appium_server_url": appium_server_url
-        },
-        {
-            "device_id": "c2c56d1b0107",
-            "port": 6002,
-            "system_port": 8204,
-            "appium_server_url": appium_server_url
-        }
+    # test-使用预定义的设备信息
+    devices = [
+        {"device_id": "01176bc40007"},
+        {"device_id": "c2c56d1b0107"}
     ]
-    return devices_pool
+    print(f"Using devices: {[d['device_id'] for d in devices]}")
+    return devices
 
 def get_devices_pool_from_remote(port=6001, system_port=8200, **context): 
     """远程控制设备启动参数管理池。含启动参数和对应的端口号"""
     appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+    remote_host = Variable.get("REMOTE_TEST_HOST", "localhost")
     #获取远程主机连接的设备
-    devices_pool = get_adb_devices_from_remote(appium_server_url)
+    devices_pool = get_adb_devices_from_remote(remote_host)
     
-    # 构建设备池
+    # 构建设备池，使用已配置的Appium服务端口
     devs_pool = []
     for idx, device in enumerate(devices_pool):
-        dev_port = port + idx
+        dev_port = port + idx  # 使用已配置的端口6001, 6002等
         dev_system_port = system_port + idx * 4
         new_dict = {
             "device_id": device["device_id"],
             "port": dev_port,
             "system_port": dev_system_port,
-            "appium_server_url": appium_server_url  # 直接使用配置的Appium服务器URL
+            "appium_server_url": appium_server_url  # 使用已配置的Appium服务
         }
         devs_pool.append(new_dict)
         print(f"设备 {device['device_id']} 配置: {new_dict}")
