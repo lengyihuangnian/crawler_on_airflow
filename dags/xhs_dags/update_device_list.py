@@ -15,6 +15,7 @@
 
 # 标准库导入
 from datetime import datetime, timedelta
+import json
 import socket
 
 # 第三方库导入
@@ -22,8 +23,8 @@ import paramiko
 
 # Airflow相关导入
 from airflow import DAG
-from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
+from airflow.operators.python import PythonOperator
 
 
 def check_port_availability(ssh_client, port):
@@ -103,6 +104,7 @@ def get_remote_devices():
     # 更新Airflow变量
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     Variable.set("XHS_DEVICE_INFO_LIST", device_info_list, serialize_json=True, description=f"更新时间: {timestamp}")
+    print(f"device_info_list:\n{json.dumps(device_info_list, ensure_ascii=False, indent=2)}")
 
 # DAG 定义
 dag = DAG(
