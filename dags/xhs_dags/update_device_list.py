@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-更新设备列表 DAG
+更新设备列表和Appium端口 DAG
 
-这个 DAG 用于定期从远程主机获取可用的 Android 设备列表，并将其保存到 Airflow 变量中，
-以便其他 DAG 可以使用这些设备进行分布式任务处理。
+这个 DAG 用于定期从远程主机获取可用的 Android 设备列表和Appium可用端口，并将其保存到 Airflow 变量中，
+以便其他 DAG 可以使用这些设备和端口进行分布式任务处理。
 
 主要功能：
 1. 通过 SSH 连接到远程主机
 2. 执行 adb devices 命令获取设备列表
-3. 解析设备列表并保存到 Airflow 变量中
+3. 检查6001-6033端口中哪些可用于Appium
+4. 解析设备列表和端口，并保存到 Airflow 变量中
 """
 
 # 标准库导入
 from datetime import datetime, timedelta
+import socket
 
 # 第三方库导入
 import paramiko
@@ -24,8 +26,18 @@ from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
 
 
+def check_port_availability(ssh_client, port):
+    """检查远程主机上的端口是否可用"""
+    # 使用netstat命令检查端口是否被占用
+    command = f"netstat -tuln | grep :{port}"
+    stdin, stdout, stderr = ssh_client.exec_command(command)
+    output = stdout.read().decode('utf-8')
+    # 如果输出为空，表示端口未被占用，可用
+    return not output.strip()
+
+
 def get_remote_devices():
-    """通过SSH获取远程主机上的设备列表"""
+    """通过SSH获取远程主机上的设备列表和可用的Appium端口"""
     xhs_host_list = Variable.get("XHS_HOST_LIST", default_var=[], deserialize_json=True)
     print(f"xhs_host_list: {len(xhs_host_list)}")
 
@@ -62,6 +74,13 @@ def get_remote_devices():
                     device_id = line.split()[0]
                     devices.append(device_id.strip())
             print(f"devices: {devices}")
+            
+            # 检查Appium可用端口（6001-6033）
+            available_appium_ports = []
+            for appium_port in range(6001, 6034):
+                if check_port_availability(ssh_client, appium_port):
+                    available_appium_ports.append(appium_port)
+            print(f"available_appium_ports: {available_appium_ports}")
 
             device_info_list.append({
                 'device_ip': device_ip,
@@ -69,6 +88,7 @@ def get_remote_devices():
                 'password': password,
                 'port': port,
                 'phone_device_list': devices,
+                'available_appium_ports': available_appium_ports,
             })
 
         except Exception as e:
@@ -88,13 +108,13 @@ def get_remote_devices():
 dag = DAG(
     dag_id='update_device_list',
     default_args={'owner': 'yueyang', 'start_date': datetime(2025, 4, 30)},
-    description='定期更新设备列表',
+    description='定期更新设备列表和Appium可用端口',
     schedule_interval='*/10 * * * *',  # 每10分钟执行一次
     tags=['设备管理'],
     catchup=False,
 )
 
-# 更新设备列表的任务
+# 更新设备列表和可用端口的任务
 update_devices_task = PythonOperator(
     task_id='update_devices',
     python_callable=get_remote_devices,
