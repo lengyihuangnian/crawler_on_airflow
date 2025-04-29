@@ -58,7 +58,7 @@ def get_remote_devices():
             # 解析设备列表
             devices = []
             for line in output.split('\n'):
-                if line.strip() and 'device' in line:
+                if line.strip() and 'device' in line and "devices" not in line:
                     device_id = line.split()[0]
                     devices.append(device_id.strip())
             print(f"devices: {devices}")
