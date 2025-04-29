@@ -73,17 +73,9 @@ def get_remote_devices():
             
 
 # DAG 定义
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'start_date': datetime(2024, 1, 1),
-    'retries': 3,
-    'retry_delay': timedelta(minutes=5),
-}
-
 dag = DAG(
     dag_id='update_device_list',
-    default_args=default_args,
+    default_args={'owner': 'airflow', 'depends_on_past': False},
     description='定期更新设备列表',
     schedule_interval='*/10 * * * *',  # 每10分钟执行一次
     tags=['设备管理'],
@@ -97,4 +89,4 @@ update_devices_task = PythonOperator(
     dag=dag,
 )
 
-update_devices_task 
+update_devices_task
