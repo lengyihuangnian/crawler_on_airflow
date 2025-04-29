@@ -1,31 +1,28 @@
 from datetime import datetime
-
+import subprocess
+import time
 from airflow import DAG
+from airflow.decorators import task, task_group
 from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
+from airflow.models.xcom import XCom
 
-from utils.device_manager import DeviceManager, TaskProcessorManager, collect_comments_processor,TaskDistributor
+from utils.device_manager import collect_comments_processor
+
 from utils.xhs_appium import XHSOperator
 
-
 def get_note_url(n: int = 10, **context):
-    """从数据库获取笔记URL
-    Args:
-        n: 要获取的URL数量
-    """
-    # 使用get_hook函数获取数据库连接
+    """从数据库获取笔记URL"""
     db_hook = BaseHook.get_connection("xhs_db").get_hook()
     db_conn = db_hook.get_conn()
     cursor = db_conn.cursor()
     
-    # 查询前n条笔记的URL
     cursor.execute("SELECT note_url FROM xhs_notes LIMIT %s", (n,))
     note_urls = [row[0] for row in cursor.fetchall()]
     
     cursor.close()
     db_conn.close()
-    
     return note_urls
 
 def save_comments_to_db(comments: list, note_url: str):
@@ -84,117 +81,115 @@ def save_comments_to_db(comments: list, note_url: str):
         cursor.close()
         db_conn.close()
 
-def collect_xhs_comments(n: int = 10, **context):
-    """收集小红书评论
-    Args:
-        n: 要收集的笔记数量
+
+def start_remote_appium_servers(devices, base_port=6001):
     """
-    # 获取笔记URL
-    note_urls = get_note_url(n)
+    在远程主机上启动与设备数量对应的Appium服务，每个设备一个端口。
+    :param devices: 设备ID列表
+    :param base_port: 起始端口号
+    :return: 端口号列表
+    """
+    ports = []
+    for idx, device_id in enumerate(devices):
+        port = base_port + idx
+        ports.append(port)
+        # 使用SSH在远程主机上启动Appium服务
+        cmd = f"ssh remote_host 'appium -p {port} --session-override'"
+        subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"已在远程主机上为设备 {device_id} 启动 Appium 服务，端口 {port}")
+        time.sleep(1)  # 给Appium服务一点启动时间
+    return ports
 
-        # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
-
-    # 获取设备池-test
+def get_adb_devices_from_remote(appium_server_url, **context):
+    """调用dag，从远程主机获取设备池"""
+    #test用
     devices_pool = [
         {
             "device_id": "01176bc40007",
-            "port": 4723,
+            "port": 6001,
             "system_port": 8200,
             "appium_server_url": appium_server_url
         },
         {
             "device_id": "c2c56d1b0107",
-            "port": 4727,
+            "port": 6002,
             "system_port": 8204,
             "appium_server_url": appium_server_url
         }
     ]
-    if not devices_pool:
-        print("No devices available")
-        exit(1)
-    print(f"Available devices: {[dev['device_id'] for dev in devices_pool]}")
-    
-    # 初始化设备管理器
-    device_manager = DeviceManager(devices_pool)
-    
-    # 初始化任务分配器
-    task_distributor = TaskDistributor(device_manager)
-    
+    return devices_pool
 
-    print("开始收集笔记评论...")
+def get_devices_pool_from_remote(port=6001, system_port=8200, **context): 
+    """远程控制设备启动参数管理池。含启动参数和对应的端口号"""
+    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+    #获取远程主机连接的设备
+    devices_pool = get_adb_devices_from_remote(appium_server_url)
+    device_ids = [device["device_id"] for device in devices_pool]
+    #远程启动appium服务
+    start_remote_appium_servers(device_ids)
     
-    task_processor_manager = TaskProcessorManager()
-    task_processor_manager.register_processor('collect_comments', collect_comments_processor)
-    
-    # 获取笔记URL
-    note_urls = get_note_url(n)
-    
-     # 创建评论收集任务列表
-    comment_tasks = []
-    for i, url in enumerate(note_urls, 1):
-        task = {
-            "task_id": i,
-            "type": "collect_comments",
-            "note_url": url
+    # 构建设备池
+    devs_pool = []
+    for idx, device in enumerate(devices_pool):
+        dev_port = port + idx
+        dev_system_port = system_port + idx * 4
+        new_dict = {
+            "device_id": device["device_id"],
+            "port": dev_port,
+            "system_port": dev_system_port,
+            "appium_server_url": f"http://localhost:{dev_port}"  # 使用远程主机地址
         }
-        comment_tasks.append(task)
-        
-    print(f"\n准备处理 {len(comment_tasks)} 条笔记的评论...")
+        devs_pool.append(new_dict)
+        print(f"设备 {device['device_id']} 配置: {new_dict}")
+    return devs_pool
 
-    # 添加任务到分发器
-    # 添加评论收集任务到分发器
-    for task in comment_tasks:
-        task_distributor.add_task(task)
-    
-    # 运行任务
-    print("\n开始并发收集评论...")
-    results = task_distributor.run_tasks(task_processor=task_processor_manager.process_task)
-    
-    
-    # 打印评论收集结果
-    print("\n评论收集结果:")
-    success_count = 0
-    total_comments = 0
-    failed_urls = []  # Initialize the list here
-    
-    for result in results:
-        #打印调试
-        print(f"\n设备: {result['device']}")
-        print(f"状态: {result['status']}")
-        if result['status'] == 'success':
-            print(f"笔记URL: {result['note_url']}")
-            print(f"评论数量: {result['comments_count']}")
-            if result['comments']:
-                success_count += 1
-                total_comments += result['comments_count']
-                print("\n收集到的评论示例:")
-                # 只显示前3条评论作为示例
-                for comment in result['comments'][:3]:
-                    print(f"作者: {comment['author']}")
-                    print(f"内容: {comment['content']}")
-                    print(f"点赞: {comment['likes']}")
-                    print(f"时间: {comment['collect_time']}")
-                    print("-" * 50)
-            #保存评论到数据库
-            save_comments_to_db(result['comments'], result['note_url'])
-        else:
-            # 修改这里：从result中安全地获取note_url
-            failed_url = result.get('note_url', '未知URL')  # 使用get方法，提供默认值
-            print(f"错误: {result.get('error', '未知错误')}")
-            failed_urls.append(failed_url)
+def collect_comments_for_device(device_info, note_url, collected_comments=None, **context):
+    """为单个设备收集评论"""
+    try:
+        # 创建XHSOperator实例
+        xhs = XHSOperator(
+            appium_server_url=device_info['appium_server_url'],
+            force_app_launch=True,
+            device_id=device_info['device_id'],
+            system_port=device_info['system_port']
+        )
+        
+        try:
+            # 执行评论收集
+            result = collect_comments_processor(
+                {"note_url": note_url},
+                device_info,
+                xhs,
+                collected_comments
+            )
             
-    # 打印统计信息
-    print("\n任务统计:")
-    print(f"总任务数: {len(comment_tasks)}")
-    print(f"成功任务数: {success_count}")
-    print(f"失败任务数: {len(failed_urls)}")
-    print(f"总收集评论数: {total_comments}")
-    
-    if failed_urls:
-        print("\n失败的URL:")
-        for url in failed_urls:
-            print(f"- {url}")
+            if result['status'] == 'success' and result['comments']:
+                save_comments_to_db(result['comments'], result['note_url'])
+                return {
+                    "status": "success",
+                    "device_id": device_info['device_id'],
+                    "note_url": note_url,
+                    "comments_count": len(result['comments']),
+                    "collected_comments": result.get('collected_comments', set())
+                }
+            else:
+                return {
+                    "status": "error",
+                    "device_id": device_info['device_id'],
+                    "note_url": note_url,
+                    "error": "No comments collected",
+                    "collected_comments": collected_comments
+                }
+        finally:
+            xhs.close()
+    except Exception as e:
+        return {
+            "status": "error",
+            "device_id": device_info['device_id'],
+            "note_url": note_url,
+            "error": str(e),
+            "collected_comments": collected_comments
+        }
 
 # DAG 定义
 default_args = {
@@ -210,13 +205,46 @@ dag = DAG(
     schedule_interval=None,
     tags=['小红书'],
     catchup=False,
+    max_active_runs=1,
 )
 
-collect_comments_task = PythonOperator(
-    task_id='collect_xhs_comments',
-    python_callable=collect_xhs_comments,
+# 获取笔记URL的任务
+get_note_urls_task = PythonOperator(
+    task_id='get_note_urls',
+    python_callable=get_note_url,
     provide_context=True,
     dag=dag,
 )
 
-collect_comments_task
+# 启动远程Appium服务的任务
+start_appium_task = PythonOperator(
+    task_id='start_remote_appium_servers',
+    python_callable=get_devices_pool_from_remote,
+    provide_context=True,
+    dag=dag,
+)
+
+# 定义任务组
+@task_group(group_id="device_tasks", dag=dag)
+def create_device_tasks():
+    """动态创建设备任务组"""
+    devices_pool = get_devices_pool_from_remote()
+    
+    for device in devices_pool:
+        device_id = device['device_id']
+        
+        @task(task_id=f'collect_comments_device_{device_id}')
+        def collect_comments(device_info=device, **context):
+            return collect_comments_for_device(
+                device_info=device_info,
+                note_url=context['task_instance'].xcom_pull(task_ids='get_note_urls'),
+                collected_comments=context['task_instance'].xcom_pull(task_ids='get_note_urls', key='collected_comments') or set()
+            )
+        
+        collect_comments()
+
+# 创建设备任务组
+device_tasks = create_device_tasks()
+
+# 设置任务依赖关系
+get_note_urls_task >> start_appium_task >> device_tasks

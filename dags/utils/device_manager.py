@@ -10,7 +10,7 @@ import json
 from appium.webdriver.common.appiumby import AppiumBy
 import subprocess
 
-def start_appium_servers(devices, base_port=4723):
+def start_appium_servers(devices, base_port=6001):
     """
     启动与设备数量对应的Appium服务，每个设备一个端口。
     :param devices: 设备ID列表
@@ -19,7 +19,7 @@ def start_appium_servers(devices, base_port=4723):
     """
     ports = []
     for idx, device_id in enumerate(devices):
-        port = base_port + idx * 4
+        port = base_port + idx
         ports.append(port)
         # 检查端口是否已被占用（可选）
         # 启动Appium服务
@@ -35,10 +35,11 @@ def start_appium_servers(devices, base_port=4723):
         #print(env)
         subprocess.Popen(cmd, env=env, shell=True,stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(f"已为设备 {device_id} 启动 Appium 服务，端口 {port}")
-        time.sleep(2)  # 给Appium服务一点启动时间
+        time.sleep(1)  # 给Appium服务一点启动时间
     return ports
 
-def get_device_pool(port=4723, system_port=8200):
+
+def get_device_pool(port=6001, system_port=8200):
     """
     设备启动参数管理池。含启动参数和对应的端口号
     :param port: appium服务的端口号。每一个设备对应一个。
@@ -53,7 +54,7 @@ def get_device_pool(port=4723, system_port=8200):
     start_appium_servers(devices, base_port=port)
     devs_pool = []
     for idx, device_id in enumerate(devices):
-        dev_port = port + idx * 4
+        dev_port = port + idx
         dev_system_port = system_port + idx * 4
         new_dict = {
             "device_id": device_id,
@@ -441,8 +442,15 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
         "collected_urls": list(task_distributor.get_collected_urls())
     }
 
-def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, task_distributor: TaskDistributor) -> Dict:
-    """评论收集任务处理器"""
+def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, collected_comments: set = None) -> Dict:
+    """
+    评论收集任务处理器
+    :param task: 任务信息
+    :param device_info: 设备信息
+    :param xhs: XHSOperator实例
+    :param collected_comments: 已收集的评论集合，用于去重
+    :return: 处理结果
+    """
     print(f"正在设备 {device_info['device_id']} 上收集评论")
     max_retries = 3
     retry_count = 0
@@ -455,9 +463,13 @@ def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, 
             "device": device_info['device_id'],
             "status": "error",
             "error": "未提供笔记URL",
-            "note_url": note_url,  # 添加note_url到错误响应中
-            "keyword": keyword     # 添加keyword到错误响应中
+            "note_url": note_url,
+            "keyword": keyword
         }
+    
+    # 初始化已收集评论集合
+    if collected_comments is None:
+        collected_comments = set()
     
     while retry_count < max_retries:
         try:
@@ -479,16 +491,25 @@ def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, 
                     "comments": []
                 }
             
-            # 处理收集到的评论
-            print(f"设备 {device_info['device_id']} 从笔记 {note_url} 收集到 {len(comments)} 条评论")
+            # 评论去重
+            unique_comments = []
+            for comment in comments:
+                # 使用评论内容和作者作为唯一标识
+                comment_key = f"{comment.get('content', '')}_{comment.get('author', '')}"
+                if comment_key not in collected_comments:
+                    collected_comments.add(comment_key)
+                    unique_comments.append(comment)
+            
+            print(f"设备 {device_info['device_id']} 从笔记 {note_url} 收集到 {len(unique_comments)} 条新评论")
             
             return {
                 "device": device_info['device_id'],
                 "status": "success",
                 "note_url": note_url,
                 "keyword": keyword,
-                "comments_count": len(comments),
-                "comments": comments
+                "comments_count": len(unique_comments),
+                "comments": unique_comments,
+                "collected_comments": collected_comments  # 返回更新后的评论集合
             }
             
         except Exception as e:
@@ -503,11 +524,10 @@ def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, 
                     "device": device_info['device_id'],
                     "keyword": keyword,
                     "status": "error",
-                    "note_url": note_url,  # 添加note_url到错误响应中
+                    "note_url": note_url,
                     "error": str(e)
                 }
     
-    # 返回最终结果
     return {
         "device": device_info['device_id'],
         "status": "success",
