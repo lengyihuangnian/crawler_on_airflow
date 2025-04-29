@@ -133,7 +133,7 @@ def get_devices_pool_from_remote(port=6001, system_port=8200, **context):
         print(f"设备 {device['device_id']} 配置: {new_dict}")
     return devs_pool
 
-def collect_comments_for_device(device_info, note_url, collected_comments=None, **context):
+def collect_comments_for_device(device_info, note_urls, collected_comments=None, **context):
     """为单个设备收集评论"""
     try:
         # 创建XHSOperator实例
@@ -145,38 +145,28 @@ def collect_comments_for_device(device_info, note_url, collected_comments=None, 
         )
         
         try:
-            # 执行评论收集
-            result = collect_comments_processor(
-                {"note_url": note_url},
-                device_info,
-                xhs,
-                collected_comments
-            )
+            all_results = []
+            for note_url in note_urls:
+                # 执行评论收集
+                result = collect_comments_processor(
+                    {"note_url": note_url},
+                    device_info,
+                    xhs,
+                    collected_comments
+                )
+                all_results.append(result)
             
-            if result['status'] == 'success' and result['comments']:
-                save_comments_to_db(result['comments'], result['note_url'])
-                return {
-                    "status": "success",
-                    "device_id": device_info['device_id'],
-                    "note_url": note_url,
-                    "comments_count": len(result['comments']),
-                    "collected_comments": result.get('collected_comments', set())
-                }
-            else:
-                return {
-                    "status": "error",
-                    "device_id": device_info['device_id'],
-                    "note_url": note_url,
-                    "error": "No comments collected",
-                    "collected_comments": collected_comments
-                }
+            return {
+                "status": "success",
+                "device_id": device_info['device_id'],
+                "results": all_results
+            }
         finally:
             xhs.close()
     except Exception as e:
         return {
             "status": "error",
             "device_id": device_info['device_id'],
-            "note_url": note_url,
             "error": str(e),
             "collected_comments": collected_comments
         }
@@ -219,7 +209,7 @@ def create_device_tasks():
         def collect_comments(device_info=device, **context):
             return collect_comments_for_device(
                 device_info=device_info,
-                note_url=context['task_instance'].xcom_pull(task_ids='get_note_urls'),
+                note_urls=context['task_instance'].xcom_pull(task_ids='get_note_urls'),
                 collected_comments=context['task_instance'].xcom_pull(task_ids='get_note_urls', key='collected_comments') or set()
             )
         
