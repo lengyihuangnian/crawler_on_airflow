@@ -149,8 +149,8 @@ services:
       - ./dags:/opt/bitnami/airflow/dags
       - ./logs:/opt/bitnami/airflow/logs
       - ./requirements.txt:/bitnami/python/requirements.txt
-    # # 设置为 root 用户, 用于安装相关系统依赖
-    # user: root
+    # 设置为 root 用户, 用于安装相关系统依赖
+    user: root
     # command: >
     #   bash -c "
     #     sed -i 's/deb.debian.org/mirrors.cloud.tencent.com/g' /etc/apt/sources.list &&
