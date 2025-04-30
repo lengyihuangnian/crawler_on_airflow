@@ -97,13 +97,13 @@ def collect_xhs_notes(**context) -> None:
                 else 2)
     
     # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+    appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
     
     print(f"开始收集关键词 '{keyword}' 的小红书笔记...")
     
     try:
         # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='97266a1f0107')
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
         
         # 收集笔记
         notes = xhs.collect_notes_by_keyword(
