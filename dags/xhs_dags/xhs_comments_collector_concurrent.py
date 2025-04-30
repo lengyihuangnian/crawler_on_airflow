@@ -127,15 +127,16 @@ def get_devices_pool_from_remote(port=6001, system_port=8200, **context):
             "device_id": device["device_id"],
             "port": dev_port,
             "system_port": dev_system_port,
-            "appium_server_url": appium_server_url  # 使用已配置的Appium服务
+            "appium_server_url": f"http://localhost:{dev_port}"  # 使用已配置的Appium服务
         }
         devs_pool.append(new_dict)
         print(f"设备 {device['device_id']} 配置: {new_dict}")
     return devs_pool
 
-def collect_comments_for_device(device_info, note_urls, **context):
+def collect_comments_for_device(device_info, note_urls, collected_comments=None, **context):
     """为单个设备收集评论"""
     try:
+        # 创建XHSOperator实例
         xhs = XHSOperator(
             appium_server_url=device_info['appium_server_url'],
             force_app_launch=True,
@@ -143,27 +144,31 @@ def collect_comments_for_device(device_info, note_urls, **context):
             system_port=device_info['system_port']
         )
         
-        all_results = []
-        for note_url in note_urls:
-            result = collect_comments_processor(
-                {"note_url": note_url},
-                device_info,
-                xhs,
-                collected_comments=set()  # 每个设备独立存储，不依赖 XCom
-            )
-            all_results.append(result)
-        
-        xhs.close()
-        return {
-            "status": "success",
-            "device_id": device_info['device_id'],
-            "results": all_results
-        }
+        try:
+            all_results = []
+            for note_url in note_urls:
+                # 执行评论收集
+                result = collect_comments_processor(
+                    {"note_url": note_url},
+                    device_info,
+                    xhs,
+                    collected_comments
+                )
+                all_results.append(result)
+            
+            return {
+                "status": "success",
+                "device_id": device_info['device_id'],
+                "results": all_results
+            }
+        finally:
+            xhs.close()
     except Exception as e:
         return {
             "status": "error",
             "device_id": device_info['device_id'],
-            "error": str(e)
+            "error": str(e),
+            "collected_comments": collected_comments
         }
 
 # DAG 定义
@@ -181,8 +186,8 @@ dag = DAG(
     tags=['小红书'],
     catchup=False,
     max_active_runs=1,
-    concurrency=2,  # 允许同时运行的任务数
-    max_active_tasks=2,  # 防止任务堆积
+    concurrency=2,
+    max_active_tasks=2,
 )
 
 # 获取笔记URL的任务
