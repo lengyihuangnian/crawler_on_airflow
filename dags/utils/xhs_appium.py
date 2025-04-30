@@ -845,7 +845,7 @@ class XHSOperator:
             screen_size = self.driver.get_window_size()
             start_x = screen_size['width'] * 0.5
             start_y = screen_size['height'] * 0.8
-            end_y = screen_size['height'] * 0.2
+            end_y = screen_size['height'] * 0.3
             
             self.driver.swipe(start_x, start_y, start_x, end_y, 1000)
             time.sleep(1)  # 等待内容加载
@@ -1646,10 +1646,10 @@ if __name__ == "__main__":
         #     print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
-        note_url = "http://xhslink.com/a/w1yibx5dzJcbb"
-        author = "湖北泽特医疗器械"  # 替换为实际的评论者ID
-        comment_content = "[偷笑R]我这都🈶 一盒也是批发价认准小🍠蓝v认证正规医疗器械"  # 替换为实际的评论内容
-        reply_content = "有兴趣的私我"  # 替换为要回复的内容
+        note_url = "http://xhslink.com/a/Hr4QFxdhrNrbb"
+        author = "小红薯65C0511B"  # 替换为实际的评论者ID
+        comment_content = "靠，首付6万，两年零息，这也太爽了吧，说的我也想换了"  # 替换为实际的评论内容
+        reply_content = "有兴趣的私哦"  # 替换为要回复的内容
         
         print("\n开始测试评论回复功能...")
         success = xhs.comments_reply(
