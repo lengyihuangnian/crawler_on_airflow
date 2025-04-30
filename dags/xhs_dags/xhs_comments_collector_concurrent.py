@@ -106,7 +106,7 @@ def get_adb_devices_from_remote(remote_host, **context):
     # test-使用预定义的设备信息
     devices = [
         {"device_id": "97266a1f0107", "port": 6001},
-        {"device_id": "975b1ebf0107", "port": 6002}
+        {"device_id": "c2c56d1b0107", "port": 6002}
     ]
     print(f"Using devices: {[d['device_id'] for d in devices]}")
     return devices
