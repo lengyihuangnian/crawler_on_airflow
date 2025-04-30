@@ -98,7 +98,7 @@ def collect_xhs_comments(**context):
         **context: Airflow上下文参数字典
     """
     # 从DAG运行配置中获取参数，如果没有则使用默认值
-    max_comments = (context['dag_run'].conf.get('max_comments', 10) 
+    max_comments = int(context['dag_run'].conf.get('max_comments', 10) 
         if context['dag_run'].conf 
         else 1)
     
