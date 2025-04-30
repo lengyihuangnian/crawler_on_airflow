@@ -610,7 +610,7 @@ if __name__ == "__main__":
 
     #测试并发收集评论
     # 初始化任务处理器管理器
-"""  task_processor_manager = TaskProcessorManager()
+    task_processor_manager = TaskProcessorManager()
     task_processor_manager.register_processor('collect_comments', collect_comments_processor)
     
     # 模拟从数据库获取5条笔记URL
@@ -683,5 +683,5 @@ if __name__ == "__main__":
         print("\n失败的URL:")
         for url in failed_urls:
             print(f"- {url}")
- """
+
     

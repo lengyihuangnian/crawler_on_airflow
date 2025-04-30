@@ -127,7 +127,7 @@ def get_devices_pool_from_remote(port=6001, system_port=8200, **context):
             "device_id": device["device_id"],
             "port": dev_port,
             "system_port": dev_system_port,
-            "appium_server_url": appium_server_url  # 使用已配置的Appium服务
+            "appium_server_url": f"http://localhost:{dev_port}"  # 使用已配置的Appium服务
         }
         devs_pool.append(new_dict)
         print(f"设备 {device['device_id']} 配置: {new_dict}")
@@ -186,6 +186,8 @@ dag = DAG(
     tags=['小红书'],
     catchup=False,
     max_active_runs=1,
+    concurrency=2,
+    max_active_tasks=2,
 )
 
 # 获取笔记URL的任务
