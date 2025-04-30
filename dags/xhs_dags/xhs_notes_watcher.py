@@ -92,7 +92,7 @@ def collect_xhs_notes(**context) -> None:
               else '广州探店')
     
     # 获取最大收集笔记数，默认为5
-    max_notes = (context['dag_run'].conf.get('max_notes', 2)
+    max_notes = int(context['dag_run'].conf.get('max_notes', 2)
                 if context['dag_run'].conf
                 else 2)
     
