@@ -151,14 +151,14 @@ def collect_xhs_notes(**context) -> None:
      # 获取设备池-test
     devices_pool = [
         {
-            "device_id": "01176bc40007",
-            "port": 4723,
+            "device_id": "97266a1f0107",
+            "port": 6001,
             "system_port": 8200,
             "appium_server_url": appium_server_url
         },
         {
             "device_id": "c2c56d1b0107",
-            "port": 4727,
+            "port": 6002,
             "system_port": 8204,
             "appium_server_url": appium_server_url
         }
