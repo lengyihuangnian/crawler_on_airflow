@@ -97,8 +97,9 @@ def get_remote_devices():
             })
 
         except Exception as e:
-            print(f"An error occurred: {e}")
-            return None
+            print(f"An error occurred with host {device_ip}: {e}")
+            # 继续检查下一个主机，而不是直接返回
+            continue
         finally:
             # 确保无论如何都会关闭SSH连接
             if ssh_client:
@@ -109,6 +110,8 @@ def get_remote_devices():
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     Variable.set("XHS_DEVICE_INFO_LIST", device_info_list, serialize_json=True, description=f"更新时间: {timestamp}")
     print(f"device_info_list:\n{json.dumps(device_info_list, ensure_ascii=False, indent=2)}")
+    
+    return device_info_list  # 返回所有成功检查的主机信息
 
 # DAG 定义
 dag = DAG(
