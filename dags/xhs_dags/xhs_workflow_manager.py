@@ -22,7 +22,7 @@ dag = DAG(
     dag_id='xhs_workflow_manager',
     default_args=default_args,
     description='管理小红书笔记采集和评论收集工作流',
-    schedule_interval='0 10 * * *',  # 每天上午10点执行
+    # schedule_interval='0 10 * * *',  # 每天上午10点执行
     catchup=False,
     tags=['小红书', 'workflow'],
 )
@@ -30,7 +30,7 @@ dag = DAG(
 # 定义传递给各个DAG的参数
 workflow_params = {
     'keyword': '{{ dag_run.conf.get("keyword", "广州探店") }}',
-    'max_notes': '{{ dag_run.conf.get("max_notes", 3) }}',
+    'max_notes': '{{ dag_run.conf.get("max_notes", 1) }}',
     'max_comments': '{{ dag_run.conf.get("max_comments", 5) }}',
 }
 
