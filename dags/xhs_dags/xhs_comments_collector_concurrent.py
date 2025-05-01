@@ -120,9 +120,9 @@ def get_devices_pool_from_remote(port=6001, system_port=8200, **context):
     
     # 构建设备池，使用已配置的Appium服务端口
     devs_pool = []
-    for device in devices_pool:
+    for idx, device in enumerate(devices_pool):
         dev_port = device["port"]  # 使用设备预定义的端口
-        dev_system_port = system_port + (dev_port - 6001) * 4  # 根据端口计算系统端口
+        dev_system_port = system_port + idx * 4  # 为每个设备分配唯一的系统端口
         new_dict = {
             "device_id": device["device_id"],
             "port": dev_port,
@@ -204,16 +204,43 @@ def create_device_tasks():
     """动态创建设备任务组"""
     devices_pool = get_devices_pool_from_remote()
     
+    # 初始化已收集评论集合
+    collected_comments = set()
+    
     for device in devices_pool:
         device_id = device['device_id']
         
         @task(task_id=f'collect_comments_device_{device_id}')
         def collect_comments(device_info=device, **context):
-            return collect_comments_for_device(
+            # 获取所有笔记URL
+            all_note_urls = context['task_instance'].xcom_pull(task_ids='get_note_urls')
+            
+            # 根据设备ID分配URL，确保每个URL只被分配给一个设备
+            device_index = next(i for i, dev in enumerate(devices_pool) if dev['device_id'] == device_info['device_id'])
+            assigned_urls = [url for i, url in enumerate(all_note_urls) if i % len(devices_pool) == device_index]
+            
+            print(f"设备 {device_info['device_id']} 分配到的URL数量: {len(assigned_urls)}")
+            
+            # 获取之前所有设备收集的评论
+            previous_comments = context['task_instance'].xcom_pull(task_ids=None, key='collected_comments') or set()
+            # 合并到当前设备的已收集评论集合
+            current_collected_comments = set(previous_comments)
+            
+            # 收集评论
+            result = collect_comments_for_device(
                 device_info=device_info,
-                note_urls=context['task_instance'].xcom_pull(task_ids='get_note_urls'),
-                collected_comments=context['task_instance'].xcom_pull(task_ids='get_note_urls', key='collected_comments') or set()
+                note_urls=assigned_urls,
+                collected_comments=current_collected_comments
             )
+            
+            # 将新收集的评论添加到集合中
+            if result and 'comments' in result:
+                current_collected_comments.update(comment['comment_id'] for comment in result['comments'])
+            
+            # 将更新后的评论集合推送到XCom
+            context['task_instance'].xcom_push(key='collected_comments', value=list(current_collected_comments))
+            
+            return result
         
         collect_comments()
 
