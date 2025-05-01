@@ -8,7 +8,9 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
+from airflow.decorators import task, task_group
 
+from utils.xhs_appium import XHSOperator
 from utils.device_manager import DeviceManager, TaskDistributor, TaskProcessorManager, collect_notes_processor
 
 
@@ -77,166 +79,82 @@ def save_notes_to_db(notes: list) -> None:
         cursor.close()
         db_conn.close()
 
+def get_adb_devices_from_remote(remote_host, **context):
+    """调用dag，从远程主机获取设备池"""
+    # test-使用预定义的设备信息
+    devices = [
+        {"device_id": "97266a1f0107", "port": 6001},
+        {"device_id": "c2c56d1b0107", "port": 6002}
+    ]
+    print(f"Using devices: {[d['device_id'] for d in devices]}")
+    return devices
 
-# def collect_xhs_notes(**context) -> None:
-#     """
-#     收集小红书笔记    
-#     Args:
-#         **context: Airflow上下文参数字典
+def get_devices_pool_from_remote(port=6001, system_port=8200, **context): 
+    """远程控制设备启动参数管理池。含启动参数和对应的端口号"""
+    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost")
+    remote_host = Variable.get("REMOTE_TEST_HOST", "localhost")
+    #获取远程主机连接的设备
+    devices_pool = get_adb_devices_from_remote(remote_host)
     
-#     Returns:
-#         None
-#     """
-#     # 获取关键词，默认为"AI客服"
-#     keyword = (context['dag_run'].conf.get('keyword', '广州探店') 
-#               if context['dag_run'].conf 
-#               else '广州探店')
-    
-#     # 获取最大收集笔记数，默认为5
-#     max_notes = (context['dag_run'].conf.get('max_notes', 2)
-#                 if context['dag_run'].conf
-#                 else 2)
-    
-#     # 获取Appium服务器URL
-#     appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
-    
-#     print(f"开始收集关键词 '{keyword}' 的小红书笔记...")
-    
-#     try:
-#         # 初始化小红书操作器
-#         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True)
-        
-#         # 收集笔记
-#         notes = xhs.collect_notes_by_keyword(
-#             keyword=keyword,
-#             max_notes=max_notes,
-#             filters={
-#                 "note_type": "图文"
-#             }
-#         )
-        
-#         if not notes:
-#             print(f"未找到关于 '{keyword}' 的笔记")
-#             return
-            
-#         # 打印收集结果
-#         print("\n收集完成!")
-#         print(f"共收集到 {len(notes)} 条笔记:")
-#         for note in notes:
-#             print(note)
+    # 构建设备池，使用已配置的Appium服务端口
+    devs_pool = []
+    for idx, device in enumerate(devices_pool):
+        dev_port = device["port"]  # 使用设备预定义的端口
+        dev_system_port = system_port + idx * 4  # 为每个设备分配唯一的系统端口
+        new_dict = {
+            "device_id": device["device_id"],
+            "port": dev_port,
+            "system_port": dev_system_port,
+            "appium_server_url": f"{appium_server_url}:{dev_port - 1278}" 
+        }
+        devs_pool.append(new_dict)
+        print(f"设备 {device['device_id']} 配置: {new_dict}")
+    return devs_pool
 
-#         # 保存笔记到数据库
-#         save_notes_to_db(notes)
-            
-#     except Exception as e:
-#         error_msg = f"收集小红书笔记失败: {str(e)}"
-#         print(error_msg)
-#         raise
-#     finally:
-#         # 确保关闭小红书操作器
-#         if 'xhs' in locals():
-#             xhs.close()
-
-def collect_xhs_notes(**context) -> None:
+def collect_xhs_notes_for_device(device_info, task, **context) -> None:
     """
-    收集小红书笔记    
+    为单个设备收集小红书笔记    
     Args:
         **context: Airflow上下文参数字典
     
     Returns:
         None
     """
-    # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
-     # 获取设备池-test
-    devices_pool = [
-        {
-            "device_id": "97266a1f0107",
-            "port": 6001,
-            "system_port": 8200,
-            "appium_server_url":  f"{appium_server_url}:4723"
-        },
-        {
-            "device_id": "c2c56d1b0107",
-            "port": 6002,
-            "system_port": 8204,
-            "appium_server_url":  f"{appium_server_url}:4724"
-        }
-    ]
-    if not devices_pool:
-        print("No devices available")
-        exit(1)
-    print(f"Available devices: {[dev['device_id'] for dev in devices_pool]}")
+    try:
+        # 创建XHSOperator实例
+        xhs = XHSOperator(
+            appium_server_url=device_info['appium_server_url'],
+            force_app_launch=True,
+            device_id=device_info['device_id'],
+            system_port=device_info['system_port']
+        )
+        
+        try:
+            all_results = []
+            # 执行笔记收集
+            result = collect_notes_processor(
+                {"task": task},
+                device_info,
+                xhs   
+            )
+            all_results.append(result)
+                
+            return {
+                "status": "success",
+                "device_id": device_info['device_id'],
+                "results": all_results
+            }
+        finally:
+            xhs.close()
     
-    # 初始化设备管理器
-    device_manager = DeviceManager(devices_pool)
-    
-    # 初始化任务分配器
-    task_distributor = TaskDistributor(device_manager)
-    
-    # 初始化任务处理器管理器
-    task_processor_manager = TaskProcessorManager()
-    task_processor_manager.register_processor('collect_notes', collect_notes_processor)
-    
-    # 获取关键词，默认为"AI客服"
-    keyword = (context['dag_run'].conf.get('keyword', '黑糖波波') 
-              if context['dag_run'].conf 
-              else '黑糖波波')
-    
-    # 获取最大收集笔记数，默认为3
-    max_notes = (context['dag_run'].conf.get('max_notes', 3)
-                if context['dag_run'].conf
-                else 3)
-    
-    
-    print(f"开始收集关键词 '{keyword}' 的小红书笔记...")
+    except Exception as e:
+        return {
+            "status": "error",
+            "device_id": device_info['device_id'],
+            "error": str(e),            
+        }   
 
-    # 创建收集笔记任务
-    task = {
-        "task_id": 1,
-        "type": "collect_notes",
-        "keyword": keyword,
-        "notes_per_device": max_notes,
-        "target_url_count": max_notes
-    }
-    
-    # 添加任务到分发器
-    task_distributor.add_task(task)
-    
-    # 运行任务
-    print("\n开始收集笔记...")
-    results = task_distributor.run_tasks(task_processor=task_processor_manager.process_task)
-    
-    # 打印结果
-    print("\n收集结果:")
-    for result in results:
-        print(f"\n设备: {result['device']}")
-        print(f"状态: {result['status']}")
-        if result['status'] == 'success':
-            print(f"收集到的笔记数量: {result['notes_count']}")
-            if 'notes' in result:
-                print("\n收集到的笔记:")
-                for note in result['notes']:
-                    print(f"- 标题: {note.get('title', 'N/A')}")
-                    print(f"  作者: {note.get('author', 'N/A')}")
-                    print(f"  内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
-                    print(f"  URL: {note.get('note_url', 'N/A')}")
-                    print(f"  点赞: {note.get('likes', 'N/A')}")
-                    print(f"  收藏: {note.get('collects', 'N/A')}")
-                    print(f"  评论: {note.get('comments', 'N/A')}")
-                    print(f"  收集时间: {note.get('collect_time', 'N/A')}")
-                    print("  " + "-" * 50)
-        else:
-            print(f"错误: {result['error']}")
-    
-    # 打印所有收集到的URL
-    print("\n所有收集到的URL:")
-    for url in task_distributor.get_collected_urls():
-        print(f"- {url}")
-
-    # 保存笔记到数据库
-    save_notes_to_db(results)
-
+   
 
 # DAG 定义
 default_args = {
@@ -248,17 +166,69 @@ default_args = {
 dag = DAG(
     dag_id='xhs_notes_collector_concurrent',
     default_args=default_args,
-    description='定时收集小红书笔记',
+    description='定时并发收集小红书笔记',
     schedule_interval=None,
     tags=['小红书'],
     catchup=False,
+    max_active_runs=1,
+    concurrency=2,
+    max_active_tasks=2,
 )
 
-collect_notes_task = PythonOperator(
-    task_id='collect_xhs_notes',
-    python_callable=collect_xhs_notes,
-    provide_context=True,
-    dag=dag,
-)
 
-collect_notes_task
+@task_group(group_id="device_tasks", dag=dag)
+def create_device_tasks():
+    """动态创建设备任务组"""
+    devices_pool = get_devices_pool_from_remote()
+    
+    # 初始化已收集笔记URL集合
+    collected_notes_urls = set()
+    
+    for device in devices_pool:
+        device_id = device['device_id']
+        
+        @task(task_id=f'collect_notes_device_{device_id}')
+        def collect_notes(device_info=device, **context):
+            # 获取关键词和最大笔记数
+            keyword = (context['dag_run'].conf.get('keyword', '黑糖波波') 
+                      if context['dag_run'].conf 
+                      else '黑糖波波')
+            
+            max_notes = (context['dag_run'].conf.get('max_notes', 3)
+                        if context['dag_run'].conf
+                        else 3)
+            
+            # 获取设备索引
+            device_index = next(i for i, dev in enumerate(devices_pool) if dev['device_id'] == device_info['device_id'])
+            
+            # 获取之前所有设备收集的笔记URL
+            previous_notes_urls = context['task_instance'].xcom_pull(task_ids=None, key='collected_notes_urls') or set()
+            current_collected_notes_urls = set(previous_notes_urls)
+            
+            # 创建任务对象
+            task = {
+                "task_id": 1,
+                "type": "collect_notes",
+                "keyword": keyword,
+                "notes_per_device": max_notes,
+                "target_url_count": max_notes,
+                "device_idx": device_index
+            }
+            
+            result = collect_xhs_notes_for_device(
+                device_info=device_info,
+                task=task,
+                collected_notes_urls=current_collected_notes_urls
+            )
+            
+            if result and 'notes_url' in result:
+                current_collected_notes_urls.update(result['notes_url'])
+            
+            context['task_instance'].xcom_push(key='collected_notes_urls', value=list(current_collected_notes_urls))
+            
+            return result
+        
+        collect_notes()
+
+# 创建设备任务组
+device_tasks = create_device_tasks()
