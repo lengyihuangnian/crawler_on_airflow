@@ -335,7 +335,7 @@ class TaskProcessorManager:
         return processor(task, device_info, xhs, task_distributor)
 
 # 定义任务处理器
-def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, task_distributor: TaskDistributor) -> Dict:
+def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, collected_urls: set = None) -> Dict:
     """收集笔记任务处理器"""
     print(f"正在设备 {device_info['device_id']}上收集笔记")
     max_retries = 3
@@ -346,10 +346,14 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
     target_url_count = task.get('target_url_count', 20)
     device_idx = task.get('device_idx', 0)
     
+    # 初始化已收集URL集合
+    if collected_urls is None:
+        collected_urls = set()
+    
     while retry_count < max_retries:
         try:
             # 检查是否已达到目标URL数量
-            if task_distributor.get_collected_urls_count() >= target_url_count:
+            if len(collected_urls) >= target_url_count:
                 print(f"已达到目标URL数量 {target_url_count}，停止收集")
                 break
             
@@ -392,7 +396,7 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
                 return {
                     "device": device_info['device_id'],
                     "status": "success",
-                    "keyword": keyword,
+                    "keyword": task['keyword'],
                     "notes_count": 0,
                     "output_file": None
                 }
@@ -401,8 +405,9 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
             valid_notes = []
             for note in notes:
                 if note.get('note_url'):
-                    # 尝试添加URL，如果成功（不重复）则保留笔记
-                    if task_distributor.add_url(note['note_url']):
+                    # 检查URL是否已存在
+                    if note['note_url'] not in collected_urls:
+                        collected_urls.add(note['note_url'])
                         valid_notes.append(note)
                         print(f"设备 {device_info['device_id']} 收集到新笔记: {note['note_url']}")
                     else:
@@ -416,7 +421,7 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
                 "status": "success",
                 "notes_count": len(valid_notes),
                 "notes": valid_notes,
-                "collected_urls": list(task_distributor.get_collected_urls())
+                "collected_urls": list(collected_urls)
             }
         except Exception as e:
             retry_count += 1
@@ -429,7 +434,7 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
             else:
                 return {
                     "device": device_info['device_id'],
-                    "keyword": keyword,
+                    "keyword": task['keyword'],
                     "status": "error",
                     "error": str(e)
                 }
@@ -438,8 +443,8 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, tas
     return {
         "device": device_info['device_id'],
         "status": "success",
-        "notes_count": task_distributor.get_collected_urls_count(),
-        "collected_urls": list(task_distributor.get_collected_urls())
+        "notes_count": len(collected_urls),
+        "collected_urls": list(collected_urls)
     }
 
 def collect_comments_processor(task: Dict, device_info: Dict, xhs: XHSOperator, collected_comments: set = None) -> Dict:
