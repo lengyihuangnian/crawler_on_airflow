@@ -174,7 +174,7 @@ get_data = PythonOperator(
 trigger_comments_collection = TriggerDagRunOperator(
     task_id='trigger_comments_collection',
     trigger_dag_id='xhs_comments_collector',
-    conf=lambda context: context['ti'].xcom_pull(task_ids='get_notes_urls_and_keyword'),
+    conf=lambda context, **kwargs: context['ti'].xcom_pull(task_ids='get_notes_urls_and_keyword'),
     wait_for_completion=True,
     dag=dag,
 )
