@@ -76,6 +76,19 @@ if [ "$CONNECTED" = true ]; then
     # 测试互联网连接
     if ping -c 1 8.8.8.8 &>/dev/null; then
         echo "互联网连接正常"
+        
+        # 使用PWR LED闪烁表示网络连接成功
+        echo "闪烁LED指示网络连接成功..."
+        sudo sh -c "echo none > /sys/class/leds/PWR/trigger"
+        for i in {1..10}; do
+            sudo sh -c "echo 1 > /sys/class/leds/PWR/brightness"
+            sleep 0.3
+            sudo sh -c "echo 0 > /sys/class/leds/PWR/brightness"
+            sleep 0.3
+        done
+        # 恢复LED默认行为
+        sudo sh -c "echo mmc0 > /sys/class/leds/ACT/trigger"
+        echo "LED指示完成"
     else
         echo "警告: 已连接到WiFi但无法访问互联网"
     fi
