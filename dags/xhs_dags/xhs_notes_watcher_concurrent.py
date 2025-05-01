@@ -10,7 +10,7 @@ from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
 from airflow.decorators import task, task_group
 
-from dags.utils.xhs_appium import XHSOperator
+from utils.xhs_appium import XHSOperator
 from utils.device_manager import DeviceManager, TaskDistributor, TaskProcessorManager, collect_notes_processor
 
 
