@@ -32,10 +32,15 @@ def wait_for_dag_completion(**context):
     
     while (time.time() - start_time) < max_wait_time:
         # 获取最近的DAG运行
+        # 使用execution_date_gte参数限制查询范围，获取最近一段时间内的DAG运行
+        recent_time = datetime.now() - timedelta(hours=1)  # 获取最近1小时的运行
         recent_dag_runs = DagRun.find(dag_id="xhs_notes_collector", 
                                     state=None,  # 获取所有状态
-                                    order_by=DagRun.execution_date.desc(),
-                                    limit=5)  # 获取最近的几个运行
+                                    execution_date_gte=recent_time,
+                                    limit=10)  # 获取最近的几个运行
+        
+        # 按执行时间降序排序
+        recent_dag_runs = sorted(recent_dag_runs, key=lambda x: x.execution_date, reverse=True)[:5]
         
         print(f"最近的DAG运行: {[run.run_id for run in recent_dag_runs]}")
         
