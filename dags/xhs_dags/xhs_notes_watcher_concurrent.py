@@ -232,3 +232,5 @@ def create_device_tasks():
 
 # 创建设备任务组
 device_tasks = create_device_tasks()
+
+device_tasks
