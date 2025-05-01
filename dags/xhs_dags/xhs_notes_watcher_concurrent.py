@@ -133,7 +133,7 @@ def collect_xhs_notes_for_device(device_info, task, **context) -> None:
             all_results = []
             # 执行笔记收集
             result = collect_notes_processor(
-                {"task": task},
+                task,  # 直接传递 task 对象
                 device_info,
                 xhs   
             )
@@ -152,7 +152,7 @@ def collect_xhs_notes_for_device(device_info, task, **context) -> None:
             "status": "error",
             "device_id": device_info['device_id'],
             "error": str(e),            
-        }   
+        }
 
    
 

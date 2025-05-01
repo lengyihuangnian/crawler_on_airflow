@@ -340,7 +340,6 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, col
     print(f"正在设备 {device_info['device_id']}上收集笔记")
     max_retries = 3
     retry_count = 0
-    wait_time = 10  # 增加初始等待时间
     
     # 获取目标URL数量
     target_url_count = task.get('target_url_count', 20)
@@ -358,10 +357,6 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, col
                 break
             
             try:
-                # 先等待页面加载
-                print(f"等待 {wait_time} 秒确保页面加载完成...")
-                time.sleep(wait_time)
-                
                 # 使用XHSOperator的collect_notes_by_keyword方法收集笔记
                 notes = xhs.collect_notes_by_keyword(
                     keyword=task['keyword'],
@@ -372,20 +367,20 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, col
                 )
             except Exception as e:
                 print(f"设备 {device_info['device_id']} 收集笔记时出错: {str(e)}")
-                # 如果是元素未找到错误，等待更长时间后重试
+                # 如果是元素未找到错误，等待后重试
                 if "NoSuchElement" in str(e):
-                    wait_time *= 2  # 每次重试等待时间翻倍
-                    print(f"元素未找到，等待 {wait_time} 秒后重试...")
-                    time.sleep(wait_time)
+                    print(f"元素未找到，等待 1 秒后重试...")
+                    time.sleep(1)
                     retry_count += 1
                     continue
                 # 如果是其他错误，尝试重新启动应用
                 print("尝试重新启动应用...")
                 try:
-                    xhs.driver.reset()
-                    time.sleep(5)  # 等待应用重启
-                    xhs.driver.launch_app()  # 重新启动应用
-                    time.sleep(10)  # 等待应用完全启动
+                    # 使用正确的方法重启应用
+                    xhs.driver.terminate_app(xhs.driver.current_package)
+                    time.sleep(1)  # 等待应用终止
+                    xhs.driver.activate_app(xhs.driver.current_package)
+                    time.sleep(1)  # 等待应用启动
                 except Exception as reset_error:
                     print(f"重启应用失败: {str(reset_error)}")
                 retry_count += 1
@@ -413,9 +408,6 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, col
                     else:
                         print(f"设备 {device_info['device_id']} 跳过重复笔记: {note['note_url']}")
             
-            # 如果成功收集到笔记，重置等待时间
-            wait_time = 10
-            
             return {
                 "device": device_info['device_id'],
                 "status": "success",
@@ -427,9 +419,8 @@ def collect_notes_processor(task: Dict, device_info: Dict, xhs: XHSOperator, col
             retry_count += 1
             print(f"设备 {device_info['device_id']} 第 {retry_count} 次尝试失败: {str(e)}")
             if retry_count < max_retries:
-                print(f"等待 {wait_time} 秒后重试...")
-                time.sleep(wait_time)
-                wait_time *= 2  # 每次重试等待时间翻倍
+                print(f"等待 1 秒后重试...")
+                time.sleep(1)
                 continue
             else:
                 return {
