@@ -60,8 +60,8 @@ trigger_notes_collection = TriggerDagRunOperator(
     task_id='trigger_notes_collection',
     trigger_dag_id='xhs_notes_collector',
     conf={
-        'keyword': '{{ dag_run.conf["keyword"] if dag_run.conf and "keyword" in dag_run.conf else "广州探店" }}',
-        'max_notes': '{{ dag_run.conf["max_notes"] if dag_run.conf and "max_notes" in dag_run.conf else 5 }}'
+        'keyword': '{{ dag_run.conf["keyword"] if dag_run.conf and "keyword" in dag_run.conf else "猫咖" }}',
+        'max_notes': '{{ dag_run.conf["max_notes"] if dag_run.conf and "max_notes" in dag_run.conf else 1 }}'
     },
     wait_for_completion=True,
     dag=dag,
