@@ -120,9 +120,9 @@ def get_devices_pool_from_remote(port=6001, system_port=8200, **context):
     
     # 构建设备池，使用已配置的Appium服务端口
     devs_pool = []
-    for device in devices_pool:
+    for idx, device in enumerate(devices_pool):
         dev_port = device["port"]  # 使用设备预定义的端口
-        dev_system_port = system_port + (dev_port - 6001) * 4  # 根据端口计算系统端口
+        dev_system_port = system_port + idx * 4  # 为每个设备分配唯一的系统端口
         new_dict = {
             "device_id": device["device_id"],
             "port": dev_port,
