@@ -212,6 +212,15 @@ def create_device_tasks():
         
         @task(task_id=f'collect_comments_device_{device_id}')
         def collect_comments(device_info=device, **context):
+            # 获取所有笔记URL
+            all_note_urls = context['task_instance'].xcom_pull(task_ids='get_note_urls')
+            
+            # 根据设备ID分配URL，确保每个URL只被分配给一个设备
+            device_index = next(i for i, dev in enumerate(devices_pool) if dev['device_id'] == device_info['device_id'])
+            assigned_urls = [url for i, url in enumerate(all_note_urls) if i % len(devices_pool) == device_index]
+            
+            print(f"设备 {device_info['device_id']} 分配到的URL数量: {len(assigned_urls)}")
+            
             # 获取之前所有设备收集的评论
             previous_comments = context['task_instance'].xcom_pull(task_ids=None, key='collected_comments') or set()
             # 合并到当前设备的已收集评论集合
@@ -220,7 +229,7 @@ def create_device_tasks():
             # 收集评论
             result = collect_comments_for_device(
                 device_info=device_info,
-                note_urls=context['task_instance'].xcom_pull(task_ids='get_note_urls'),
+                note_urls=assigned_urls,
                 collected_comments=current_collected_comments
             )
             
