@@ -8,6 +8,8 @@ from airflow import DAG
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.operators.python import PythonOperator
 from airflow.models.dagrun import DagRun
+from airflow.models import XCom
+from airflow import settings
 from airflow.utils.dates import days_ago
 
 
@@ -59,46 +61,39 @@ def trigger_and_wait_for_notes_collection(**context):
         print(f"[HANDLE] 等待DAG运行完成，当前状态: {dag_run_status}，已等待: {int(time.time() - start_time)}秒")
         
         if dag_run_status == 'success':
-            # 直接从XCom表中查询特定run_id的数据
-            from airflow.models import XCom
-            from airflow.utils.session import create_session
+            # 使用XCom.get_one方法获取特定run_id的XCom数据
+            print(f"尝试使用XCom.get_one获取run_id: {dag_run_id}的数据")
             
-            print(f"尝试直接从XCom表获取run_id: {dag_run_id}的数据")
-            
-            # 使用create_session创建会话查询note_urls
-            with create_session() as session:
-                xcom_results = session.query(XCom).filter(
-                    XCom.dag_id == 'xhs_notes_collector',
-                    XCom.task_id == 'collect_xhs_notes',
-                    XCom.key == 'note_urls',
-                    XCom.run_id == dag_run_id
-                ).first()
-            
-            # 使用create_session创建会话查询keyword
-            with create_session() as session:
-                keyword_xcom = session.query(XCom).filter(
-                    XCom.dag_id == 'xhs_notes_collector',
-                    XCom.task_id == 'collect_xhs_notes',
-                    XCom.key == 'keyword',
-                    XCom.run_id == dag_run_id
-                ).first()
-            
+            session = settings.Session()
             note_urls = None
             keyword = None
             
-            if xcom_results:
-                note_urls = xcom_results.value
-                print(f"通过直接查询XCom表获取到笔记URL: {len(note_urls)}个")
+            try:
+                # 获取note_urls
+                note_urls = XCom.get_one(
+                    run_id=dag_run_id,
+                    key="note_urls",
+                    dag_id="xhs_notes_collector",
+                    task_id="collect_xhs_notes",
+                    session=session
+                )
+                
+                # 获取keyword
+                keyword = XCom.get_one(
+                    run_id=dag_run_id,
+                    key="keyword",
+                    dag_id="xhs_notes_collector",
+                    task_id="collect_xhs_notes",
+                    session=session
+                )
+            finally:
+                session.close()
+            
+            if note_urls:
+                print(f"通过XCom.get_one获取到笔记URL: {len(note_urls)}个")
                 # 将数据存入当前任务的XCom
                 ti.xcom_push(key='note_urls', value=note_urls)
-                
-                if keyword_xcom:
-                    keyword = keyword_xcom.value
-                    ti.xcom_push(key='keyword', value=keyword)
-                else:
-                    # 如果找不到关键词，使用传入的关键词
-                    ti.xcom_push(key='keyword', value=keyword)
-                
+                ti.xcom_push(key='keyword', value=keyword if keyword else '默认关键词')
                 return True
                 
             else:
