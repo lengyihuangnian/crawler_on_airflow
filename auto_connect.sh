@@ -208,7 +208,7 @@ while [ $retry_count -lt $MAX_RETRY ] && [ "$success" = false ]; do
     if [ $retry_count -lt $MAX_RETRY ] && [ "$success" = false ]; then
         echo "准备重试连接..."
         restart_wifi
-    else
+    elif [ "$success" = false ]; then
         echo "已达到最大重试次数，仍未成功连接。"
     fi
 done
@@ -221,12 +221,11 @@ if [ "$success" = false ]; then
     # 长亮红灯
     sudo sh -c "echo 1 > /sys/class/leds/PWR/brightness"
     # 等待20秒
-    sleep 20
+    sleep 5
     # 关闭红灯
-    sudo sh -c "echo 0 > /sys/class/leds/PWR/brightness"
-    # 恢复LED默认行为
-    sudo sh -c "echo input > /sys/class/leds/PWR/trigger"
-    echo "红灯提示完成"
+    # sudo sh -c "echo 0 > /sys/class/leds/PWR/brightness"
+    sudo sh -c "echo mmc0 > /sys/class/leds/ACT/trigger"
+    echo "LED提示完成"
 fi
 
 # 最后显示当前网络状态
