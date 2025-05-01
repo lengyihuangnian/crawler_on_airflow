@@ -204,16 +204,34 @@ def create_device_tasks():
     """动态创建设备任务组"""
     devices_pool = get_devices_pool_from_remote()
     
+    # 初始化已收集评论集合
+    collected_comments = set()
+    
     for device in devices_pool:
         device_id = device['device_id']
         
         @task(task_id=f'collect_comments_device_{device_id}')
         def collect_comments(device_info=device, **context):
-            return collect_comments_for_device(
+            # 获取之前所有设备收集的评论
+            previous_comments = context['task_instance'].xcom_pull(task_ids=None, key='collected_comments') or set()
+            # 合并到当前设备的已收集评论集合
+            current_collected_comments = set(previous_comments)
+            
+            # 收集评论
+            result = collect_comments_for_device(
                 device_info=device_info,
                 note_urls=context['task_instance'].xcom_pull(task_ids='get_note_urls'),
-                collected_comments=context['task_instance'].xcom_pull(task_ids='get_note_urls', key='collected_comments') or set()
+                collected_comments=current_collected_comments
             )
+            
+            # 将新收集的评论添加到集合中
+            if result and 'comments' in result:
+                current_collected_comments.update(comment['comment_id'] for comment in result['comments'])
+            
+            # 将更新后的评论集合推送到XCom
+            context['task_instance'].xcom_push(key='collected_comments', value=list(current_collected_comments))
+            
+            return result
         
         collect_comments()
 
