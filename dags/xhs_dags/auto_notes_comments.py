@@ -17,40 +17,54 @@ def wait_for_dag_completion(**context):
     """
     # 获取任务实例
     ti = context['ti']
+    dag_run = context['dag_run']
     
-    # 获取触发的DAG运行ID
-    dag_run_id = ti.xcom_pull(task_ids='trigger_notes_collection', key='dag_run_id')
+    # 构建被触发DAG的run_id
+    # 格式通常为：triggered__<触发时间>__<触发DAG的run_id>
+    current_time = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    triggered_dag_run_id = f"triggered__{current_time}__{dag_run.run_id}"
     
-    if not dag_run_id:
-        print("未找到触发的DAG运行ID，无法等待完成")
-        return False
-    
-    print(f"等待DAG运行完成，DAG运行ID: {dag_run_id}")
+    print(f"等待DAG运行完成，预计DAG运行ID: {triggered_dag_run_id}")
     
     # 循环检查DAG运行状态
-    while True:
-        dag_run_list = DagRun.find(dag_id="xhs_notes_collector", run_id=dag_run_id)
-        print(f"dag_run_list: {dag_run_list}")
+    max_wait_time = 300  # 最大等待时间（秒）
+    start_time = time.time()
+    
+    while (time.time() - start_time) < max_wait_time:
+        # 获取最近的DAG运行
+        recent_dag_runs = DagRun.find(dag_id="xhs_notes_collector", 
+                                    state=None,  # 获取所有状态
+                                    order_by=DagRun.execution_date.desc(),
+                                    limit=5)  # 获取最近的几个运行
         
-        if dag_run_list and (dag_run_list[0].state == 'success' or dag_run_list[0].state == 'failed'):
-            print(f"DAG运行完成，状态: {dag_run_list[0].state}")
-            
-            if dag_run_list[0].state == 'success':
-                # 从外部DAG获取XCom数据
-                note_urls = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='note_urls')
-                keyword = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='keyword')
-                
-                # 将数据存入当前任务的XCom
-                ti.xcom_push(key='note_urls', value=note_urls)
-                ti.xcom_push(key='keyword', value=keyword)
-                
-                return True
-            else:
-                print("外部DAG运行失败")
-                return False
+        print(f"最近的DAG运行: {[run.run_id for run in recent_dag_runs]}")
         
-        print(f"[HANDLE] 等待DAG运行完成，当前状态: {dag_run_list[0].state if dag_run_list else 'None'}")
+        # 检查每个运行
+        for dag_run in recent_dag_runs:
+            # 检查是否是由当前DAG触发的
+            if dag_run.external_trigger and dag_run.run_id.startswith('manual_'):
+                print(f"找到可能的匹配DAG运行: {dag_run.run_id}, 状态: {dag_run.state}")
+                
+                if dag_run.state == 'success':
+                    # 从外部DAG获取XCom数据
+                    note_urls = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='note_urls')
+                    keyword = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='keyword')
+                    
+                    if note_urls:
+                        print(f"成功获取到笔记URL: {len(note_urls)}个")
+                        # 将数据存入当前任务的XCom
+                        ti.xcom_push(key='note_urls', value=note_urls)
+                        ti.xcom_push(key='keyword', value=keyword)
+                        return True
+                elif dag_run.state == 'failed':
+                    print(f"外部DAG运行失败: {dag_run.run_id}")
+                    return False
+        
+        print(f"[HANDLE] 等待DAG运行完成，已等待: {int(time.time() - start_time)}秒")
         time.sleep(5)
+    
+    print("等待超时，未找到成功完成的DAG运行")
+    return False
 
 
 def get_notes_urls_and_trigger_comments(**context):
