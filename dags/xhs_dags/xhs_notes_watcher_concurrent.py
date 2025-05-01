@@ -188,7 +188,7 @@ def create_device_tasks():
     for device in devices_pool:
         device_id = device['device_id']
         
-        @task(task_id=f'collect_notes_device_{device_id}')
+        @task(task_id=f'collect_notes_device_{device_id}', dag=dag)
         def collect_notes(device_info=device, **context):
             # 获取关键词和最大笔记数
             keyword = (context['dag_run'].conf.get('keyword', '黑糖波波') 
@@ -202,6 +202,11 @@ def create_device_tasks():
             # 获取设备索引
             device_index = next(i for i, dev in enumerate(devices_pool) if dev['device_id'] == device_info['device_id'])
             
+            # 计算当前设备需要收集的笔记数量
+            notes_per_device = max_notes // len(devices_pool)
+            if device_index < max_notes % len(devices_pool):
+                notes_per_device += 1
+            
             # 获取之前所有设备收集的笔记URL
             previous_notes_urls = context['task_instance'].xcom_pull(task_ids=None, key='collected_notes_urls') or set()
             current_collected_notes_urls = set(previous_notes_urls)
@@ -211,7 +216,7 @@ def create_device_tasks():
                 "task_id": 1,
                 "type": "collect_notes",
                 "keyword": keyword,
-                "notes_per_device": max_notes,
+                "notes_per_device": notes_per_device,
                 "target_url_count": max_notes,
                 "device_idx": device_index
             }
@@ -237,8 +242,5 @@ def create_device_tasks():
 # 创建设备任务组
 device_tasks = create_device_tasks()
 
-# 设置任务依赖关系 - 让所有任务并行执行
-for i in range(1, len(device_tasks)):
-    device_tasks[i-1] >> device_tasks[i]
-
+# 设置任务依赖关系
 device_tasks
