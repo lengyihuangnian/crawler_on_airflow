@@ -154,13 +154,13 @@ def collect_xhs_notes(**context) -> None:
             "device_id": "97266a1f0107",
             "port": 6001,
             "system_port": 8200,
-            "appium_server_url": appium_server_url
+            "appium_server_url":  f"{appium_server_url}:4723"
         },
         {
             "device_id": "c2c56d1b0107",
             "port": 6002,
             "system_port": 8204,
-            "appium_server_url": appium_server_url
+            "appium_server_url":  f"{appium_server_url}:4724"
         }
     ]
     if not devices_pool:
