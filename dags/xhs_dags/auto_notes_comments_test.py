@@ -59,54 +59,51 @@ def trigger_and_wait_for_notes_collection(**context):
         print(f"[HANDLE] 等待DAG运行完成，当前状态: {dag_run_status}，已等待: {int(time.time() - start_time)}秒")
         
         if dag_run_status == 'success':
-            # 从外部DAG获取XCom数据，使用run_id参数确保获取正确的DAG运行数据
-            note_urls = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='note_urls', include_prior_dates=True, run_id=dag_run_id)
-            keyword = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='keyword', include_prior_dates=True, run_id=dag_run_id)
+            # 直接从XCom表中查询特定run_id的数据
+            from airflow.models import XCom
+            from airflow.utils.session import create_session
             
-            if note_urls:
-                print(f"成功获取到笔记URL: {len(note_urls)}个")
+            print(f"尝试直接从XCom表获取run_id: {dag_run_id}的数据")
+            
+            # 使用create_session创建会话查询note_urls
+            with create_session() as session:
+                xcom_results = session.query(XCom).filter(
+                    XCom.dag_id == 'xhs_notes_collector',
+                    XCom.task_id == 'collect_xhs_notes',
+                    XCom.key == 'note_urls',
+                    XCom.run_id == dag_run_id
+                ).first()
+            
+            # 使用create_session创建会话查询keyword
+            with create_session() as session:
+                keyword_xcom = session.query(XCom).filter(
+                    XCom.dag_id == 'xhs_notes_collector',
+                    XCom.task_id == 'collect_xhs_notes',
+                    XCom.key == 'keyword',
+                    XCom.run_id == dag_run_id
+                ).first()
+            
+            note_urls = None
+            keyword = None
+            
+            if xcom_results:
+                note_urls = xcom_results.value
+                print(f"通过直接查询XCom表获取到笔记URL: {len(note_urls)}个")
                 # 将数据存入当前任务的XCom
                 ti.xcom_push(key='note_urls', value=note_urls)
-                ti.xcom_push(key='keyword', value=keyword)
-                return True
-            else:
-                print(f"DAG运行成功但未找到笔记URL，尝试直接从DAG运行中获取数据")
-                # 尝试从DAG运行的XCom表中直接查询最新的数据
-                from airflow.models import XCom
-                from airflow.utils.session import create_session
                 
-                # 使用create_session创建会话
-                with create_session() as session:
-                    xcom_results = session.query(XCom).filter(
-                        XCom.dag_id == 'xhs_notes_collector',
-                        XCom.task_id == 'collect_xhs_notes',
-                        XCom.key == 'note_urls'
-                    ).order_by(XCom.execution_date.desc()).first()
-                
-                if xcom_results:
-                    note_urls = xcom_results.value
-                    print(f"通过直接查询XCom表获取到笔记URL: {len(note_urls)}个")
-                    ti.xcom_push(key='note_urls', value=note_urls)
-                    
-                    # 同样获取关键词
-                    with create_session() as session:
-                        keyword_xcom = session.query(XCom).filter(
-                            XCom.dag_id == 'xhs_notes_collector',
-                            XCom.task_id == 'collect_xhs_notes',
-                            XCom.key == 'keyword'
-                        ).order_by(XCom.execution_date.desc()).first()
-                    
-                    if keyword_xcom:
-                        keyword = keyword_xcom.value
-                        ti.xcom_push(key='keyword', value=keyword)
-                    else:
-                        # 如果找不到关键词，使用传入的关键词
-                        ti.xcom_push(key='keyword', value=keyword)
-                    
-                    return True
+                if keyword_xcom:
+                    keyword = keyword_xcom.value
+                    ti.xcom_push(key='keyword', value=keyword)
                 else:
-                    print("无法通过任何方式获取笔记URL")
-                    return False
+                    # 如果找不到关键词，使用传入的关键词
+                    ti.xcom_push(key='keyword', value=keyword)
+                
+                return True
+                
+            else:
+                print("无法通过任何方式获取笔记URL")
+                return False
         elif dag_run_status == 'failed':
             print(f"外部DAG运行失败: {dag_run_id}")
             return False
