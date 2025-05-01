@@ -86,7 +86,7 @@ def collect_xhs_notes(**context) -> None:
     Returns:
         None
     """
-    # 获取关键词，默认为"广州探店"
+    # 获取关键词，默认为"AI客服"
     keyword = (context['dag_run'].conf.get('keyword', '广州探店') 
               if context['dag_run'].conf 
               else '广州探店')
@@ -100,10 +100,6 @@ def collect_xhs_notes(**context) -> None:
     appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
     
     print(f"开始收集关键词 '{keyword}' 的小红书笔记...")
-    
-    # 将关键词存储到XCom中，以便后续任务使用
-    ti = context['ti']
-    ti.xcom_push(key='keyword', value=keyword)
     
     try:
         # 初始化小红书操作器
@@ -130,11 +126,6 @@ def collect_xhs_notes(**context) -> None:
 
         # 保存笔记到数据库
         save_notes_to_db(notes)
-        
-        # 提取笔记URL并存储到XCom中
-        note_urls = [note.get('note_url', '') for note in notes]
-        ti.xcom_push(key='note_urls', value=note_urls)
-        print(f"已将 {len(note_urls)} 条笔记URL存储到XCom中")
             
     except Exception as e:
         error_msg = f"收集小红书笔记失败: {str(e)}"

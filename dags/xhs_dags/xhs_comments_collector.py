@@ -148,10 +148,6 @@ def collect_xhs_comments(**context):
     # 检查是否有传入的笔记URL列表
     note_urls = context['dag_run'].conf.get('note_urls', None) if context['dag_run'].conf else None
     
-    # 将关键词存储到XCom中，以便后续任务使用
-    ti = context['ti']
-    ti.xcom_push(key='keyword', value=keyword)
-    
     if note_urls:
         # 如果有传入的URL列表，直接使用
         print(f"使用传入的{len(note_urls)}个笔记URL收集评论")
