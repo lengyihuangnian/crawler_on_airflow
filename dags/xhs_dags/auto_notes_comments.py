@@ -11,64 +11,74 @@ from airflow.models.dagrun import DagRun
 from airflow.utils.dates import days_ago
 
 
-def wait_for_dag_completion(**context):
+def trigger_and_wait_for_notes_collection(**context):
     """
-    等待笔记收集DAG完成并获取XCom数据
+    触发笔记收集DAG并等待其完成，使用特定的run_id进行跟踪
     """
-    # 获取任务实例
+    # 获取任务实例和参数
     ti = context['ti']
     dag_run = context['dag_run']
     
-    # 构建被触发DAG的run_id
-    # 格式通常为：triggered__<触发时间>__<触发DAG的run_id>
-    current_time = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-    triggered_dag_run_id = f"triggered__{current_time}__{dag_run.run_id}"
+    # 从DAG运行配置中获取关键词和最大笔记数量
+    keyword = dag_run.conf.get('keyword', '猫咖') if dag_run.conf else '猫咖'
+    max_notes = dag_run.conf.get('max_notes', 1) if dag_run.conf else 1
     
-    print(f"等待DAG运行完成，预计DAG运行ID: {triggered_dag_run_id}")
+    # 使用时间戳生成唯一的run_id
+    timestamp = int(time.time())
+    dag_run_id = f'xhs_notes_{timestamp}'
     
-    # 循环检查DAG运行状态
+    print(f"[HANDLE] 触发小红书笔记收集DAG，关键词: {keyword}, 最大笔记数: {max_notes}")
+    
+    # 导入trigger_dag函数
+    from airflow.api.common.trigger_dag import trigger_dag
+    
+    # 触发DAG
+    trigger_dag(
+        dag_id='xhs_notes_collector',
+        conf={
+            'keyword': keyword,
+            'max_notes': max_notes
+        },
+        run_id=dag_run_id,
+    )
+    
+    # 循环等待DAG运行完成
     max_wait_time = 300  # 最大等待时间（秒）
     start_time = time.time()
     
     while (time.time() - start_time) < max_wait_time:
-        # 获取最近的DAG运行
-        # 使用execution_date_gte参数限制查询范围，获取最近一段时间内的DAG运行
-        recent_time = datetime.now() - timedelta(hours=1)  # 获取最近1小时的运行
-        recent_dag_runs = DagRun.find(dag_id="xhs_notes_collector", 
-                                    state=None,  # 获取所有状态
-                                    execution_date_gte=recent_time,
-                                    limit=10)  # 获取最近的几个运行
+        # 使用确定的run_id查找DAG运行
+        dag_run_list = DagRun.find(dag_id="xhs_notes_collector", run_id=dag_run_id)
         
-        # 按执行时间降序排序
-        recent_dag_runs = sorted(recent_dag_runs, key=lambda x: x.execution_date, reverse=True)[:5]
+        if not dag_run_list:
+            print(f"[HANDLE] 等待DAG运行开始，已等待: {int(time.time() - start_time)}秒")
+            time.sleep(5)
+            continue
         
-        print(f"最近的DAG运行: {[run.run_id for run in recent_dag_runs]}")
+        dag_run_status = dag_run_list[0].state
+        print(f"[HANDLE] 等待DAG运行完成，当前状态: {dag_run_status}，已等待: {int(time.time() - start_time)}秒")
         
-        # 检查每个运行
-        for dag_run in recent_dag_runs:
-            # 检查是否是由当前DAG触发的
-            if dag_run.external_trigger and dag_run.run_id.startswith('manual_'):
-                print(f"找到可能的匹配DAG运行: {dag_run.run_id}, 状态: {dag_run.state}")
-                
-                if dag_run.state == 'success':
-                    # 从外部DAG获取XCom数据
-                    note_urls = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='note_urls')
-                    keyword = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='keyword')
-                    
-                    if note_urls:
-                        print(f"成功获取到笔记URL: {len(note_urls)}个")
-                        # 将数据存入当前任务的XCom
-                        ti.xcom_push(key='note_urls', value=note_urls)
-                        ti.xcom_push(key='keyword', value=keyword)
-                        return True
-                elif dag_run.state == 'failed':
-                    print(f"外部DAG运行失败: {dag_run.run_id}")
-                    return False
+        if dag_run_status == 'success':
+            # 从外部DAG获取XCom数据
+            note_urls = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='note_urls')
+            keyword = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='keyword')
+            
+            if note_urls:
+                print(f"成功获取到笔记URL: {len(note_urls)}个")
+                # 将数据存入当前任务的XCom
+                ti.xcom_push(key='note_urls', value=note_urls)
+                ti.xcom_push(key='keyword', value=keyword)
+                return True
+            else:
+                print("DAG运行成功但未找到笔记URL")
+                return False
+        elif dag_run_status == 'failed':
+            print(f"外部DAG运行失败: {dag_run_id}")
+            return False
         
-        print(f"[HANDLE] 等待DAG运行完成，已等待: {int(time.time() - start_time)}秒")
         time.sleep(5)
     
-    print("等待超时，未找到成功完成的DAG运行")
+    print("等待超时，DAG运行未完成")
     return False
 
 
@@ -80,8 +90,8 @@ def get_notes_urls_and_trigger_comments(**context):
     ti = context['ti']
     
     # 从XCom获取笔记URL列表和关键词
-    note_urls = ti.xcom_pull(task_ids='wait_for_dag_completion', key='note_urls')
-    keyword = ti.xcom_pull(task_ids='wait_for_dag_completion', key='keyword')
+    note_urls = ti.xcom_pull(task_ids='trigger_and_wait_for_notes', key='note_urls')
+    keyword = ti.xcom_pull(task_ids='trigger_and_wait_for_notes', key='keyword')
     
     if not note_urls:
         print("未找到笔记URL列表，无法触发评论收集")
@@ -117,22 +127,10 @@ dag = DAG(
     catchup=False,
 )
 
-# 触发笔记收集DAG
-trigger_notes_collection = TriggerDagRunOperator(
-    task_id='trigger_notes_collection',
-    trigger_dag_id='xhs_notes_collector',
-    conf={
-        'keyword': '{{ dag_run.conf["keyword"] if dag_run.conf and "keyword" in dag_run.conf else "猫咖" }}',
-        'max_notes': '{{ dag_run.conf["max_notes"] if dag_run.conf and "max_notes" in dag_run.conf else 1 }}'
-    },
-    wait_for_completion=False,  # 不在这里等待完成，我们将使用自定义的等待方法
-    dag=dag,
-)
-
-# 等待笔记收集DAG完成并获取XCom数据
-wait_for_dag_completion = PythonOperator(
-    task_id='wait_for_dag_completion',
-    python_callable=wait_for_dag_completion,
+# 触发笔记收集DAG并等待其完成
+trigger_and_wait_task = PythonOperator(
+    task_id='trigger_and_wait_for_notes',
+    python_callable=trigger_and_wait_for_notes_collection,
     provide_context=True,
     dag=dag,
 )
@@ -155,4 +153,4 @@ trigger_comments_collection = TriggerDagRunOperator(
 )
 
 # 设置任务依赖关系
-trigger_notes_collection >> wait_for_dag_completion >> get_data >> trigger_comments_collection
+trigger_and_wait_task >> get_data >> trigger_comments_collection
