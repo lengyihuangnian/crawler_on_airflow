@@ -168,7 +168,7 @@ def reply_with_template(**context):
     initial_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
     
     # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+    appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
 
     print(f"开始使用模板回复评论... 本次要回复的评论数量: {len(initial_contents)}")
     

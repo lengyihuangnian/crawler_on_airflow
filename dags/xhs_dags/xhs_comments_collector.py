@@ -92,37 +92,25 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
         cursor.close()
         db_conn.close()
 
-def collect_xhs_comments(**context):
-    """收集小红书评论
+def get_notes_by_url_list(note_urls: list, keyword: str = None):
+    """根据传入的笔记URL列表收集评论
     Args:
-        **context: Airflow上下文参数字典
+        note_urls: 笔记URL列表
+        keyword: 关键词（可选）
+    Returns:
+        所有评论的列表
     """
-    # 从DAG运行配置中获取参数，如果没有则使用默认值
-    max_comments = int(context['dag_run'].conf.get('max_comments', 10) 
-        if context['dag_run'].conf 
-        else 1)
-    
-    keyword = (context['dag_run'].conf.get('keyword', None) 
-              if context['dag_run'].conf 
-              else '番茄')
-    
-    # 获取笔记URL和关键词
-    notes_data = get_note_url(max_comments, keyword)
-    
-
     # 获取Appium服务器URL
     appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
 
-    print("开始收集笔记评论...")
+    print(f"开始收集{len(note_urls)}条笔记的评论...")
     
     try:
-         # 初始化小红书操作器
+        # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
         
         all_comments = []
-        for note_data in notes_data:
-            note_url = note_data['note_url']
-            keyword = note_data['keyword']
+        for note_url in note_urls:
             try:
                 # 收集评论
                 full_url = xhs.get_redirect_url(note_url)
@@ -142,6 +130,68 @@ def collect_xhs_comments(**context):
         # 确保关闭小红书操作器
         if 'xhs' in locals():
             xhs.close()
+
+def collect_xhs_comments(**context):
+    """收集小红书评论
+    Args:
+        **context: Airflow上下文参数字典
+    """
+    # 从DAG运行配置中获取参数，如果没有则使用默认值
+    max_comments = int(context['dag_run'].conf.get('max_comments', 10) 
+        if context['dag_run'].conf 
+        else 1)
+    
+    keyword = (context['dag_run'].conf.get('keyword', None) 
+              if context['dag_run'].conf 
+              else '番茄')
+    
+    # 检查是否有传入的笔记URL列表
+    note_urls = context['dag_run'].conf.get('note_urls', None) if context['dag_run'].conf else None
+    
+    # 将关键词存储到XCom中，以便后续任务使用
+    ti = context['ti']
+    ti.xcom_push(key='keyword', value=keyword)
+    
+    if note_urls:
+        # 如果有传入的URL列表，直接使用
+        print(f"使用传入的{len(note_urls)}个笔记URL收集评论")
+        return get_notes_by_url_list(note_urls, keyword)
+    else:
+        # 否则从数据库获取笔记URL和关键词
+        notes_data = get_note_url(max_comments, keyword)
+        
+        # 获取Appium服务器URL
+        appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+
+        print("开始收集笔记评论...")
+        
+        try:
+            # 初始化小红书操作器
+            xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
+            
+            all_comments = []
+            for note_data in notes_data:
+                note_url = note_data['note_url']
+                keyword = note_data['keyword']
+                try:
+                    # 收集评论
+                    full_url = xhs.get_redirect_url(note_url)
+                    comments = xhs.collect_comments_by_url(full_url)
+                    # 保存评论到数据库
+                    save_comments_to_db(comments, note_url, keyword)
+                    all_comments.extend(comments)
+                except Exception as e:
+                    print(f"处理笔记 {note_url} 时出错: {str(e)}")
+                    continue
+            
+            return all_comments
+        except Exception as e:
+            print(f"运行出错: {str(e)}")
+            raise e
+        finally:
+            # 确保关闭小红书操作器
+            if 'xhs' in locals():
+                xhs.close()
 
 # DAG 定义
 default_args = {
