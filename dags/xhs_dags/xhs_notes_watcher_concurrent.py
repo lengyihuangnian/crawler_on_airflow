@@ -158,7 +158,7 @@ def collect_xhs_notes_for_device(device_info, task, **context) -> None:
 
 # DAG 定义
 default_args = {
-    'owner': 'airflow',
+    'owner': 'yueyang',
     'depends_on_past': False,
     'start_date': datetime(2024, 1, 1),
 }
@@ -184,6 +184,7 @@ def create_device_tasks():
     # 初始化已收集笔记URL集合
     collected_notes_urls = set()
     
+    tasks = []
     for device in devices_pool:
         device_id = device['device_id']
         
@@ -228,9 +229,16 @@ def create_device_tasks():
             
             return result
         
-        collect_notes()
+        # 将任务添加到任务列表
+        tasks.append(collect_notes())
+    
+    return tasks
 
 # 创建设备任务组
 device_tasks = create_device_tasks()
+
+# 设置任务依赖关系 - 让所有任务并行执行
+for i in range(1, len(device_tasks)):
+    device_tasks[i-1] >> device_tasks[i]
 
 device_tasks
