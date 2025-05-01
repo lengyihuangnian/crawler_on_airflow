@@ -101,7 +101,7 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None):
         所有评论的列表
     """
     # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+    appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
 
     print(f"开始收集{len(note_urls)}条笔记的评论...")
     
