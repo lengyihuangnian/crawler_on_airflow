@@ -60,8 +60,8 @@ def trigger_and_wait_for_notes_collection(**context):
         
         if dag_run_status == 'success':
             # 从外部DAG获取XCom数据，使用run_id参数确保获取正确的DAG运行数据
-            note_urls = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='note_urls', include_prior_dates=True, dag_run_id=dag_run_id)
-            keyword = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='keyword', include_prior_dates=True, dag_run_id=dag_run_id)
+            note_urls = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='note_urls', include_prior_dates=True, run_id=dag_run_id)
+            keyword = ti.xcom_pull(dag_id='xhs_notes_collector', task_ids='collect_xhs_notes', key='keyword', include_prior_dates=True, run_id=dag_run_id)
             
             if note_urls:
                 print(f"成功获取到笔记URL: {len(note_urls)}个")
