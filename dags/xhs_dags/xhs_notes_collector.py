@@ -86,6 +86,8 @@ def collect_xhs_notes(**context) -> None:
     Returns:
         None
     """
+    # 获取任务实例对象，用于XCom传递数据
+    ti = context['ti']
     # 获取关键词，默认为"AI客服"
     keyword = (context['dag_run'].conf.get('keyword', '广州探店') 
               if context['dag_run'].conf 
@@ -126,6 +128,13 @@ def collect_xhs_notes(**context) -> None:
 
         # 保存笔记到数据库
         save_notes_to_db(notes)
+        
+        # 提取笔记URL列表并存入XCom
+        note_urls = [note.get('note_url', '') for note in notes]
+        ti.xcom_push(key='note_urls', value=note_urls)
+        ti.xcom_push(key='keyword', value=keyword)
+        
+        return note_urls
             
     except Exception as e:
         error_msg = f"收集小红书笔记失败: {str(e)}"
