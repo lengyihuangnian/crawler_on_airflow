@@ -4,6 +4,12 @@
 # 扫描可用WiFi并尝试使用预设密码列表连接
 # 支持自动重启网卡并重试3次
 
+# 检查是否已设置自动连接
+if nmcli -t -f NAME,autoconnect connection show | grep -q 'yes$'; then
+    echo '已设置自动连接，跳过执行'
+    exit 0
+fi
+
 # 检查是否以root权限运行
 if [ "$(id -u)" -ne 0 ]; then
     echo "此脚本需要以root权限运行，请使用sudo"
@@ -163,6 +169,16 @@ while [ $retry_count -lt $MAX_RETRY ] && [ "$success" = false ]; do
     # 检查连接结果
     if [ "$CONNECTED" = true ]; then
         echo "WiFi连接成功！"
+
+# 清理不必要的连接配置
+INACTIVE_CONNECTIONS=$(nmcli -t -f NAME connection show | grep -v "$(nmcli -t -f NAME connection show --active)")
+if [ -n "$INACTIVE_CONNECTIONS" ]; then
+    echo "清理不必要的连接配置..."
+    echo "$INACTIVE_CONNECTIONS" | while read -r CON_NAME; do
+        echo "  删除非活动连接: $CON_NAME"
+        nmcli connection delete "$CON_NAME" &>/dev/null
+    done
+fi
         # 显示网络信息
         ip addr show wlan0 | grep "inet "
         echo "网络连接信息:"

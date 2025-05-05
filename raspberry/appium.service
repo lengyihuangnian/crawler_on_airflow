@@ -1,0 +1,13 @@
+[Unit]
+Description=启动10个Appium实例
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'for i in {6010..6019}; do appium -p $i & done'
+StandardOutput=append:/var/log/appium.log
+StandardError=append:/var/log/appium.log
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

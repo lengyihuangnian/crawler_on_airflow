@@ -1,0 +1,16 @@
+[Unit]
+Description=启动FRPC服务
+After=network.target appium.service
+
+[Service]
+Type=simple
+ExecStart=/home/rasberry/Desktop/frp_0.51.3_linux_arm/frpc -c /home/rasberry/Desktop/frp_0.51.3_linux_arm/frpc.ini
+StandardOutput=append:/var/log/frpc.log
+StandardError=append:/var/log/frpc.log
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Install]
+WantedBy=multi-user.target
