@@ -1,0 +1,19 @@
+# 自动WiFi连接服务配置文件
+# 创建目的：用于在系统启动时自动连接可用的WiFi网络
+# 使用方法：
+# 1. 启用服务：sudo systemctl enable auto-wifi.service
+# 2. 启动服务：sudo systemctl start auto-wifi.service
+# 3. 查看状态：sudo systemctl status auto-wifi.service
+# 4. 查看日志：journalctl -u auto-wifi.service
+
+[Unit]
+Description=自动WiFi连接服务
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /path/to/auto_connect.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
