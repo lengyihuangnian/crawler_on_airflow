@@ -66,9 +66,9 @@ def reply_high_intent_comments(**context):
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     # 获取第一个设备的IP、端口和设备ID
-    device_ip = device_info_list[0].get('device_ip', '42.193.193.179') if device_info_list else '42.193.193.179'
-    device_port = device_info_list[0].get('available_appium_ports', [6010])[0] if device_info_list else 6010
-    device_id = device_info_list[0].get('phone_device_list', ['c2c56d1b0107'])[0] if device_info_list else 'c2c56d1b0107'
+    device_ip = device_info_list[1].get('device_ip', '42.193.193.179') if device_info_list else '42.193.193.179'
+    device_port = device_info_list[1].get('available_appium_ports', [6010])[0] if device_info_list else 6010
+    device_id = device_info_list[1].get('phone_device_list', ['c2c56d1b0107'])[0] if device_info_list else 'c2c56d1b0107'
     appium_server_url = f"http://{device_ip}:{device_port}"
 
 
