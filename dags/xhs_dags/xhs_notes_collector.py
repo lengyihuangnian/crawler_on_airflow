@@ -99,13 +99,20 @@ def collect_xhs_notes(**context) -> None:
                 else 2)
     
     # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
+    # 获取设备列表
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    # 获取第一个设备的IP、端口和设备ID
+    device_ip = device_info_list[0].get('device_ip', '42.193.193.179') if device_info_list else '42.193.193.179'
+    device_port = device_info_list[0].get('port', '8666') if device_info_list else '8666'
+    device_id = device_info_list[0].get('phone_device_list', ['c2c56d1b0107'])[0] if device_info_list else 'c2c56d1b0107'
+    appium_server_url = f"http://{device_ip}:{device_port}"
+    
     
     print(f"开始收集关键词 '{keyword}' 的小红书笔记...")
     
     try:
         # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
         # 收集笔记
         notes = xhs.collect_notes_by_keyword(

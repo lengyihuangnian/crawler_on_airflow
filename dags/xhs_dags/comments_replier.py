@@ -63,13 +63,20 @@ def reply_high_intent_comments(**context):
     reply_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
     
     # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
+    # 获取设备列表
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    # 获取第一个设备的IP、端口和设备ID
+    device_ip = device_info_list[0].get('device_ip', '42.193.193.179') if device_info_list else '42.193.193.179'
+    device_port = device_info_list[0].get('port', '8666') if device_info_list else '8666'
+    device_id = device_info_list[0].get('phone_device_list', ['c2c56d1b0107'])[0] if device_info_list else 'c2c56d1b0107'
+    appium_server_url = f"http://{device_ip}:{device_port}"
+
 
     print(f"开始自动回复高意向评论... 本次要回复的评论数量: {max_comments}")
     
     try:
         # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='97266a1f0107')
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id= device_id)
         
         # 遍历每条评论进行回复
         for content in reply_contents:

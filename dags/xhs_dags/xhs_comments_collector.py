@@ -100,14 +100,21 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None):
     Returns:
         所有评论的列表
     """
-    # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
+    # 获取设备列表
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    # 获取第一个设备的IP、端口和设备ID
+    device_ip = device_info_list[0].get('device_ip', '42.193.193.179') if device_info_list else '42.193.193.179'
+    device_port = device_info_list[0].get('port', '8666') if device_info_list else '8666'
+    device_id = device_info_list[0].get('phone_device_list', ['c2c56d1b0107'])[0] if device_info_list else 'c2c56d1b0107'
+    appium_server_url = f"http://{device_ip}:{device_port}"
 
     print(f"开始收集{len(note_urls)}条笔记的评论...")
+    print(f"使用Appium服务器: {appium_server_url}")
+    print(f"使用设备ID: {device_id}")
     
     try:
         # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
         all_comments = []
         for note_url in note_urls:
@@ -155,39 +162,9 @@ def collect_xhs_comments(**context):
     else:
         # 否则从数据库获取笔记URL和关键词
         notes_data = get_note_url(max_comments, keyword)
-        
-        # 获取Appium服务器URL
-        appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
-
-        print("开始收集笔记评论...")
-        
-        try:
-            # 初始化小红书操作器
-            xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
-            
-            all_comments = []
-            for note_data in notes_data:
-                note_url = note_data['note_url']
-                keyword = note_data['keyword']
-                try:
-                    # 收集评论
-                    full_url = xhs.get_redirect_url(note_url)
-                    comments = xhs.collect_comments_by_url(full_url)
-                    # 保存评论到数据库
-                    save_comments_to_db(comments, note_url, keyword)
-                    all_comments.extend(comments)
-                except Exception as e:
-                    print(f"处理笔记 {note_url} 时出错: {str(e)}")
-                    continue
-            
-            return all_comments
-        except Exception as e:
-            print(f"运行出错: {str(e)}")
-            raise e
-        finally:
-            # 确保关闭小红书操作器
-            if 'xhs' in locals():
-                xhs.close()
+        # 提取URL列表
+        note_urls = [note['note_url'] for note in notes_data]
+        return get_notes_by_url_list(note_urls, keyword)
 
 # DAG 定义
 default_args = {
