@@ -1226,26 +1226,26 @@ class XHSOperator:
                             
                             if time_match:
                                 if time_match.group('date'):
-                                    # 标准日期格式，添加默认时间
-                                    collect_time = f"{time_match.group('date')} 00:00:00"
+                                    # 标准日期格式，只保留日期
+                                    collect_time = time_match.group('date')
                                 elif time_match.group('short_date'):
                                     # 短日期格式，添加当前年份
                                     current_year = datetime.now().year
                                     date_str = time_match.group('short_date')
-                                    collect_time = f"{current_year}-{date_str} 00:00:00"
+                                    collect_time = f"{current_year}-{date_str}"
                                 elif time_match.group('yesterday'):
                                     # 昨天格式，获取当前日期并减一天
                                     yesterday = datetime.now() - timedelta(days=1)
-                                    collect_time = f"{yesterday.strftime('%Y-%m-%d')} {time_match.group('yesterday_time')}:00"
+                                    collect_time = yesterday.strftime('%Y-%m-%d')
                                 elif time_match.group('relative'):
                                     # 相对时间格式（X小时/分钟前）
                                     now = datetime.now()
                                     value = int(time_match.group('value'))  # 直接使用捕获的数字
                                     unit = time_match.group('unit')
                                     if unit == '小时':
-                                        collect_time = (now - timedelta(hours=value)).strftime('%Y-%m-%d %H:%M:%S')
+                                        collect_time = (now - timedelta(hours=value)).strftime('%Y-%m-%d')
                                     else:  # 分钟
-                                        collect_time = (now - timedelta(minutes=value)).strftime('%Y-%m-%d %H:%M:%S')
+                                        collect_time = (now - timedelta(minutes=value)).strftime('%Y-%m-%d')
                             
                             # 移除时间信息和回复后缀
                             comment_text = re.sub(time_pattern, '', comment_text)
