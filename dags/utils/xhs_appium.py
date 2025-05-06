@@ -1163,6 +1163,7 @@ class XHSOperator:
             is_first_comment = True  # 标记是否是第一条评论
 
             for attempt in range(max_attempts):
+
                 print(f"第 {attempt + 1} 次滑动加载评论...")
 
                 # 获取当前页面源码
@@ -1172,7 +1173,7 @@ class XHSOperator:
                 if page_source == last_page_source:
                     print("页面未发生变化，可能已到底")
                     break
-
+                
                 # 解析当前页面的评论
                 try:
                     # 查找评论元素
@@ -1185,7 +1186,7 @@ class XHSOperator:
                     comment_elements = [
                         e for e in comment_elements 
                         if e.text and 
-                        len(e.text) > 10 and 
+                        len(e.text) > 1 and 
                         "Say something" not in e.text and
                         "说点什么" not in e.text and
                         "还没有评论哦" not in e.text and
@@ -1204,21 +1205,22 @@ class XHSOperator:
                     
                     # 解析每个评论元素
                     for comment_elem in comment_elements:
-                        # 获取当前元素的基本信息
-                        # print("当前元素属性:", {
-                        #     "text": comment_elem.text,
-                        #     "resource-id": comment_elem.get_attribute("resource-id"),
-                        #     "class": comment_elem.get_attribute("class"),
-                        #     "bounds": comment_elem.get_attribute("bounds"),
-                        #     "content-desc": comment_elem.get_attribute("content-desc")
-                        # })
+                        
+                        #打印当前元素的属性
+                        print("当前元素属性:", {
+                            "text": comment_elem.text,
+                            "resource-id": comment_elem.get_attribute("resource-id"),
+                            "class": comment_elem.get_attribute("class"),
+                            "bounds": comment_elem.get_attribute("bounds"),
+                            "content-desc": comment_elem.get_attribute("content-desc")
+                        })
                         
                         try:
                             # 获取评论内容
                             comment_text = comment_elem.text.strip()
                             
                             # 移除日期和回复后缀，并提取时间信息
-                            time_pattern = r'(?P<date>\d{4}-\d{2}-\d{2})|(?P<yesterday>昨天\s*(?P<yesterday_time>\d{2}:\d{2}))|(?P<relative>(?P<value>\d+)\s*(?P<unit>小时|分钟)前)'
+                            time_pattern = r'(?P<date>\d{4}-\d{2}-\d{2})|(?P<short_date>\d{2}-\d{2})|(?P<yesterday>昨天\s*(?P<yesterday_time>\d{2}:\d{2}))|(?P<relative>(?P<value>\d+)\s*(?P<unit>小时|分钟)前)(?:\s*\n?\s*(?P<location>[^\s]+))?\s*回复'
                             time_match = re.search(time_pattern, comment_text)
                             collect_time = None
                             
@@ -1226,6 +1228,11 @@ class XHSOperator:
                                 if time_match.group('date'):
                                     # 标准日期格式，添加默认时间
                                     collect_time = f"{time_match.group('date')} 00:00:00"
+                                elif time_match.group('short_date'):
+                                    # 短日期格式，添加当前年份
+                                    current_year = datetime.now().year
+                                    date_str = time_match.group('short_date')
+                                    collect_time = f"{current_year}-{date_str} 00:00:00"
                                 elif time_match.group('yesterday'):
                                     # 昨天格式，获取当前日期并减一天
                                     yesterday = datetime.now() - timedelta(days=1)
@@ -1240,10 +1247,10 @@ class XHSOperator:
                                     else:  # 分钟
                                         collect_time = (now - timedelta(minutes=value)).strftime('%Y-%m-%d %H:%M:%S')
                             
-                            # 移除时间信息
-                            comment_text = re.sub(time_pattern + r'\s*(?:\S+\s*)*回复$', '', comment_text)
-                            comment_text = re.sub(r'\d{4}-\d{2}-\d{2}$', '', comment_text)
-                            # 移除末尾的空白字符
+                            # 移除时间信息和回复后缀
+                            comment_text = re.sub(time_pattern, '', comment_text)
+                            # 额外清理可能的回复后缀
+                            comment_text = re.sub(r'\s*回复\s*$', '', comment_text)
                             comment_text = comment_text.strip()
                             
                             # 跳过第一条评论（文章内容）
@@ -1600,7 +1607,7 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="97266a1f0107",
+        device_id="c2c56d1b0107",
         system_port=8200
     )
 
@@ -1630,41 +1637,41 @@ if __name__ == "__main__":
         #     print("-" * 50) 
 
         # 2 测试收集评论
-        # print("\n开始测试收集评论...")
-        # note_url = "http://xhslink.com/a/FTt1urwQK1dbb"
-        # full_url = xhs.get_redirect_url(note_url)
-        # print(f"帖子 URL: {full_url}")
+        print("\n开始测试收集评论...")
+        note_url = "http://xhslink.com/a/KARbkJb1qGSbb"
+        full_url = xhs.get_redirect_url(note_url)
+        print(f"帖子 URL: {full_url}")
         
-        # comments = xhs.collect_comments_by_url(full_url,max_comments=10)
-        # print(f"\n共收集到 {len(comments)} 条评论:")
-        # for i, comment in enumerate(comments, 1):
-        #     print(f"\n评论 {i}:")
-        #     print(f"作者: {comment['author']}")
-        #     print(f"内容: {comment['content']}")
-        #     print(f"点赞: {comment['likes']}")
-        #     print(f"时间: {comment['collect_time']}")
-        #     print("-" * 50)
+        comments = xhs.collect_comments_by_url(full_url,max_comments=10)
+        print(f"\n共收集到 {len(comments)} 条评论:")
+        for i, comment in enumerate(comments, 1):
+            print(f"\n评论 {i}:")
+            print(f"作者: {comment['author']}")
+            print(f"内容: {comment['content']}")
+            print(f"点赞: {comment['likes']}")
+            print(f"时间: {comment['collect_time']}")
+            print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
-        note_url = "http://xhslink.com/a/Hr4QFxdhrNrbb"
-        author = "小红薯65C0511B"  # 替换为实际的评论者ID
-        comment_content = "靠，首付6万，两年零息，这也太爽了吧，说的我也想换了"  # 替换为实际的评论内容
-        reply_content = "有兴趣的私哦"  # 替换为要回复的内容
+        # note_url = "http://xhslink.com/a/Hr4QFxdhrNrbb"
+        # author = "小红薯65C0511B"  # 替换为实际的评论者ID
+        # comment_content = "靠，首付6万，两年零息，这也太爽了吧，说的我也想换了"  # 替换为实际的评论内容
+        # reply_content = "有兴趣的私哦"  # 替换为要回复的内容
         
-        print("\n开始测试评论回复功能...")
-        success = xhs.comments_reply(
-            note_url=note_url,
-            author=author,
-            comment_content=comment_content,
-            reply_content=reply_content
-        )
+        # print("\n开始测试评论回复功能...")
+        # success = xhs.comments_reply(
+        #     note_url=note_url,
+        #     author=author,
+        #     comment_content=comment_content,
+        #     reply_content=reply_content
+        # )
         
-        if success:
-            print("评论回复成功！")
-        else:
-            print("评论回复失败！")
+        # if success:
+        #     print("评论回复成功！")
+        # else:
+        #     print("评论回复失败！")
             
-        print("-" * 50)
+        # print("-" * 50)
 
 
     except Exception as e:
