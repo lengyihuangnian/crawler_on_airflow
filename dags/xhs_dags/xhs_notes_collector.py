@@ -99,18 +99,20 @@ def collect_xhs_notes(**context) -> None:
                 else 5)
     
     # 获取设备列表
-    # device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
-    # # 获取指定username的设备信息
-    # target_username = "rasberry"  # 设置目标username
-    # device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    # 获取指定username的设备信息
+    target_username = "rasberry"  # 设置目标username
+    device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
     
-    # # 如果找不到指定username的设备，使用默认值
-    # device_ip = device_info.get('device_ip', '42.193.193.179') if device_info else '42.193.193.179'
-    # device_port = device_info.get('available_appium_ports', [6010])[0] if device_info else 6010
-    # device_id = device_info.get('phone_device_list', ['c2c56d1b0107'])[0] if device_info else 'c2c56d1b0107'
-    # appium_server_url = f"http://{device_ip}:{device_port}"
-    appium_server_url = 'http://42.193.193.179:6010'
-    device_id = 'c2c5819d0107'
+    # 如果找不到指定username的设备，使用默认值
+    device_ip = device_info.get('device_ip', '42.193.193.179') if device_info else '42.193.193.179'
+    device_port = device_info.get('available_appium_ports', [6010])[0] if device_info else 6010
+    device_id = device_info.get('phone_device_list', ['c2c56d1b0107'])[0] if device_info else 'c2c56d1b0107'
+    appium_server_url = f"http://{device_ip}:{device_port}"
+
+    #test
+    # appium_server_url = 'http://42.193.193.179:6010'
+    # device_id = 'c2c5819d0107'
 
     print(f"开始收集关键词 '{keyword}' 的小红书笔记...")
     
