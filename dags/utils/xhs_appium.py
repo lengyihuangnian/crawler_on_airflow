@@ -86,6 +86,7 @@ class XHSOperator:
             systemPort=system_port  # 设置系统端口
         )
 
+        print('当前capabilities配置:', json.dumps(capabilities, ensure_ascii=False, indent=2))
         print('正在初始化小红书控制器...',appium_server_url)
         self.driver: AppiumWebDriver = AppiumWebDriver(
             command_executor=appium_server_url,
