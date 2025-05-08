@@ -133,7 +133,8 @@ dag = DAG(
     dag_id='update_device_list',
     default_args={'owner': 'yueyang', 'start_date': datetime(2025, 4, 30)},
     description='定期更新设备列表和Appium可用端口',
-    schedule_interval='*/10 * * * *',  # 每10分钟执行一次
+    schedule_interval='*/5 * * * *',  # 每10分钟执行一次
+    max_active_runs=1,
     tags=['设备管理'],
     catchup=False,
 )
