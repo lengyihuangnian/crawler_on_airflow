@@ -243,9 +243,23 @@ def create_device_tasks():
                 collected_comments=current_collected_comments
             )
             
-            # 将新收集的评论添加到集合中
-            if result and 'comments' in result:
-                current_collected_comments.update(comment['comment_id'] for comment in result['comments'])
+            # 处理收集到的评论
+            if result and result.get('status') == 'success':
+                # 保存每个笔记的评论到数据库
+                for note_result in result.get('results', []):
+                    if note_result.get('status') == 'success':
+                        note_url = note_result.get('note_url')
+                        comments = note_result.get('comments', [])
+                        if note_url and comments:
+                            try:
+                                save_comments_to_db(comments, note_url)
+                                print(f"设备 {device_info['device_id']} 成功保存笔记 {note_url} 的 {len(comments)} 条评论到数据库")
+                            except Exception as e:
+                                print(f"设备 {device_info['device_id']} 保存笔记 {note_url} 的评论到数据库失败: {str(e)}")
+                
+                # 更新已收集的评论ID
+                if 'comments' in result:
+                    current_collected_comments.update(comment['comment_id'] for comment in result['comments'])
             
             # 将更新后的评论集合推送到XCom
             context['task_instance'].xcom_push(key='collected_comments', value=list(current_collected_comments))
