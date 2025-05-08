@@ -28,31 +28,46 @@ from airflow.operators.python import PythonOperator
 
 
 def check_port_availability(ssh_client, port):
-    """检查远程主机上的端口是否正在运行Appium服务"""
-    # 使用netstat命令检查端口是否被Appium占用
+    """检查远程主机上的端口是否正在运行Appium服务
+    
+    Args:
+        ssh_client: SSH客户端连接
+        port: 要检查的端口号
+        
+    Returns:
+        bool: 如果端口被Appium服务占用返回True，否则返回False
+    """
+    # 首先检查端口是否被占用
     command = f"netstat -tuln | grep :{port}"
     stdin, stdout, stderr = ssh_client.exec_command(command)
     output = stdout.read().decode('utf-8')
     
-    # 如果输出不为空，表示端口启动了Appium服务
-    if output.strip():
-        return True
-    else:
+    if not output.strip():
         return False
+        
+    # 检查是否有Appium进程在使用该端口
+    command = f"ps aux | grep appium | grep {port}"
+    stdin, stdout, stderr = ssh_client.exec_command(command)
+    output = stdout.read().decode('utf-8')
+    
+    # 如果找到Appium进程且包含指定端口，则返回True
+    if output.strip() and str(port) in output:
+        return True
+        
+    return False
 
 
 def get_remote_devices():
     """通过SSH获取远程主机上的设备列表和可用的Appium端口"""
-    xhs_host_list = Variable.get("XHS_HOST_LIST", default_var=[], deserialize_json=True)
-    print(f"xhs_host_list: {len(xhs_host_list)}")
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    print(f"XHS_DEVICE_INFO_LIST: {len(device_info_list)}")
 
-    device_info_list = []
-    for host_info in xhs_host_list:
-        print(f"checking host: {host_info}")
-        device_ip = host_info['device_ip']
-        username = host_info['username']
-        password = host_info['password']
-        port = host_info['port']
+    for device_info in device_info_list:
+        print(f"checking host: {device_info}")
+        device_ip = device_info['device_ip']
+        username = device_info['username']
+        password = device_info['password']
+        port = device_info['port']
         
         # 创建SSH客户端
         ssh_client = paramiko.SSHClient()
@@ -87,14 +102,12 @@ def get_remote_devices():
                     available_appium_ports.append(appium_port)
             print(f"available_appium_ports: {available_appium_ports}")
 
-            device_info_list.append({
-                'device_ip': device_ip,
-                'username': username,
-                'password': password,
-                'port': port,
-                'phone_device_list': devices,
-                'available_appium_ports': available_appium_ports,
-            })
+            # 更新设备信息
+            device_info['available_appium_ports'] = available_appium_ports
+            device_info['appium_port_num'] = len(available_appium_ports)    
+            device_info['phone_device_list'] = devices
+            device_info['phone_device_num'] = len(devices)
+            device_info['update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         except Exception as e:
             print(f"An error occurred with host {device_ip}: {e}")
