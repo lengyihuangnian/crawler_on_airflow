@@ -64,14 +64,16 @@ def get_remote_devices():
 
     for device_info in device_info_list:
         print(f"checking host: {device_info}")
-        device_ip = device_info['device_ip']
-        username = device_info['username']
-        password = device_info['password']
-        port = device_info['port']
-        
-        # 创建SSH客户端
-        ssh_client = paramiko.SSHClient()
+        ssh_client = None
         try:
+            device_ip = device_info['device_ip']
+            username = device_info['username']
+            password = device_info['password']
+            port = device_info['port']
+            
+            # 创建SSH客户端
+            ssh_client = paramiko.SSHClient()
+
             # 自动添加主机密钥
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             # 连接到远程服务器
