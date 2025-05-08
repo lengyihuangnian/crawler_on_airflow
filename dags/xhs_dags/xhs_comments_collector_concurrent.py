@@ -111,27 +111,37 @@ def get_adb_devices_from_remote(remote_host, **context):
     print(f"Using devices: {[d['device_id'] for d in devices]}")
     return devices
 
-def get_devices_pool_from_remote(port=6001, system_port=8200, **context): 
+def get_devices_pool_from_remote(port=6010, system_port=8200, **context): 
     """远程控制设备启动参数管理池。含启动参数和对应的端口号"""
-    appium_server_url = Variable.get("APPIUM_SERVER_CONCURRENT_URL", "http://localhost:4723")
-    remote_host = Variable.get("REMOTE_TEST_HOST", "localhost")
-    #获取远程主机连接的设备
-    devices_pool = get_adb_devices_from_remote(remote_host)
+    # 获取设备列表
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     
-    # 构建设备池，使用已配置的Appium服务端口
-    devs_pool = []
-    for idx, device in enumerate(devices_pool):
-        dev_port = device["port"]  # 使用设备预定义的端口
+    # 获取指定username的设备信息
+    target_username = "rasberry"  # 设置目标username
+    device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
+    
+    if not device_info:
+        raise Exception(f"未找到用户 {target_username} 的设备信息")
+    
+    # 获取设备IP和端口信息
+    device_ip = device_info.get('device_ip', '42.193.193.179')
+    available_ports = device_info.get('available_appium_ports', [6010])
+    device_ids = device_info.get('phone_device_list', ['c2c56d1b0107'])
+    
+    # 构建设备池
+    devices_pool = []
+    for idx, (device_id, port) in enumerate(zip(device_ids, available_ports)):
         dev_system_port = system_port + idx * 4  # 为每个设备分配唯一的系统端口
-        new_dict = {
-            "device_id": device["device_id"],
-            "port": dev_port,
+        device_config = {
+            "device_id": device_id,
+            "port": port,
             "system_port": dev_system_port,
-            "appium_server_url": f"{appium_server_url}:{dev_port - 1278}" 
+            "appium_server_url": f"http://{device_ip}:{port}"
         }
-        devs_pool.append(new_dict)
-        print(f"设备 {device['device_id']} 配置: {new_dict}")
-    return devs_pool
+        devices_pool.append(device_config)
+        print(f"设备 {device_id} 配置: {device_config}")
+    
+    return devices_pool
 
 def collect_comments_for_device(device_info, note_urls, collected_comments=None, **context):
     """为单个设备收集评论"""
