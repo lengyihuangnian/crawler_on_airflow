@@ -113,8 +113,13 @@ def get_remote_devices():
 
         except Exception as e:
             print(f"An error occurred with host {device_ip}: {e}")
-            # 继续检查下一个主机，而不是直接返回
-            continue
+            # 更新设备信息
+            device_info['available_appium_ports'] = []
+            device_info['appium_port_num'] = 0    
+            device_info['phone_device_list'] = []
+            device_info['phone_device_num'] = 0
+            device_info['update_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
         finally:
             # 确保无论如何都会关闭SSH连接
             if ssh_client:
