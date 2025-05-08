@@ -230,17 +230,20 @@ def create_device_tasks():
             )
             
             if result and result.get('status') == 'success':
-                # 更新已收集的URL
-                if 'collected_urls' in result:
-                    current_collected_notes_urls.update(result['collected_urls'])
-                
-                # 保存收集到的笔记到数据库
-                if 'notes' in result and result['notes']:
-                    try:
-                        save_notes_to_db(result['notes'])
-                        print(f"设备 {device_info['device_id']} 成功保存 {len(result['notes'])} 条笔记到数据库")
-                    except Exception as e:
-                        print(f"设备 {device_info['device_id']} 保存笔记到数据库失败: {str(e)}")
+                # 处理每个收集结果
+                for collect_result in result.get('results', []):
+                    if collect_result.get('status') == 'success':
+                        # 更新已收集的URL
+                        if 'collected_urls' in collect_result:
+                            current_collected_notes_urls.update(collect_result['collected_urls'])
+                        
+                        # 保存收集到的笔记到数据库
+                        if 'notes' in collect_result and collect_result['notes']:
+                            try:
+                                save_notes_to_db(collect_result['notes'])
+                                print(f"设备 {device_info['device_id']} 成功保存 {len(collect_result['notes'])} 条笔记到数据库")
+                            except Exception as e:
+                                print(f"设备 {device_info['device_id']} 保存笔记到数据库失败: {str(e)}")
             
             context['task_instance'].xcom_push(key='collected_notes_urls', value=list(current_collected_notes_urls))
             
