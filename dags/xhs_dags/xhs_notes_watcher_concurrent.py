@@ -173,8 +173,8 @@ dag = DAG(
     tags=['小红书'],
     catchup=False,
     max_active_runs=1,
-    concurrency=2,
-    max_active_tasks=2,
+    concurrency=10,
+    max_active_tasks=10,
 )
 
 
