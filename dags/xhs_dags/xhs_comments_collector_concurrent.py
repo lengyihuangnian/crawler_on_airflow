@@ -117,7 +117,7 @@ def get_devices_pool_from_remote(port=6010, system_port=8200, **context):
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     
     # 获取指定username的设备信息
-    target_username = "rasberry"  # 设置目标username
+    target_username = "lucy"  # 设置目标username
     device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
     
     if not device_info:
