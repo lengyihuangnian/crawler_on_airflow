@@ -12,13 +12,13 @@ from utils.device_manager import collect_comments_processor
 
 from utils.xhs_appium import XHSOperator
 
-def get_note_url(n: int = 10, **context):
-    """从数据库获取笔记URL"""
+def get_note_url(n: int = 5, **context):
+    """从数据库获取最新的笔记URL"""
     db_hook = BaseHook.get_connection("xhs_db").get_hook()
     db_conn = db_hook.get_conn()
     cursor = db_conn.cursor()
     
-    cursor.execute("SELECT note_url FROM xhs_notes LIMIT %s", (n,))
+    cursor.execute("SELECT note_url FROM xhs_notes ORDER BY id DESC LIMIT %s", (n,))
     note_urls = [row[0] for row in cursor.fetchall()]
     
     cursor.close()
