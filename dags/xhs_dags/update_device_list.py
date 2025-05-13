@@ -36,15 +36,7 @@ def check_port_availability(ssh_client, port):
         
     Returns:
         bool: 如果端口被Appium服务占用返回True，否则返回False
-    """
-    # 首先检查端口是否被占用
-    command = f"netstat -tuln | grep :{port}"
-    stdin, stdout, stderr = ssh_client.exec_command(command)
-    output = stdout.read().decode('utf-8')
-    
-    if not output.strip():
-        return False
-        
+    """        
     # 检查是否有Appium进程在使用该端口
     command = f"ps aux | grep appium | grep {port}"
     stdin, stdout, stderr = ssh_client.exec_command(command)
