@@ -4,7 +4,7 @@ After=network.target appium.service
 
 [Service]
 Type=simple
-ExecStart=/home/rasberry/Desktop/frp_0.51.3_linux_arm/frpc -c /home/rasberry/Desktop/frp_0.51.3_linux_arm/frpc.ini
+ExecStart=/home/$USER/Desktop/frp_0.51.3_linux_arm/frpc -c /home/$USER/Desktop/frp_0.51.3_linux_arm/frpc.ini
 StandardOutput=append:/var/log/frpc.log
 StandardError=append:/var/log/frpc.log
 Restart=always
