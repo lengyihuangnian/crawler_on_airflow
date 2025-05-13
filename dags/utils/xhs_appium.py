@@ -284,11 +284,35 @@ class XHSOperator:
             try:
                 # 获取所有笔记卡片元素
                 print("获取所有笔记卡片元素")
-                note_cards = self.driver.find_elements(
-                    by=AppiumBy.XPATH,
-                    value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-']"
-                )
-                print(f"获取所有笔记卡片元素成功,共{len(note_cards)}个")
+                try:
+                    # 尝试使用资源ID的不同可能形式
+                    note_cards = self.driver.find_elements(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.FrameLayout[contains(@resource-id, 'com.xingin.xhs:id/') and (@resource-id='com.xingin.xhs:id/-' or @resource-id='com.xingin.xhs:id/0_resource_name_obfuscated' or contains(@resource-id, 'resource_name_obfuscated'))]"
+                    )
+                    print(f"使用混合资源ID匹配成功,共{len(note_cards)}个笔记卡片")
+                except Exception as e:
+                    print(f"使用混合资源ID匹配失败: {str(e)}, 尝试其他定位方式")
+                    try:
+                        # 尝试使用更通用的定位方式
+                        note_cards = self.driver.find_elements(
+                            by=AppiumBy.XPATH,
+                            value="//android.widget.FrameLayout[.//android.widget.TextView and not(contains(@resource-id, 'tab'))]"
+                        )
+                        print(f"使用通用结构匹配成功,共{len(note_cards)}个笔记卡片")
+                    except Exception as e:
+                        print(f"使用通用结构匹配也失败: {str(e)}, 尝试最后的备选方案")
+                        # 最后的备选方案
+                        note_cards = self.driver.find_elements(
+                            by=AppiumBy.CLASS_NAME,
+                            value="android.widget.FrameLayout"
+                        )
+                        print(f"使用类名匹配获取到{len(note_cards)}个元素,可能包含非笔记卡片元素")
+                
+                if len(note_cards) == 0:
+                    print("警告: 未找到任何笔记卡片元素!")
+                else:
+                    print(f"获取所有笔记卡片元素成功,共{len(note_cards)}个")
                 
                 for note_card in note_cards:
                     try:
