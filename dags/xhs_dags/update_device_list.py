@@ -42,6 +42,8 @@ def check_port_availability(ssh_client, port):
     stdin, stdout, stderr = ssh_client.exec_command(command)
     output = stdout.read().decode('utf-8')
     
+    print(f"检查端口{port}是否被占用: {output}")
+    
     # 如果找到Appium进程且包含指定端口，则返回True
     if output.strip() and str(port) in output:
         return True
