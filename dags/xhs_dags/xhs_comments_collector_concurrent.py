@@ -20,6 +20,7 @@ def get_note_url(n: int = 5, **context):
     
     cursor.execute("SELECT note_url FROM xhs_notes ORDER BY id DESC LIMIT %s", (n,))
     note_urls = [row[0] for row in cursor.fetchall()]
+    print(f'笔记note_urls：{note_urls}')
     
     cursor.close()
     db_conn.close()
