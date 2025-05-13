@@ -283,11 +283,12 @@ class XHSOperator:
         while len(collected_notes) < max_notes:
             try:
                 # 获取所有笔记卡片元素
+                print("获取所有笔记卡片元素")
                 note_cards = self.driver.find_elements(
                     by=AppiumBy.XPATH,
                     value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
                 )
-
+                print("获取所有笔记卡片元素成功")
                 
                 for note_card in note_cards:
                     try:
