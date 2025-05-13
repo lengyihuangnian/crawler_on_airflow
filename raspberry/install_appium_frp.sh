@@ -103,7 +103,7 @@ check_status "Android HOME环境变量设置"
 # 步骤10: 设置Android PATH环境变量
 show_progress 10 14
 log_info "设置Android PATH环境变量..."
-echo 'export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools' >> ~/.bashrc
+echo 'export PATH=/home/'$USER'/.local/bin:/usr/lib/android-sdk/platform-tools:/usr/lib/android-sdk/cmdline-tools/latest/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin' >> ~/.bashrc
 check_status "Android PATH环境变量设置"
 
 # 步骤11: 应用环境变量
