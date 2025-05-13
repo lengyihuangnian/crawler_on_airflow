@@ -288,7 +288,7 @@ class XHSOperator:
                     by=AppiumBy.XPATH,
                     value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
                 )
-                print("获取所有笔记卡片元素成功")
+                print(f"获取所有笔记卡片元素成功,共{len(note_cards)}个")
                 
                 for note_card in note_cards:
                     try:
