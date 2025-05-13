@@ -93,6 +93,7 @@ def get_devices_pool_from_remote(port=6010, system_port=8200, **context):
     if not device_info:
         raise Exception(f"未找到用户 {target_username} 的设备信息")
     
+    print(f"获取指定username的设备信息: \n{device_info}")
     # 获取设备IP和端口信息
     device_ip = device_info.get('device_ip', '42.193.193.179')
     available_ports = device_info.get('available_appium_ports', [6010])
