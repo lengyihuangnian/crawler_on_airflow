@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# ping探测8.8.8.8，如果通则不连接WiFi，否则尝试连接WiFi
+if ping -c 1 8.8.8.8 &>/dev/null; then
+    echo "8.8.8.8通，不连接WiFi"
+    exit 0
+fi
+
 # 自动WiFi连接脚本，适用于树莓派
 # 扫描可用WiFi并尝试使用预设密码列表连接
 # 支持自动重启网卡并重试3次

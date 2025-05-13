@@ -1,19 +1,19 @@
 [Unit]
-Description=Appium Server on port 6010
+Description=Appium Server
 After=network.target
 
 [Service]
 Type=simple
-User=rasberry
+User=root
 
-ExecStart=/usr/bin/appium -p 6010
+ExecStart=/usr/bin/appium -p {PORT}
 
 WorkingDirectory=/tmp
 Environment="ANDROID_HOME=/usr/lib/android-sdk"
 Environment="PATH=/usr/bin:/usr/local/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 
-StandardOutput=file:/var/log/appium-6010.log
-StandardError=file:/var/log/appium_err-6010.log
+StandardOutput=file:/var/log/appium-{PORT}.log
+StandardError=file:/var/log/appium_err-{PORT}.log
 
 Restart=on-failure
 RestartSec=5s
