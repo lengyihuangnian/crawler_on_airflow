@@ -86,8 +86,11 @@ def get_devices_pool_from_remote(port=6010, system_port=8200, **context):
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     
+    # 从DAG配置中获取target_username参数，默认为"lucy"
+    target_username = context.get('dag_run').conf.get('target_username', 'lucy') if context.get('dag_run') and context.get('dag_run').conf else 'lucy'
+    print(f"使用目标用户名: {target_username}")
+    
     # 获取指定username的设备信息
-    target_username = "lucy"  # 设置目标username
     device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
     
     if not device_info:
@@ -180,9 +183,9 @@ dag = DAG(
 
 
 @task_group(group_id="device_tasks", dag=dag)
-def create_device_tasks():
+def create_device_tasks(**context):
     """动态创建设备任务组"""
-    devices_pool = get_devices_pool_from_remote()
+    devices_pool = get_devices_pool_from_remote(**context)
     
     # 初始化已收集笔记URL集合
     collected_notes_urls = set()
