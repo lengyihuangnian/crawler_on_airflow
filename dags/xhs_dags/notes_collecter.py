@@ -100,17 +100,32 @@ def collect_xhs_notes(**context) -> None:
                 if context['dag_run'].conf
                 else 5)
     
+    # 获取email参数，用于查找设备信息
+    email = (context['dag_run'].conf.get('email') 
+            if context['dag_run'].conf and 'email' in context['dag_run'].conf
+            else None)
+    
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
-    # 获取指定username的设备信息
-    target_username = "lucy"  # 设置目标username
-    device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
     
-    print(f"获取指定username的设备信息: \n{device_info}")
-    # 如果找不到指定username的设备，使用默认值
+    # 根据email查找设备信息，如果没有提供email，则使用默认用户名
+    if email:
+        device_info = next((device for device in device_info_list if device.get('email') == email), None)
+        print(f"根据email '{email}' 查找设备信息")
+    else:
+        # 默认使用用户名查找
+        target_username = "lucy"  # 默认用户名
+        device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
+        print(f"使用默认用户名 '{target_username}' 查找设备信息")
+    
+    print(f"获取到的设备信息: \n{device_info}")
+    
+    # 如果找不到设备信息，使用默认值
     device_ip = device_info.get('device_ip', '42.193.193.179') if device_info else '42.193.193.179'
-    device_port = device_info.get('available_appium_ports', [6030])[0] if device_info else 6030
-    device_id = device_info.get('phone_device_list', ['c2c56d1b0107'])[0] if device_info else 'c2c56d1b0107'
+    # 使用第一个可用的appium端口
+    device_port = device_info.get('available_appium_ports', [6030])[0] if device_info and device_info.get('available_appium_ports') else 6030
+    # 使用第一个设备ID
+    device_id = device_info.get('phone_device_list', ['c2c56d1b0107'])[0] if device_info and device_info.get('phone_device_list') else 'c2c56d1b0107'
     appium_server_url = f"http://{device_ip}:{device_port}"
 
     #test
