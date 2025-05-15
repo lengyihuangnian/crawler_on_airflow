@@ -847,10 +847,10 @@ class XHSOperator:
             screen_size = self.driver.get_window_size()
             start_x = screen_size['width'] * 0.5
             start_y = screen_size['height'] * 0.8
-            end_y = screen_size['height'] * 0.3
+            end_y = screen_size['height'] * 0.2
             
             self.driver.swipe(start_x, start_y, start_x, end_y, 1000)
-            time.sleep(1)  # 等待内容加载
+            time.sleep(0.5)  # 等待内容加载
         except Exception as e:
             print(f"页面滑动失败: {str(e)}")
             raise
