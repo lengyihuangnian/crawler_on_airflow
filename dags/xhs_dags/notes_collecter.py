@@ -101,7 +101,7 @@ def collect_xhs_notes(**context) -> None:
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     # 获取指定username的设备信息
-    target_username = "pi"  # 设置目标username
+    target_username = "lucy"  # 设置目标username
     device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
     
     print(f"获取指定username的设备信息: \n{device_info}")
