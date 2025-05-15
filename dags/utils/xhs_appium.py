@@ -286,7 +286,7 @@ class XHSOperator:
                 print("获取所有笔记卡片元素")
                 note_cards = self.driver.find_elements(
                     by=AppiumBy.XPATH,
-                    value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-']"
+                    value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated' and @clickable='true']"
                 )
                 print(f"获取所有笔记卡片元素成功,共{len(note_cards)}个")
                 
