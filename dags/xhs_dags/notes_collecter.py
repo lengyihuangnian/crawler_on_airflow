@@ -101,7 +101,7 @@ def collect_xhs_notes(**context) -> None:
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     # 获取指定username的设备信息
-    target_username = "lucy"  # 设置目标username
+    target_username = "pi"  # 设置目标username
     device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
     
     print(f"获取指定username的设备信息: \n{device_info}")
@@ -121,38 +121,110 @@ def collect_xhs_notes(**context) -> None:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
-        # 收集笔记，保持原有的一次性收集逻辑
-        notes = xhs.collect_notes_by_keyword(
-            keyword=keyword,
-            max_notes=max_notes,
-            filters={
-                "note_type": "图文"
-            }
-        )
+        # 用于每收集三条笔记保存一次的工具函数
+        batch_size = 3  # 每批次保存的笔记数量
+        collected_notes = []  # 所有收集到的笔记
+        current_batch = []  # 当前批次的笔记
         
-        if not notes:
+        # 定义处理笔记的回调函数
+        def process_note(note):
+            nonlocal collected_notes, current_batch
+            collected_notes.append(note)
+            current_batch.append(note)
+            
+            # 当收集到3条笔记时保存到数据库
+            if len(current_batch) >= batch_size:
+                print(f"保存批次数据到数据库，当前批次包含 {len(current_batch)} 条笔记")
+                save_notes_to_db(current_batch)
+                current_batch = []  # 清空当前批次
+        
+        # 搜索关键词，并且开始收集
+        print(f"搜索关键词: {keyword}")
+        xhs.search_keyword(keyword, filters={
+            "note_type": "图文"
+        })
+        
+        print(f"开始收集笔记,计划收集{max_notes}条...")
+        collected_titles = []
+        
+        while len(collected_notes) < max_notes:
+            try:
+                # 获取所有笔记卡片元素
+                print("获取所有笔记卡片元素")
+                note_cards = xhs.driver.find_elements(
+                    by=AppiumBy.XPATH,
+                    value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
+                )
+                print(f"获取所有笔记卡片元素成功,共{len(note_cards)}个")
+                
+                for note_card in note_cards:
+                    if len(collected_notes) >= max_notes:
+                        break
+                        
+                    try:
+                        # 获取笔记标题
+                        title_element = note_card.find_element(
+                            by=AppiumBy.XPATH,
+                            value=".//android.widget.TextView[contains(@text, '')]"
+                        )
+                        note_title_and_text = title_element.text
+                        
+                        # 获取作者信息
+                        author_element = note_card.find_element(
+                            by=AppiumBy.XPATH,
+                            value=".//android.widget.LinearLayout/android.widget.TextView[1]"
+                        )
+                        author = author_element.text
+                        
+                        if note_title_and_text not in collected_titles:
+                            print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
+
+                            # 点击笔记
+                            note_card.click()
+                            time.sleep(1)
+
+                            # 获取笔记内容
+                            note_data = xhs.get_note_data(note_title_and_text)
+                            
+                            # 如果笔记数据不为空，则添加到列表中并处理
+                            if note_data:
+                                note_data['keyword'] = keyword
+                                collected_titles.append(note_title_and_text)
+                                process_note(note_data)  # 处理笔记，可能会保存到数据库
+
+                            # 返回上一页
+                            xhs.driver.press_keycode(4)  # Android 返回键
+                            time.sleep(1)
+                    except Exception as e:
+                        print(f"处理笔记卡片失败: {str(e)}")
+                        continue
+                
+                # 滑动到下一页
+                if len(collected_notes) < max_notes:
+                    xhs.scroll_down()
+                    time.sleep(1)
+            
+            except Exception as e:
+                print(f"收集笔记失败: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                break
+        
+        # 如果还有未保存的笔记，保存剩余的笔记
+        if current_batch:
+            print(f"保存剩余 {len(current_batch)} 条笔记到数据库")
+            save_notes_to_db(current_batch)
+        
+        if not collected_notes:
             print(f"未找到关于 '{keyword}' 的笔记")
             return
             
         # 打印收集结果
         print("\n收集完成!")
-        print(f"共收集到 {len(notes)} 条笔记:")
-        
-        # 每三条笔记保存一次到数据库
-        batch_size = 3
-        for i in range(0, len(notes), batch_size):
-            # 获取当前批次的笔记
-            batch = notes[i:i+batch_size]
-            print(f"保存笔记批次 {i//batch_size + 1}/{(len(notes) + batch_size - 1)//batch_size}")
-            for note in batch:
-                print(f"  - {note.get('title', '无标题')}")
-            
-            # 保存当前批次的笔记到数据库
-            save_notes_to_db(batch)
-            print(f"成功保存批次 {i//batch_size + 1} 到数据库 (共 {len(batch)} 条笔记)")
+        print(f"共收集到 {len(collected_notes)} 条笔记")
         
         # 提取笔记URL列表并存入XCom
-        note_urls = [note.get('note_url', '') for note in notes]
+        note_urls = [note.get('note_url', '') for note in collected_notes]
         ti.xcom_push(key='note_urls', value=note_urls)
         ti.xcom_push(key='keyword', value=keyword)
         
