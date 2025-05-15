@@ -121,56 +121,38 @@ def collect_xhs_notes(**context) -> None:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
-        # 修改收集逻辑，每收集三条数据就保存一次
-        all_notes = []  # 存储所有收集的笔记
-        batch_size = 3  # 每批次保存的笔记数量
-        current_batch = []  # 当前批次的笔记
+        # 收集笔记，保持原有的一次性收集逻辑
+        notes = xhs.collect_notes_by_keyword(
+            keyword=keyword,
+            max_notes=max_notes,
+            filters={
+                "note_type": "图文"
+            }
+        )
         
-        # 收集笔记
-        for i in range(1, max_notes + 1):
-            # 每次只收集一条笔记
-            single_note_batch = xhs.collect_notes_by_keyword(
-                keyword=keyword,
-                max_notes=1,
-                filters={
-                    "note_type": "图文"
-                }
-            )
-            
-            # 如果成功收集到笔记
-            if single_note_batch:
-                note = single_note_batch[0]
-                current_batch.append(note)
-                all_notes.append(note)
-                print(f"已收集第 {len(all_notes)}/{max_notes} 条笔记: {note.get('title', '无标题')}")
-                
-                # 当收集到3条笔记或达到最大笔记数时保存到数据库
-                if len(current_batch) >= batch_size or len(all_notes) >= max_notes:
-                    print(f"保存批次数据到数据库，当前批次包含 {len(current_batch)} 条笔记")
-                    save_notes_to_db(current_batch)
-                    current_batch = []  # 清空当前批次
-                
-                # 如果已达到最大笔记数，结束收集
-                if len(all_notes) >= max_notes:
-                    break
-            else:
-                print(f"未能收集到第 {len(all_notes) + 1} 条笔记，尝试继续收集")
-        
-        # 如果还有未保存的笔记，保存剩余的笔记
-        if current_batch:
-            print(f"保存剩余 {len(current_batch)} 条笔记到数据库")
-            save_notes_to_db(current_batch)
-        
-        if not all_notes:
+        if not notes:
             print(f"未找到关于 '{keyword}' 的笔记")
             return
             
         # 打印收集结果
         print("\n收集完成!")
-        print(f"共收集到 {len(all_notes)} 条笔记")
+        print(f"共收集到 {len(notes)} 条笔记:")
+        
+        # 每三条笔记保存一次到数据库
+        batch_size = 3
+        for i in range(0, len(notes), batch_size):
+            # 获取当前批次的笔记
+            batch = notes[i:i+batch_size]
+            print(f"保存笔记批次 {i//batch_size + 1}/{(len(notes) + batch_size - 1)//batch_size}")
+            for note in batch:
+                print(f"  - {note.get('title', '无标题')}")
+            
+            # 保存当前批次的笔记到数据库
+            save_notes_to_db(batch)
+            print(f"成功保存批次 {i//batch_size + 1} 到数据库 (共 {len(batch)} 条笔记)")
         
         # 提取笔记URL列表并存入XCom
-        note_urls = [note.get('note_url', '') for note in all_notes]
+        note_urls = [note.get('note_url', '') for note in notes]
         ti.xcom_push(key='note_urls', value=note_urls)
         ti.xcom_push(key='keyword', value=keyword)
         
