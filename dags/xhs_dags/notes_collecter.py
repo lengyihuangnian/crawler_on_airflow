@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import json
+import time
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
+from appium.webdriver.common.appiumby import AppiumBy
 
 from utils.xhs_appium import XHSOperator
 
