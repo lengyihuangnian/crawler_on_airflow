@@ -79,10 +79,12 @@ def save_notes_to_db(notes: list) -> None:
         db_conn.close()
 
 
-def collect_xhs_notes(**context) -> None:
+def collect_xhs_notes(device_index_override=None, port_index_override=None, **context) -> None:
     """
     收集小红书笔记    
     Args:
+        device_index_override: 可选的设备索引覆盖参数
+        port_index_override: 可选的端口索引覆盖参数
         **context: Airflow上下文参数字典
     
     Returns:
@@ -107,8 +109,9 @@ def collect_xhs_notes(**context) -> None:
     email = conf.get('email') if conf else None
     
     # 端口和设备ID索引（后面用于选择列表中的项）
-    port_index = int(conf.get('port_index', 0)) if conf else 0
-    device_index = int(conf.get('device_index', 0)) if conf else 0
+    # 优先使用函数传入的override参数，如果没有再使用conf中的设置
+    port_index = port_index_override if port_index_override is not None else (int(conf.get('port_index', 0)) if conf else 0)
+    device_index = device_index_override if device_index_override is not None else (int(conf.get('device_index', 0)) if conf else 0)
     
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
@@ -278,26 +281,52 @@ def collect_xhs_notes(**context) -> None:
 
 # DAG 定义
 default_args = {
-    'owner': 'airflow',
+    'owner': 'yuchangongzhu',
     'depends_on_past': False,
     'start_date': datetime(2024, 1, 1),
 }
 
-
-dag = DAG(
-    dag_id='notes_collector',
+with DAG(
+    dag_id='xhs_notes_collector',
     default_args=default_args,
     description='定时收集小红书笔记',
     schedule_interval=None,
     tags=['小红书'],
     catchup=False,
-)
+    max_active_runs=1,
+) as dag:
 
-collect_notes_task = PythonOperator(
-    task_id='collect_xhs_notes',
-    python_callable=collect_xhs_notes,
-    provide_context=True,
-    dag=dag,
-)
-
-collect_notes_task
+    # 创建多个并行的笔记收集任务，使用不同的设备索引和端口索引
+    collect_notes_0 = PythonOperator(
+        task_id='collect_xhs_notes_0',
+        python_callable=collect_xhs_notes,
+        op_kwargs={
+            'device_index_override': 0,
+            'port_index_override': 0
+        },
+        provide_context=True,
+    )
+    
+    collect_notes_1 = PythonOperator(
+        task_id='collect_xhs_notes_1',
+        python_callable=collect_xhs_notes,
+        op_kwargs={
+            'device_index_override': 1,
+            'port_index_override': 1
+        },
+        provide_context=True,
+    )
+    
+    # 如果需要更多并行任务，可以根据需要添加
+    # collect_notes_2 = PythonOperator(
+    #     task_id='collect_xhs_notes_2',
+    #     python_callable=collect_xhs_notes,
+    #     op_kwargs={
+    #         'device_index_override': 2,
+    #         'port_index_override': 2
+    #     },
+    #     provide_context=True,
+    # )
+    
+    # 所有任务以并行方式运行
+    [collect_notes_0, collect_notes_1]
