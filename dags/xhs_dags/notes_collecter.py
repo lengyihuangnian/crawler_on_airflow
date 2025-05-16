@@ -329,4 +329,5 @@ with DAG(
     # )
     
     # 所有任务以并行方式运行
-    [collect_notes_0, collect_notes_1]
+    collect_notes_0
+    collect_notes_1
