@@ -100,10 +100,15 @@ def collect_xhs_notes(**context) -> None:
                 if context['dag_run'].conf
                 else 5)
     
+    # 从配置中获取参数
+    conf = context.get('dag_run').conf if context.get('dag_run') else {}
+    
     # 获取email参数，用于查找设备信息
-    email = (context['dag_run'].conf.get('email') 
-            if context['dag_run'].conf and 'email' in context['dag_run'].conf
-            else None)
+    email = conf.get('email') if conf else None
+    
+    # 端口和设备ID索引（后面用于选择列表中的项）
+    port_index = int(conf.get('port_index', 0)) if conf else 0
+    device_index = int(conf.get('device_index', 0)) if conf else 0
     
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
@@ -122,10 +127,24 @@ def collect_xhs_notes(**context) -> None:
     
     # 如果找不到设备信息，使用默认值
     device_ip = device_info.get('device_ip', '42.193.193.179') if device_info else '42.193.193.179'
-    # 使用第一个可用的appium端口
-    device_port = device_info.get('available_appium_ports', [6030])[0] if device_info and device_info.get('available_appium_ports') else 6030
-    # 使用第一个设备ID
-    device_id = device_info.get('phone_device_list', ['c2c56d1b0107'])[0] if device_info and device_info.get('phone_device_list') else 'c2c56d1b0107'
+    
+    # 获取可用的appium端口列表
+    available_ports = device_info.get('available_appium_ports', [6030]) if device_info else [6030]
+    # 根据索引选择端口，确保索引有效
+    if port_index < 0 or port_index >= len(available_ports):
+        port_index = 0
+        print(f"警告: 端口索引 {port_index} 超出范围，使用默认端口索引 0")
+    device_port = available_ports[port_index]
+    print(f"使用端口索引 {port_index}，选择端口 {device_port}")
+    
+    # 获取可用的设备ID列表
+    available_devices = device_info.get('phone_device_list', ['c2c56d1b0107']) if device_info else ['c2c56d1b0107']
+    # 根据索引选择设备ID，确保索引有效
+    if device_index < 0 or device_index >= len(available_devices):
+        device_index = 0
+        print(f"警告: 设备索引 {device_index} 超出范围，使用默认设备索引 0")
+    device_id = available_devices[device_index]
+    print(f"使用设备索引 {device_index}，选择设备 {device_id}")
     appium_server_url = f"http://{device_ip}:{device_port}"
 
     #test
@@ -263,6 +282,7 @@ default_args = {
     'depends_on_past': False,
     'start_date': datetime(2024, 1, 1),
 }
+
 
 dag = DAG(
     dag_id='notes_collector',
