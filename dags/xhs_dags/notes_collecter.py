@@ -192,7 +192,7 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
                 print("获取所有笔记卡片元素")
                 note_cards = xhs.driver.find_elements(
                     by=AppiumBy.XPATH,
-                    value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
+                    value="//android.widget.FrameLayout[@resource-id=\"com.xingin.xhs:id/0_resource_name_obfuscated\"]"
                 )
                 print(f"获取所有笔记卡片元素成功,共{len(note_cards)}个")
                 
@@ -329,5 +329,4 @@ with DAG(
     # )
     
     # 所有任务以并行方式运行
-    collect_notes_0
-    collect_notes_1
+    [collect_notes_0, collect_notes_1]
