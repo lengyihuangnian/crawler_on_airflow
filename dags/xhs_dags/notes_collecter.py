@@ -9,6 +9,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
+from airflow.exceptions import AirflowSkipException
 from appium.webdriver.common.appiumby import AppiumBy
 
 from utils.xhs_appium import XHSOperator
@@ -105,9 +106,14 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         raise ValueError("email参数不能为空")
     
     # 获取设备信息
-    device_ip = device_info.get('device_ip')
-    appium_port = device_info.get('available_appium_ports')[device_index]
-    device_id = device_info.get('phone_device_list')[device_index]
+    try:
+        device_ip = device_info.get('device_ip')
+        appium_port = device_info.get('available_appium_ports')[device_index]
+        device_id = device_info.get('phone_device_list')[device_index]
+    except Exception as e:
+        print(f"获取设备信息失败: {e}")
+        print(f"跳过当前任务，因为获取设备信息失败")
+        raise AirflowSkipException("设备信息获取失败")
 
     # 获取appium_server_url
     appium_server_url = f"http://{device_ip}:{appium_port}"
