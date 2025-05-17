@@ -121,6 +121,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
     print(f"选择设备 {device_id}, appium_server_url: {appium_server_url}")
     print(f"开始收集关键词 '{keyword}' 的小红书笔记... ，数量为'{max_notes}'")
     
+    xhs = None
     try:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
