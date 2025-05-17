@@ -6,14 +6,14 @@ After=network.target
 Type=simple
 User=root
 
-ExecStart=/usr/bin/appium -p 6012
+ExecStart=/usr/bin/appium -p {PORT}  --log-level debug
 
 WorkingDirectory=/tmp
 Environment="ANDROID_HOME=/usr/lib/android-sdk"
 Environment="PATH=/usr/bin:/usr/local/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 
-StandardOutput=file:/var/log/appium-6012.log
-StandardError=file:/var/log/appium_err-6012.log
+StandardOutput=journal
+StandardError=journal
 
 Restart=on-failure
 RestartSec=5s
