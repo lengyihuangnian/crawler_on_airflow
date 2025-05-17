@@ -79,79 +79,41 @@ def save_notes_to_db(notes: list) -> None:
         db_conn.close()
 
 
-def collect_xhs_notes(device_index_override=None, port_index_override=None, **context) -> None:
+def collect_xhs_notes(device_index=0, **context) -> None:
     """
     收集小红书笔记    
     Args:
-        device_index_override: 可选的设备索引覆盖参数
-        port_index_override: 可选的端口索引覆盖参数
+        device_index: 设备索引
         **context: Airflow上下文参数字典
     
     Returns:
         None
     """
-    # 获取任务实例对象，用于XCom传递数据
-    ti = context['ti']
-    # 获取关键词，默认为"AI客服"
-    keyword = (context['dag_run'].conf.get('keyword', '广州探店') 
-              if context['dag_run'].conf 
-              else '广州探店')
-    
-    # 获取最大收集笔记数，默认为5
-    max_notes = int(context['dag_run'].conf.get('max_notes', 5)
-                if context['dag_run'].conf
-                else 5)
-    
-    # 从配置中获取参数
-    conf = context.get('dag_run').conf if context.get('dag_run') else {}
-    
-    # 获取email参数，用于查找设备信息
-    email = conf.get('email') if conf else None
-    
-    # 端口和设备ID索引（后面用于选择列表中的项）
-    # 优先使用函数传入的override参数，如果没有再使用conf中的设置
-    port_index = port_index_override if port_index_override is not None else (int(conf.get('port_index', 0)) if conf else 0)
-    device_index = device_index_override if device_index_override is not None else (int(conf.get('device_index', 0)) if conf else 0)
+    # 获取输入参数
+    keyword = context['dag_run'].conf.get('keyword', '广州探店') 
+    max_notes = int(context['dag_run'].conf.get('max_notes', 5))
+    email = context['dag_run'].conf.get('email')
     
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     
-    # 根据email查找设备信息，如果没有提供email，则使用默认用户名
-    if email:
-        device_info = next((device for device in device_info_list if device.get('email') == email), None)
-        print(f"根据email '{email}' 查找设备信息")
+    # 根据email查找设备信息
+    device_info = next((device for device in device_info_list if device.get('email') == email), None)
+    if device_info:
+        print(f"device_info: {device_info}")
     else:
-        # 默认使用用户名查找
-        target_username = "lucy"  # 默认用户名
-        device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
-        print(f"使用默认用户名 '{target_username}' 查找设备信息")
+        raise ValueError("email参数不能为空")
     
-    print(f"获取到的设备信息: \n{device_info}")
-    
-    # 如果找不到设备信息，使用默认值
-    device_ip = device_info.get('device_ip', '42.193.193.179') if device_info else '42.193.193.179'
-    
-    # 获取可用的appium端口列表
-    available_ports = device_info.get('available_appium_ports', [6030]) if device_info else [6030]
-    # 根据索引选择端口，确保索引有效
-    if port_index < 0 or port_index >= len(available_ports):
-        port_index = 0
-        print(f"警告: 端口索引 {port_index} 超出范围，使用默认端口索引 0")
-    device_port = available_ports[port_index]
-    print(f"使用端口索引 {port_index}，选择端口 {device_port}")
-    
-    # 获取可用的设备ID列表
-    available_devices = device_info.get('phone_device_list', ['c2c56d1b0107']) if device_info else ['c2c56d1b0107']
-    # 根据索引选择设备ID，确保索引有效
-    if device_index < 0 or device_index >= len(available_devices):
-        device_index = 0
-        print(f"警告: 设备索引 {device_index} 超出范围，使用默认设备索引 0")
-    device_id = available_devices[device_index]
-    
-    print(f"使用设备索引 {device_index}，选择设备 {device_id}")
-    appium_server_url = f"http://{device_ip}:{device_port}"
+    # 获取设备信息
+    device_ip = device_info.get('device_ip')
+    appium_port = device_info.get('available_appium_ports')[device_index]
+    device_id = device_info.get('phone_device_list')[device_index]
 
-    print(f"开始收集关键词 '{keyword}' 的小红书笔记... ，数量为'{max_notes}")
+    # 获取appium_server_url
+    appium_server_url = f"http://{device_ip}:{appium_port}"
+    
+    print(f"选择设备 {device_id}, appium_server_url: {appium_server_url}")
+    print(f"开始收集关键词 '{keyword}' 的小红书笔记... ，数量为'{max_notes}'")
     
     try:
         # 初始化小红书操作器
@@ -280,8 +242,8 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
         
         # 提取笔记URL列表并存入XCom
         note_urls = [note.get('note_url', '') for note in collected_notes]
-        ti.xcom_push(key='note_urls', value=note_urls)
-        ti.xcom_push(key='keyword', value=keyword)
+        context['ti'].xcom_push(key='note_urls', value=note_urls)
+        context['ti'].xcom_push(key='keyword', value=keyword)
         
         return note_urls
             
@@ -291,20 +253,14 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
         raise
     finally:
         # 确保关闭小红书操作器
-        if 'xhs' in locals():
+        if xhs:
             xhs.close()
 
 
-# DAG 定义
-default_args = {
-    'owner': 'yuchangongzhu',
-    'depends_on_past': False,
-    'start_date': datetime(2024, 1, 1),
-}
 
 with DAG(
     dag_id='notes_collector',
-    default_args=default_args,
+    default_args={'owner': 'yuchangongzhu', 'depends_on_past': False, 'start_date': datetime(2024, 1, 1)},
     description='定时收集小红书笔记',
     schedule_interval=None,
     tags=['小红书'],
