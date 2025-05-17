@@ -147,12 +147,9 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
         device_index = 0
         print(f"警告: 设备索引 {device_index} 超出范围，使用默认设备索引 0")
     device_id = available_devices[device_index]
+    
     print(f"使用设备索引 {device_index}，选择设备 {device_id}")
     appium_server_url = f"http://{device_ip}:{device_port}"
-
-    #test
-    # appium_server_url = 'http://42.193.193.179:6010'
-    # device_id = 'c2c5819d0107'
 
     print(f"开始收集关键词 '{keyword}' 的小红书笔记... ，数量为'{max_notes}")
     
@@ -315,37 +312,12 @@ with DAG(
     max_active_runs=1,
 ) as dag:
 
-    # 创建多个并行的笔记收集任务，使用不同的设备索引和端口索引
-    collect_notes_0 = PythonOperator(
-        task_id='collect_xhs_notes_0',
-        python_callable=collect_xhs_notes,
-        op_kwargs={
-            'device_index_override': 0,
-            'port_index_override': 0
-        },
-        provide_context=True,
-    )
-    
-    collect_notes_1 = PythonOperator(
-        task_id='collect_xhs_notes_1',
-        python_callable=collect_xhs_notes,
-        op_kwargs={
-            'device_index_override': 1,
-            'port_index_override': 1
-        },
-        provide_context=True,
-    )
-    
-    # 如果需要更多并行任务，可以根据需要添加
-    # collect_notes_2 = PythonOperator(
-    #     task_id='collect_xhs_notes_2',
-    #     python_callable=collect_xhs_notes,
-    #     op_kwargs={
-    #         'device_index_override': 2,
-    #         'port_index_override': 2
-    #     },
-    #     provide_context=True,
-    # )
-    
-    # 所有任务以并行方式运行
-    [collect_notes_0, collect_notes_1]
+    for index in range(10):
+        PythonOperator(
+            task_id=f'collect_xhs_notes_{index}',
+            python_callable=collect_xhs_notes,
+            op_kwargs={
+                'device_index': index,
+            },
+            provide_context=True,
+        )
