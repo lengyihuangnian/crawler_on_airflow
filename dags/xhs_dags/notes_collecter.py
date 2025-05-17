@@ -159,6 +159,7 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
     try:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
+        xhs.print_all_elements()
         
         # 用于每收集三条笔记保存一次的工具函数
         batch_size = 3  # 每批次保存的笔记数量
