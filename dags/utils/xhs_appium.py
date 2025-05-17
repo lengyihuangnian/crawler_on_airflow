@@ -49,7 +49,7 @@ def get_adb_devices():
 
 
 class XHSOperator:
-    def __init__(self, appium_server_url: str = 'http://localhost:4723', force_app_launch: bool = False, device_id: str = None, system_port: int = 8200):
+    def __init__(self, appium_server_url: str = 'http://localhost:4723', force_app_launch: bool = False, device_id: str = None):
         """
         初始化小红书操作器
         Args:
@@ -58,11 +58,7 @@ class XHSOperator:
             device_id: 指定的设备ID
             system_port: Appium服务指定的本地端口，用来转发数据给安卓设备
         """
-        # 如果是远程连接，跳过adb设备检查
-        # if not appium_server_url.startswith('http://localhost'):
-        #     device_name = '97266a1f0107'
-        #     print(f"使用远程设备连接: {appium_server_url}")
-        # else:
+        
         # 使用指定的设备
         if not device_id:
             raise Exception("未指定设备ID")
@@ -83,7 +79,6 @@ class XHSOperator:
             newCommandTimeout=60,  # 命令超时时间
             unicodeKeyboard=False,  # 禁用 Unicode 输入法
             resetKeyboard=False,  # 禁用重置输入法
-            systemPort=system_port  # 设置系统端口
         )
 
         print('当前capabilities配置:', json.dumps(capabilities, ensure_ascii=False, indent=2))
