@@ -159,7 +159,6 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
     try:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
-        xhs.print_all_elements()
         
         # 用于每收集三条笔记保存一次的工具函数
         batch_size = 3  # 每批次保存的笔记数量
@@ -177,6 +176,10 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
                 print(f"保存批次数据到数据库，当前批次包含 {len(current_batch)} 条笔记")
                 save_notes_to_db(current_batch)
                 current_batch = []  # 清空当前批次
+        
+        print('-----元素------')
+        xhs.print_all_elements()
+        print('-----元素结束------')
         
         # 搜索关键词，并且开始收集
         print(f"搜索关键词: {keyword}")
