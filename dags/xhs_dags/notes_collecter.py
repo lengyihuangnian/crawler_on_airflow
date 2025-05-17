@@ -177,10 +177,6 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
                 save_notes_to_db(current_batch)
                 current_batch = []  # 清空当前批次
         
-        print('-----元素------')
-        xhs.print_all_elements()
-        print('-----元素结束------')
-        
         # 搜索关键词，并且开始收集
         print(f"搜索关键词: {keyword}")
         xhs.search_keyword(keyword, filters={
@@ -194,11 +190,30 @@ def collect_xhs_notes(device_index_override=None, port_index_override=None, **co
             try:
                 # 获取所有笔记卡片元素
                 print("获取所有笔记卡片元素")
-                note_cards = xhs.driver.find_elements(
-                    by=AppiumBy.XPATH,
-                    value="//android.widget.FrameLayout[@resource-id=\"com.xingin.xhs:id/0_resource_name_obfuscated\"]"
-                )
-                print(f"获取所有笔记卡片元素成功,共{len(note_cards)}个")
+                note_cards = []
+                try:
+                    # 尝试第一种方法 - 新的资源ID
+                    note_cards = xhs.driver.find_elements(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.FrameLayout[@resource-id=\"com.xingin.xhs:id/0_resource_name_obfuscated\"]"
+                    )
+                    print(f"使用新资源ID获取笔记卡片成功，共{len(note_cards)}个")
+                except Exception as e:
+                    print(f"使用新资源ID获取笔记卡片失败: {e}")
+                
+                # 如果第一种方法失败或没有找到元素，尝试第二种方法
+                if not note_cards:
+                    try:
+                        # 尝试第二种方法 - 原始方法
+                        note_cards = xhs.driver.find_elements(
+                            by=AppiumBy.XPATH,
+                            value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
+                        )
+                        print(f"使用原始方法获取笔记卡片成功，共{len(note_cards)}个")
+                    except Exception as e:
+                        print(f"使用原始方法获取笔记卡片失败: {e}")
+                
+                print(f"最终获取笔记卡片元素结果: 共{len(note_cards)}个")
                 
                 for note_card in note_cards:
                     if len(collected_notes) >= max_notes:
