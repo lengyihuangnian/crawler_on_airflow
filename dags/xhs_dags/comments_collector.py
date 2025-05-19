@@ -193,7 +193,7 @@ with DAG(
     schedule_interval=None,
     tags=['小红书'],
     catchup=False,
-    max_active_runs=1,
+    max_active_runs=5,
 ) as dag:
 
     # 创建多个任务，每个任务使用不同的设备索引
