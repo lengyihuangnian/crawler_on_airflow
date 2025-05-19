@@ -155,87 +155,9 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         print("----------card元素---------")
         xhs.print_all_elements()
         
-        while len(collected_notes) < max_notes:
-            try:
-                # 获取所有笔记卡片元素
-                print("获取所有笔记卡片元素")
-                note_cards = []
-                try:
-                    # 尝试第一种方法 - 新的资源ID
-                    note_cards = xhs.driver.find_elements(
-                        by=AppiumBy.XPATH,
-                        value="//android.widget.FrameLayout[@resource-id=\"com.xingin.xhs:id/0_resource_name_obfuscated\"]"
-                    )
-                    print(f"使用新资源ID获取笔记卡片成功，共{len(note_cards)}个")
-                except Exception as e:
-                    print(f"使用新资源ID获取笔记卡片失败: {e}")
-                
-                # 如果第一种方法失败或没有找到元素，尝试第二种方法
-                if not note_cards:
-                    try:
-                        # 尝试第二种方法 - 原始方法
-                        note_cards = xhs.driver.find_elements(
-                            by=AppiumBy.XPATH,
-                            value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
-                        )
-                        print(f"使用原始方法获取笔记卡片成功，共{len(note_cards)}个")
-                    except Exception as e:
-                        print(f"使用原始方法获取笔记卡片失败: {e}")
-                
-                print(f"最终获取笔记卡片元素结果: 共{len(note_cards)}个")
-                
-                for note_card in note_cards:
-                    if len(collected_notes) >= max_notes:
-                        break
-                        
-                    try:
-                        # 获取笔记标题
-                        title_element = note_card.find_element(
-                            by=AppiumBy.XPATH,
-                            value=".//android.widget.TextView[contains(@text, '')]"
-                        )
-                        note_title_and_text = title_element.text
-                        
-                        # 获取作者信息
-                        author_element = note_card.find_element(
-                            by=AppiumBy.XPATH,
-                            value=".//android.widget.LinearLayout/android.widget.TextView[1]"
-                        )
-                        author = author_element.text
-                        
-                        if note_title_and_text not in collected_titles:
-                            print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
+        # 封装为函数 get_note_card
+        get_note_card(xhs, collected_notes, collected_titles, max_notes, process_note, keyword)
 
-                            # 点击笔记
-                            note_card.click()
-                            time.sleep(0.5)
-
-                            # 获取笔记内容
-                            note_data = xhs.get_note_data(note_title_and_text)
-                            
-                            # 如果笔记数据不为空，则添加到列表中并处理
-                            if note_data:
-                                note_data['keyword'] = keyword
-                                collected_titles.append(note_title_and_text)
-                                process_note(note_data)  # 处理笔记，可能会保存到数据库
-
-                            # 返回上一页
-                            xhs.driver.press_keycode(4)  # Android 返回键
-                            time.sleep(0.5)
-                    except Exception as e:
-                        print(f"处理笔记卡片失败: {str(e)}")
-                        continue
-                
-                # 滑动到下一页
-                if len(collected_notes) < max_notes:
-                    xhs.scroll_down()
-                    time.sleep(0.5)
-            
-            except Exception as e:
-                print(f"收集笔记失败: {str(e)}")
-                import traceback
-                print(traceback.format_exc())
-                break
         
         # 如果还有未保存的笔记，保存剩余的笔记
         if current_batch:
@@ -267,6 +189,63 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             xhs.close()
 
 
+
+def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_note, keyword):
+    """
+    收集小红书笔记卡片
+    """
+    import time
+    from appium.webdriver.common.appiumby import AppiumBy
+    while len(collected_notes) < max_notes:
+        try:
+            print("获取所有笔记卡片元素")
+            note_cards = []
+            try:
+                # 只保留原始方法
+                note_cards = xhs.driver.find_elements(
+                    by=AppiumBy.XPATH,
+                    value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
+                )
+                print(f"使用原始方法获取笔记卡片成功，共{len(note_cards)}个")
+            except Exception as e:
+                print(f"使用原始方法获取笔记卡片失败: {e}")
+            print(f"最终获取笔记卡片元素结果: 共{len(note_cards)}个")
+            for note_card in note_cards:
+                if len(collected_notes) >= max_notes:
+                    break
+                try:
+                    title_element = note_card.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView[contains(@text, '')]"
+                    )
+                    note_title_and_text = title_element.text
+                    author_element = note_card.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.LinearLayout/android.widget.TextView[1]"
+                    )
+                    author = author_element.text
+                    if note_title_and_text not in collected_titles:
+                        print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
+                        note_card.click()
+                        time.sleep(0.5)
+                        note_data = xhs.get_note_data(note_title_and_text)
+                        if note_data:
+                            note_data['keyword'] = keyword
+                            collected_titles.append(note_title_and_text)
+                            process_note(note_data)
+                        xhs.driver.press_keycode(4)
+                        time.sleep(0.5)
+                except Exception as e:
+                    print(f"处理笔记卡片失败: {str(e)}")
+                    continue
+            if len(collected_notes) < max_notes:
+                xhs.scroll_down()
+                time.sleep(0.5)
+        except Exception as e:
+            print(f"收集笔记失败: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            break
 
 with DAG(
     dag_id='notes_collector',
