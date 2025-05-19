@@ -151,6 +151,9 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         
         print(f"开始收集笔记,计划收集{max_notes}条...")
         collected_titles = []
+
+        print("----------card元素---------")
+        xhs.print_all_elements()
         
         while len(collected_notes) < max_notes:
             try:
