@@ -252,16 +252,15 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
     from appium.webdriver.common.appiumby import AppiumBy
     while len(collected_notes) < max_notes:
         try:
-            print("获取所有新版资源ID的笔记卡片元素")
             note_cards = []
             try:
                 note_cards = xhs.driver.find_elements(
                     by=AppiumBy.XPATH,
-                    value='//android.widget.FrameLayout[@resource-id="com.xingin.xhs:id/0_resource_name_obfuscated"]'
+                    value='//android.widget.FrameLayout[@resource-id="com.xingin.xhs:id/0_resource_name_obfuscated" and @clickable="true"]'
                 )
                 print(f"获取新版资源ID笔记卡片成功，共{len(note_cards)}个")
             except Exception as e:
-                print(f"获取新版资源ID笔记卡片失败: {e}")
+                print(f"获取资源ID笔记卡片失败: {e}")
             for note_card in note_cards:
                 if len(collected_notes) >= max_notes:
                     break
@@ -271,7 +270,6 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                         by=AppiumBy.XPATH,
                         value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated']"
                     )
-                    print('这个标题',title_elements)
                     # 通常第一个文本元素是标题
                     note_title_and_text = title_elements[0].text if title_elements else ''
                     
