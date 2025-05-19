@@ -205,7 +205,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
 
                             # 点击笔记
                             note_card.click()
-                            time.sleep(1)
+                            time.sleep(0.5)
 
                             # 获取笔记内容
                             note_data = xhs.get_note_data(note_title_and_text)
@@ -218,7 +218,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
 
                             # 返回上一页
                             xhs.driver.press_keycode(4)  # Android 返回键
-                            time.sleep(1)
+                            time.sleep(0.5)
                     except Exception as e:
                         print(f"处理笔记卡片失败: {str(e)}")
                         continue
@@ -226,7 +226,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
                 # 滑动到下一页
                 if len(collected_notes) < max_notes:
                     xhs.scroll_down()
-                    time.sleep(1)
+                    time.sleep(0.5)
             
             except Exception as e:
                 print(f"收集笔记失败: {str(e)}")
