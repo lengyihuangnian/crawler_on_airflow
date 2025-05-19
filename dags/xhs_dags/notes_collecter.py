@@ -190,7 +190,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
 
 
 
-def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_note, keyword):
+def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, process_note, keyword):
     """
     收集小红书笔记卡片
     """
@@ -245,6 +245,66 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
             import traceback
             print(traceback.format_exc())
             break
+
+
+def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_note, keyword):
+    """
+    新版资源ID路径的收集逻辑
+    """
+    import time
+    from appium.webdriver.common.appiumby import AppiumBy
+    while len(collected_notes) < max_notes:
+        try:
+            print("获取所有新版资源ID的笔记卡片元素")
+            note_cards = []
+            try:
+                note_cards = xhs.driver.find_elements(
+                    by=AppiumBy.XPATH,
+                    value='//android.widget.FrameLayout[@resource-id="com.xingin.xhs:id/0_resource_name_obfuscated"]'
+                )
+                print(f"获取新版资源ID笔记卡片成功，共{len(note_cards)}个")
+            except Exception as e:
+                print(f"获取新版资源ID笔记卡片失败: {e}")
+            for note_card in note_cards:
+                if len(collected_notes) >= max_notes:
+                    break
+                try:
+                    # 获取标题
+                    title_element = note_card.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.view.View[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated' and contains(@text, '')]"
+                    )
+                    note_title_and_text = title_element.text
+                    # 获取作者
+                    author_element = note_card.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated']"
+                    )
+                    author = author_element.text
+                    if note_title_and_text not in collected_titles:
+                        print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
+                        note_card.click()
+                        time.sleep(0.5)
+                        note_data = xhs.get_note_data(note_title_and_text)
+                        if note_data:
+                            note_data['keyword'] = keyword
+                            collected_titles.append(note_title_and_text)
+                            process_note(note_data)
+                        xhs.driver.press_keycode(4)
+                        time.sleep(0.5)
+                except Exception as e:
+                    print(f"处理新版资源ID笔记卡片失败: {str(e)}")
+                    continue
+            if len(collected_notes) < max_notes:
+                xhs.scroll_down()
+                time.sleep(0.5)
+        except Exception as e:
+            print(f"收集新版资源ID笔记失败: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            break
+
+
 
 with DAG(
     dag_id='notes_collector',
