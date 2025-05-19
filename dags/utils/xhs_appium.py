@@ -645,7 +645,7 @@ class XHSOperator:
         try:
             print(f"正在获取笔记内容: {note_title_and_text}")
             print("----------note元素---------")
-            xhs.print_all_elements()
+            self.print_all_elements()
             
             # 等待笔记内容加载
             time.sleep(0.5)
