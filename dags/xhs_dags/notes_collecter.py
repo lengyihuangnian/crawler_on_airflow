@@ -151,6 +151,9 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         
         print(f"开始收集笔记,计划收集{max_notes}条...")
         collected_titles = []
+
+        print("---------------card----------------")
+        xhs.print_all_elemnts()
         
         # 封装为函数 get_note_card
         get_note_card(xhs, collected_notes, collected_titles, max_notes, process_note, keyword)
@@ -259,8 +262,6 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                     value='//android.widget.FrameLayout[@resource-id="com.xingin.xhs:id/0_resource_name_obfuscated" and @clickable="true"]'
                 )
                 print(f"获取新版资源ID笔记卡片成功，共{len(note_cards)}个")
-                print("---------------card----------------")
-                xhs.print_all_elemnts()
             except Exception as e:
                 print(f"获取资源ID笔记卡片失败: {e}")
             for note_card in note_cards:
