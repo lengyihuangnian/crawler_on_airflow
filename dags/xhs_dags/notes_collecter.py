@@ -151,9 +151,6 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         
         print(f"开始收集笔记,计划收集{max_notes}条...")
         collected_titles = []
-
-        print("----------card元素---------")
-        xhs.print_all_elements()
         
         # 封装为函数 get_note_card
         get_note_card(xhs, collected_notes, collected_titles, max_notes, process_note, keyword)
@@ -274,6 +271,7 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                         by=AppiumBy.XPATH,
                         value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated']"
                     )
+                    print('这个标题',title_elements)
                     # 通常第一个文本元素是标题
                     note_title_and_text = title_elements[0].text if title_elements else ''
                     
