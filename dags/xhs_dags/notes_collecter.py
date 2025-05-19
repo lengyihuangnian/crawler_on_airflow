@@ -269,18 +269,21 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                 if len(collected_notes) >= max_notes:
                     break
                 try:
-                    # 获取标题
-                    title_element = note_card.find_element(
-                        by=AppiumBy.XPATH,
-                        value=".//android.view.View[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated' and contains(@text, '')]"
-                    )
-                    note_title_and_text = title_element.text
-                    # 获取作者
-                    author_element = note_card.find_element(
+                    # 获取标题 - 笔记卡片上部的标题文本
+                    title_elements = note_card.find_elements(
                         by=AppiumBy.XPATH,
                         value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated']"
                     )
-                    author = author_element.text
+                    # 通常第一个文本元素是标题
+                    note_title_and_text = title_elements[0].text if title_elements else ''
+                    
+                    # 获取作者 - 笔记卡片下部的作者名称
+                    author_elements = note_card.find_elements(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated']"
+                    )
+                    # 通常最后一个文本元素是作者名
+                    author = author_elements[-1].text if len(author_elements) > 1 else ''
                     if note_title_and_text not in collected_titles:
                         print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
                         note_card.click()
