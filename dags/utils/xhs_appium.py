@@ -119,7 +119,7 @@ class XHSOperator:
             print(f"已搜索关键词: {keyword}")
             
             # 等待搜索结果加载
-            time.sleep(3)
+            time.sleep(1)
 
             if filters:
                 try:
