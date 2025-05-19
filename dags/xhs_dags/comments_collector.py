@@ -165,6 +165,7 @@ def collect_xhs_comments(device_index: int = 0, **context):
     
     # 获取用户邮箱
     email = context['dag_run'].conf.get('email')
+    email="yuchangongzhu@gmail.com"
     
     # 检查是否有传入的笔记URL列表
     note_urls = context['dag_run'].conf.get('note_urls', None) if context['dag_run'].conf else None
