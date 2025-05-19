@@ -128,7 +128,7 @@ class XHSOperator:
                         EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '筛选') or contains(@content-desc, '筛选')]"))
                     )
                     filter_btn.click()
-                    time.sleep(1)
+                    time.sleep(0.5)
                 except:
                     # 如果找不到筛选按钮，尝试点击全部按钮
                     try:
@@ -190,7 +190,7 @@ class XHSOperator:
                     EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@text='收起']"))
                 )
                 collapse_btn.click()
-                time.sleep(1)
+                time.sleep(0.5)
 
             print("筛选条件应用完成")
             
