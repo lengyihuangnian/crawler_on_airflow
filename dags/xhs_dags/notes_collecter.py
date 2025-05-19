@@ -206,10 +206,9 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                     by=AppiumBy.XPATH,
                     value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
                 )
-                print(f"使用原始方法获取笔记卡片成功，共{len(note_cards)}个")
+                print(f"获取笔记卡片成功，共{len(note_cards)}个")
             except Exception as e:
-                print(f"使用原始方法获取笔记卡片失败: {e}")
-            print(f"最终获取笔记卡片元素结果: 共{len(note_cards)}个")
+                print(f"获取笔记卡片失败: {e}")
             for note_card in note_cards:
                 if len(collected_notes) >= max_notes:
                     break
