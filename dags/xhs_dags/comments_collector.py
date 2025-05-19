@@ -4,6 +4,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
+from airflow.exceptions import AirflowSkipException
 
 from utils.xhs_appium import XHSOperator
 
@@ -91,30 +92,36 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
         cursor.close()
         db_conn.close()
 
-def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: int = 0):
+def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: int = 0, email: str = None):
     """根据传入的笔记URL列表收集评论
     Args:
         note_urls: 笔记URL列表
         keyword: 关键词（可选）
         device_index: 设备索引
+        email: 用户邮箱（用于查找设备信息）
     Returns:
         所有评论的列表
     """
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     
-    # 确保device_index在有效范围内
-    if not device_info_list:
-        raise ValueError("没有可用的设备信息")
+    # 根据email查找设备信息
+    device_info = next((device for device in device_info_list if device.get('email') == email), None)
+    if device_info:
+        print(f"device_info: {device_info}")
+    else:
+        raise ValueError("email参数不能为空")
     
-    device_index = device_index % len(device_info_list)
-    device_info = device_info_list[device_index]
-    
-    # 从设备信息中获取相关参数
-    device_ip = device_info.get('device_ip', '42.193.193.179')
-    device_port = device_info.get('available_appium_ports', [6010])[0]
-    device_id = device_info.get('phone_device_list', ['c2c56d1b0107'])[0]
-    appium_server_url = f"http://{device_ip}:{device_port}"
+    # 获取设备信息
+    try:
+        device_ip = device_info.get('device_ip')
+        device_port = device_info.get('available_appium_ports')[device_index]
+        device_id = device_info.get('phone_device_list')[device_index]
+        appium_server_url = f"http://{device_ip}:{device_port}"
+    except Exception as e:
+        print(f"获取设备信息失败: {e}")
+        print(f"跳过当前任务，因为获取设备信息失败")
+        raise AirflowSkipException("设备信息获取失败")
     print(f"开始收集{len(note_urls)}条笔记的评论...")
     print(f"使用Appium服务器: {appium_server_url}")
     print(f"使用设备ID: {device_id}")
@@ -152,10 +159,12 @@ def collect_xhs_comments(device_index: int = 0, **context):
         **context: Airflow上下文参数字典
     """
     # 从DAG运行配置中获取参数，如果没有则使用默认值
-    
     keyword = (context['dag_run'].conf.get('keyword', None) 
               if context['dag_run'].conf 
               else '番茄')
+    
+    # 获取用户邮箱
+    email = context['dag_run'].conf.get('email')
     
     # 检查是否有传入的笔记URL列表
     note_urls = context['dag_run'].conf.get('note_urls', None) if context['dag_run'].conf else None
@@ -163,13 +172,13 @@ def collect_xhs_comments(device_index: int = 0, **context):
     if note_urls:
         # 如果有传入的URL列表，直接使用
         print(f"设备索引 {device_index}: 使用传入的{len(note_urls)}个笔记URL收集评论")
-        return get_notes_by_url_list(note_urls, keyword, device_index)
+        return get_notes_by_url_list(note_urls, keyword, device_index, email)
     else:
         # 否则从数据库获取笔记URL和关键词
         notes_data = get_note_url(keyword)
         # 提取URL列表
         note_urls = [note['note_url'] for note in notes_data]
-        return get_notes_by_url_list(note_urls, keyword, device_index)
+        return get_notes_by_url_list(note_urls, keyword, device_index, email)
 
 # DAG 定义
 with DAG(
