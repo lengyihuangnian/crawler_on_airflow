@@ -278,8 +278,7 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                         by=AppiumBy.XPATH,
                         value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated' and contains(@text, '')]"
                     )
-                    # 通常最后一个文本元素是作者名
-                    author = author_elements[-1].text if len(author_elements) > 1 else ''
+                    author = author_elements[0].text
                     if note_title_and_text not in collected_titles:
                         print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
                         note_card.click()
