@@ -173,7 +173,7 @@ def collect_xhs_comments(device_index: int = 0, **context):
 
 # DAG 定义
 with DAG(
-    dag_id='xhs_comments_collector',
+    dag_id='comments_collector',
     default_args={
         'owner': 'yuchangongzhu', 
         'depends_on_past': False, 
