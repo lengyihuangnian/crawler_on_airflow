@@ -66,7 +66,7 @@ def reply_high_intent_comments(**context):
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     # 获取指定username的设备信息
-    target_username = "rasberry"  # 设置目标username
+    target_username = "lucyai"  # 设置目标username
     device_info = next((device for device in device_info_list if device.get('username') == target_username), None)
     
     # 如果找不到指定username的设备，使用默认值
