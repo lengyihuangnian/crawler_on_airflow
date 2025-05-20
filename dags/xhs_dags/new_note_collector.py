@@ -259,7 +259,7 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
             try:
                 note_cards = xhs.driver.find_elements(
                     by=AppiumBy.XPATH,
-                    value='//android.widget.FrameLayout[@resource-id="com.xingin.xhs:id/0_resource_name_obfuscated" and @clickable="true"]'
+                    value='//android.widget.FrameLayout[@resource-id="com.xingin.xhs:id/0_resource_name_obfuscated" and @long-clickable="true"]'
                 )
                 print(f"获取新版资源ID笔记卡片成功，共{len(note_cards)}个")
             except Exception as e:
