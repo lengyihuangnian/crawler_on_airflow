@@ -736,55 +736,121 @@ class XHSOperator:
                     time.sleep(0.5)
                     scroll_count += 1
 
-            # 获取互动数据 - 分别处理每个数据
+                        # 获取互动数据 - 分别处理每个数据
             likes = "0"
             try:
-                # 获取点赞数
-                likes_btn = self.driver.find_element(
-                    by=AppiumBy.XPATH,
-                    value="//android.widget.Button[contains(@content-desc, '点赞')]"
-                )
-                likes_text = likes_btn.find_element(
-                    by=AppiumBy.XPATH,
-                    value=".//android.widget.TextView"
-                ).text
-                # 如果获取到的是"点赞"文本，则设为0
-                print(f"获取到点赞数: {likes_text}")
-                likes = "0" if likes_text == "点赞" else likes_text
+                # 获取点赞数 - 基于图片中的元素结构
+                try:
+                    # 首先尝试使用resource-id和content-desc结合查找
+                    likes_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '点赞') and contains(@resource-id, 'com.xingin.xhs:id/')]"
+                    )
+                    # 尝试获取文本内容
+                    likes_text = likes_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过resource-id和content-desc找到点赞数: {likes_text}")
+                except:
+                    # 如果失败，尝试只使用content-desc
+                    likes_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '点赞')]"
+                    )
+                    likes_text = likes_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过content-desc找到点赞数: {likes_text}")
+                
+                # 如果获取到的是纯文本"点赞"或数字后跟有文本，则提取数字部分
+                if likes_text == "点赞":
+                    likes = "0"
+                else:
+                    # 尝试提取数字部分
+                    import re
+                    digits = re.findall(r'\d+', likes_text)
+                    likes = digits[0] if digits else "0"
+                print(f"最终点赞数: {likes}")
             except Exception as e:
                 print(f"获取点赞数失败: {str(e)}")
 
             collects = "0"
             try:
-                # 获取收藏数
-                collects_btn = self.driver.find_element(
-                    by=AppiumBy.XPATH,
-                    value="//android.widget.Button[contains(@content-desc, '收藏')]"
-                )
-                collects_text = collects_btn.find_element(
-                    by=AppiumBy.XPATH,
-                    value=".//android.widget.TextView"
-                ).text
-                # 如果获取到的是"收藏"文本，则设为0
-                print(f"获取到收藏数: {collects_text}")
-                collects = "0" if collects_text == "收藏" else collects_text
+                # 获取收藏数 - 基于图片中的元素结构
+                try:
+                    # 首先尝试使用resource-id和content-desc结合查找
+                    collects_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '收藏') and contains(@resource-id, 'com.xingin.xhs:id/')]"
+                    )
+                    # 尝试获取文本内容
+                    collects_text = collects_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过resource-id和content-desc找到收藏数: {collects_text}")
+                except:
+                    # 如果失败，尝试只使用content-desc
+                    collects_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '收藏')]"
+                    )
+                    collects_text = collects_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过content-desc找到收藏数: {collects_text}")
+                
+                # 如果获取到的是纯文本"收藏"或数字后跟有文本，则提取数字部分
+                if collects_text == "收藏":
+                    collects = "0"
+                else:
+                    # 尝试提取数字部分
+                    import re
+                    digits = re.findall(r'\d+', collects_text)
+                    collects = digits[0] if digits else "0"
+                print(f"最终收藏数: {collects}")
             except Exception as e:
                 print(f"获取收藏数失败: {str(e)}")
 
             comments = "0"
             try:
-                # 获取评论数
-                comments_btn = self.driver.find_element(
-                    by=AppiumBy.XPATH,
-                    value="//android.widget.Button[contains(@content-desc, '评论')]"
-                )
-                comments_text = comments_btn.find_element(
-                    by=AppiumBy.XPATH,
-                    value=".//android.widget.TextView"
-                ).text
-                # 如果获取到的是"评论"文本，则设为0
-                print(f"获取到评论数: {comments_text}")
-                comments = "0" if comments_text == "评论" else comments_text
+                # 获取评论数 - 基于图片中的元素结构
+                try:
+                    # 首先尝试使用resource-id和content-desc结合查找
+                    comments_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '评论') and contains(@resource-id, 'com.xingin.xhs:id/')]"
+                    )
+                    # 尝试获取文本内容
+                    comments_text = comments_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过resource-id和content-desc找到评论数: {comments_text}")
+                except:
+                    # 如果失败，尝试只使用content-desc
+                    comments_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '评论')]"
+                    )
+                    comments_text = comments_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过content-desc找到评论数: {comments_text}")
+                
+                # 如果获取到的是纯文本"评论"或数字后跟有文本，则提取数字部分
+                if comments_text == "评论":
+                    comments = "0"
+                else:
+                    # 尝试提取数字部分
+                    import re
+                    digits = re.findall(r'\d+', comments_text)
+                    comments = digits[0] if digits else "0"
+                print(f"最终评论数: {comments}")
             except Exception as e:
                 print(f"获取评论数失败: {str(e)}")
 
