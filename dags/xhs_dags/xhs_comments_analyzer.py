@@ -97,6 +97,8 @@ def _analyze_single_comment(content: str, author: str, profile_sentence: str) ->
         print(f"评论内容为空，自动判定为低意向")
         return "低意向"
     
+    industry='医美'
+    
     prompt = f"""
 # Role and Objective
 你是一个资深的用户意向判断器，工作在{industry}行业，该行业的【理想客户画像】为{profile_sentence}。你的任务是根据用户在小红书的行业相关的帖子下的一条评论留言，分析该用户和【理想客户画像】的贴近程度，以此判断该用户能够成为你的客户的可能性，并最终直接返回"高意向"、"中意向"或"低意向"。
