@@ -271,7 +271,7 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                     # 获取标题 - 笔记卡片上部的标题文本
                     title_elements = note_card.find_elements(
                         by=AppiumBy.XPATH,
-                        value=".//android.widget.LinearLayout/android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated']"
+                        value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated' and contains(@text, '')]",
                     )
                     # 通常第一个文本元素是标题
                     note_title_and_text = title_elements[0].text if title_elements else ''
@@ -279,7 +279,7 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                     # 获取作者 - 笔记卡片下部的作者名称
                     author_elements = note_card.find_elements(
                         by=AppiumBy.XPATH,
-                        value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated' and contains(@text, '')]"
+                        value=".//android.widget.LinearLayout/android.widget.TextView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated']"
                     )
                     author = author_elements[0].text
                     if note_title_and_text not in collected_titles:
