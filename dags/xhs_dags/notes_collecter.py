@@ -156,7 +156,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         xhs.print_all_elements()
         
         # 封装为函数 get_note_card
-        get_note_card(xhs, collected_notes, collected_titles, max_notes, process_note, keyword)
+        get_note_card_init(xhs, collected_notes, collected_titles, max_notes, process_note, keyword)
 
         
         # 如果还有未保存的笔记，保存剩余的笔记
