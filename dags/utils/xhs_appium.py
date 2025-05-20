@@ -1454,6 +1454,7 @@ class XHSOperator:
 
             # 等待评论区加载
             print("等待评论区加载...")
+            self.scroll_down()
             try:
                 # 查找评论列表
                 try:
@@ -1699,7 +1700,6 @@ class XHSOperator:
 
                 # 模拟滑动加载更多评论
                 self.scroll_down()
-                time.sleep(0.5)  # 等待评论加载
 
             print(f"评论获取完成，共收集到 {len(all_comments)} 条评论")
             return all_comments
