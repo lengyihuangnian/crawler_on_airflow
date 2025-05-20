@@ -1450,7 +1450,7 @@ class XHSOperator:
 
             # 打开帖子页面
             self.driver.get(note_url)
-            time.sleep(0.5)  # 等待页面加载
+            # time.sleep(0.5)  # 等待页面加载
 
             # 等待评论区加载
             print("等待评论区加载...")
