@@ -277,7 +277,7 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                     if not title_elements:
                         print("未找到标题元素，跳过此卡片")
                         continue
-                    note_title_and_text = title_elements.text
+                    note_title_and_text = title_elements[0].text
                     
                     # 获取作者 - 笔记卡片下部的作者名称
                     author_elements = note_card.find_elements(
@@ -289,7 +289,8 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                         print("未找到作者元素，使用默认值")
                         author = "未知作者"
                     else:
-                        author = author_elements.text
+                        author = author_elements[0].text
+                    print('标题&作者：：：：：：：：：：：：：',title_elements,author_elements)
                     if note_title_and_text not in collected_titles:
                         print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
                         note_card.click()

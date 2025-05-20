@@ -643,6 +643,8 @@ class XHSOperator:
             dict: 笔记数据
         """
         try:
+            print('---------------note--------------------')
+            self.print_all_elements()
             print(f"正在获取笔记内容: {note_title_and_text}")
             
             # 等待笔记内容加载
