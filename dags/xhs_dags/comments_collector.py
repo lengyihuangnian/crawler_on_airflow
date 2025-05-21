@@ -158,6 +158,9 @@ def collect_xhs_comments(device_index: int = 0, **context):
         device_index: 设备索引
         **context: Airflow上下文参数字典
     """
+    print(f"dag_run_conf: {context['dag_run'].conf}")
+    
+    # 读取传入的参数 TODO: 后面要根据前端的逻辑调整
     email = context['dag_run'].conf.get('email')
     keyword = context['dag_run'].conf.get('keyword')
     note_urls = context['dag_run'].conf.get('note_urls')
