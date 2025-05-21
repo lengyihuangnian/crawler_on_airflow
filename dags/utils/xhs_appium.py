@@ -124,19 +124,19 @@ class XHSOperator:
             if filters:
                 try:
                     # 先尝试点击筛选按钮
-                    filter_btn = WebDriverWait(self.driver, 5).until(
-                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '筛选') or contains(@content-desc, '筛选')]"))
-                    )
-                    filter_btn.click()
+                    all_btn = WebDriverWait(self.driver, 5).until(
+                            EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '全部') or contains(@content-desc, '全部')]"))
+                        )
+                    all_btn.click()
                     time.sleep(0.5)
                 except:
                     # 如果找不到筛选按钮，尝试点击全部按钮
                     try:
-                        all_btn = WebDriverWait(self.driver, 5).until(
-                            EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '全部') or contains(@content-desc, '全部')]"))
-                        )
-                        all_btn.click()
-                        time.sleep(1)
+                        filter_btn = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '筛选') or contains(@content-desc, '筛选')]"))
+                    )
+                        filter_btn.click()
+                        time.sleep(0.5)
                     except Exception as e:
                         print(f"找不到筛选按钮和全部按钮: {str(e)}")
                         return
