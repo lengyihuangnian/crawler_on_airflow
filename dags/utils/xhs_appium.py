@@ -1436,7 +1436,7 @@ class XHSOperator:
         except Exception as e:
             return "请求失败: {}".format(str(e))
 
-    def collect_comments_by_url(self, note_url: str, max_comments: int = 2, max_attempts: int = 10) -> list:
+    def collect_comments_by_url(self, note_url: str, max_comments: int = 10, max_attempts: int = 10) -> list:
         """
         根据帖子 URL 获取并解析评论信息
         Args:
