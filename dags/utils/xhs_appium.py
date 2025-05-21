@@ -1458,7 +1458,7 @@ class XHSOperator:
             try:
                 # 查找评论列表
                 try:
-                    WebDriverWait(self.driver, 1).until(
+                    WebDriverWait(self.driver, 0.3).until(
                         EC.presence_of_element_located((
                             AppiumBy.XPATH,
                             "//android.widget.TextView[contains(@text, '')]"
