@@ -158,16 +158,12 @@ def collect_xhs_comments(device_index: int = 0, **context):
         device_index: 设备索引
         **context: Airflow上下文参数字典
     """
-    # 从DAG运行配置中获取参数，如果没有则使用默认值
-    keyword = (context['dag_run'].conf.get('keyword', None) 
-              if context['dag_run'].conf 
-              else '番茄')
-    
-    # 获取用户邮箱
     email = context['dag_run'].conf.get('email')
-    
-    # 检查是否有传入的笔记URL列表
-    note_urls = context['dag_run'].conf.get('note_urls', None) if context['dag_run'].conf else None
+    keyword = context['dag_run'].conf.get('keyword')
+    note_urls = context['dag_run'].conf.get('note_urls')
+
+    if not keyword or not note_urls:
+        raise ValueError("keyword和note_urls参数不能同时为空")
     
     if note_urls:
         # 如果有传入的URL列表，直接使用
