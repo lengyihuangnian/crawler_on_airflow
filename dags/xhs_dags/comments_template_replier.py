@@ -158,6 +158,7 @@ def reply_with_template(device_index: int = 0, **context):
     comment_ids = context['dag_run'].conf.get('comment_ids') 
     max_comments = context['dag_run'].conf.get('max_comments') 
     email = context['dag_run'].conf.get('email')
+    email="yuchangongzhu@gmail.com"
     
     if not email:
         raise ValueError("email参数不能为空")
