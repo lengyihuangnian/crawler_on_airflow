@@ -206,27 +206,29 @@ def reply_with_template(device_index: int = 0, **context):
     
     print(f"使用Appium服务器: {appium_server_url}")
     print(f"使用设备ID: {device_id}")
+    print(f"准备处理 {len(comments_to_process)} 条评论")
     
     # 初始化小红书操作器
     xhs = None
     successful_replies = 0
+    failed_replies = 0
     
     try:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
-        # 处理所有分配的评论
-        for comment in comments_to_process:
+        # 处理每条分配的评论
+        for i, comment in enumerate(comments_to_process):
             try:
                 note_url = comment['note_url']
                 author = comment['author']
                 comment_content = comment['content']
                 comment_id = comment['comment_id']
                 
+                print(f"设备 {device_id} 正在处理第 {i+1}/{len(comments_to_process)} 条评论 - 作者: {author}")
+                
                 # 随机选择一条回复模板
                 reply_content = random.choice(reply_templates)
-                
-                print(f"设备 {device_id} 正在回复评论 - 作者: {author}, 内容: {comment_content}")
                 print(f"选择的回复模板: {reply_content}")
                 
                 # 调用评论回复功能
@@ -240,35 +242,48 @@ def reply_with_template(device_index: int = 0, **context):
                 if success:
                     print(f"设备 {device_id} 成功回复评论: {comment_content}")
                     # 插入到manual_reply表
-                    insert_manual_reply(
-                        comment_id=comment_id,
-                        note_url=note_url,
-                        author=author,
-                        content=comment_content,
-                        reply=reply_content
-                    )
+                    try:
+                        insert_manual_reply(
+                            comment_id=comment_id,
+                            note_url=note_url,
+                            author=author,
+                            content=comment_content,
+                            reply=reply_content
+                        )
+                    except Exception as db_err:
+                        print(f"插入回复记录到数据库失败: {str(db_err)}")
+                    
                     successful_replies += 1
                 else:
                     print(f"设备 {device_id} 回复评论失败: {comment_content}")
+                    failed_replies += 1
                 
                 # 添加延时，避免操作过快
-                time.sleep(1)  # 增加延时，确保有足够时间处理下一条评论
+                time.sleep(2)  # 增加延时，确保有足够时间处理下一条评论
                 
             except Exception as e:
                 print(f"设备 {device_id} 处理评论时出错: {str(e)}")
+                failed_replies += 1
+                # 出错后等待时间稍长一些，避免连续失败
+                time.sleep(3)
                 continue
         
-        print(f"设备 {device_id} 完成评论回复任务，成功回复: {successful_replies}/{len(comments_to_process)}")
+        print(f"设备 {device_id} 完成评论回复任务，成功回复: {successful_replies}/{len(comments_to_process)}，失败: {failed_replies}")
         return successful_replies
         
     except Exception as e:
-        print(f"运行出错: {str(e)}")
-        raise e
+        print(f"运行任务出错: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return successful_replies  # 即使整体任务出错，也返回已成功处理的评论数
     finally:
         # 确保关闭小红书操作器
         if xhs is not None:
             print(f"关闭设备 {device_id} 的控制器")
-            xhs.close()
+            try:
+                xhs.close()
+            except Exception as close_err:
+                print(f"关闭设备控制器出错: {str(close_err)}")
 
 # DAG 定义
 with DAG(
