@@ -53,6 +53,10 @@ def check_port_availability(ssh_client, port):
 
 def get_remote_devices():
     """通过SSH获取远程主机上的设备列表和可用的Appium端口"""
+    # 特殊剔除的设备
+    lucyai_device_id = Variable.get("LUCYAI_DEVICE_ID")
+
+    # 获取Airflow变量   
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     print(f"XHS_DEVICE_INFO_LIST: {len(device_info_list)}")
 
@@ -87,6 +91,9 @@ def get_remote_devices():
             devices = []
             for line in output.split('\n'):
                 if line.strip() and 'device' in line and "devices" not in line:
+                    if lucyai_device_id in line:
+                        # LUCYAY的设备，不使用
+                        continue
                     device_id = line.split()[0]
                     devices.append(device_id.strip())
             print(f"devices: {devices}")
