@@ -168,14 +168,30 @@ def reply_with_template(device_index: int = 0, **context):
     # 获取评论内容
     initial_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
     
-    # 分配评论 - 根据设备索引分割评论列表
-    # 确保对应设备索引的任务只处理相应分配的评论
-    total_tasks = 10  # 与下面创建的任务数量保持一致
+    # 获取设备列表以确定实际可用的设备数量
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    device_info = next((device for device in device_info_list if device.get('email') == email), None)
+    
+    if not device_info:
+        raise ValueError("email参数不能为空或设备信息不存在")
+        
+    # 确定实际可用的设备数量
+    available_devices = len(device_info.get('phone_device_list', []))
+    print(f"可用设备数量: {available_devices}")
+    
+    # 分配评论 - 根据实际可用设备数量和设备索引分配评论
     comments_to_process = []
     
-    for i, comment in enumerate(initial_contents):
-        if i % total_tasks == device_index:
-            comments_to_process.append(comment)
+    # 如果只有一个设备，或者设备索引为0且传入了comment_ids参数，则处理所有评论
+    if available_devices == 1 or (device_index == 0 and comment_ids):
+        comments_to_process = initial_contents
+        print(f"只有一个设备或指定了评论ID，设备索引 {device_index} 将处理所有 {len(initial_contents)} 条评论")
+    else:
+        # 正常按设备数量分配评论
+        total_tasks = 10  # 与下面创建的任务数量保持一致
+        for i, comment in enumerate(initial_contents):
+            if i % total_tasks == device_index:
+                comments_to_process.append(comment)
     
     if not comments_to_process:
         print(f"设备索引 {device_index}: 没有需要处理的评论")
