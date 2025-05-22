@@ -91,8 +91,8 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         None
     """
     # 获取输入参数
-    keyword = context['dag_run'].conf.get('keyword', '广州探店') 
-    max_notes = int(context['dag_run'].conf.get('max_notes', 5))
+    keyword = context['dag_run'].conf.get('keyword') 
+    max_notes = int(context['dag_run'].conf.get('max_notes'))
     email = context['dag_run'].conf.get('email')
     
     # 获取设备列表
