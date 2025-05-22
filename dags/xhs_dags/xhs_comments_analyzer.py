@@ -343,15 +343,9 @@ def run_comments_analysis(**context):
     Airflow任务：运行评论意向分析
     """
     try:
-        # 从dag run配置或参数中获取分析句子
-        profile_sentence = context.get('dag_run').conf.get('profile_sentence') \
-            if context.get('dag_run') and context.get('dag_run').conf \
-            else "我是做医美的，我要寻找做项目的客户"
-        
-        # 从dag run配置或参数中获取评论 ID 列表
-        comment_ids = context.get('dag_run').conf.get('comment_ids') \
-            if context.get('dag_run') and context.get('dag_run').conf \
-            else [1158, 1159]
+        # 从dag run配置获取参数，使用默认值作为备选
+        profile_sentence = context['dag_run'].conf.get('profile_sentence')
+        comment_ids = context['dag_run'].conf.get('comment_ids')
         
         # 获取评论数据
         if comment_ids:
