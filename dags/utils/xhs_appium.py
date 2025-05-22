@@ -62,6 +62,13 @@ class XHSOperator:
         # 使用指定的设备
         if not device_id:
             raise Exception("未指定设备ID")
+            
+        # 检查是否是需要跳过的设备
+        if device_id == "0864cf720705":
+            from airflow.exceptions import AirflowSkipException
+            print(f"设备ID {device_id} 在禁用列表中，跳过当前任务")
+            raise AirflowSkipException(f"设备ID {device_id} 在禁用列表中，跳过当前任务")
+            
         device_name = device_id
         print(f"使用设备: {device_name}")
 
