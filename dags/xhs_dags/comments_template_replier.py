@@ -252,7 +252,7 @@ def reply_with_template(device_index: int = 0, **context):
                     print(f"设备 {device_id} 回复评论失败: {comment_content}")
                 
                 # 添加延时，避免操作过快
-                time.sleep(2)  # 增加延时，确保有足够时间处理下一条评论
+                time.sleep(1)  # 增加延时，确保有足够时间处理下一条评论
                 
             except Exception as e:
                 print(f"设备 {device_id} 处理评论时出错: {str(e)}")
