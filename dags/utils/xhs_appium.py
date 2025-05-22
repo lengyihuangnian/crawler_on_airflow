@@ -49,7 +49,7 @@ def get_adb_devices():
 
 
 class XHSOperator:
-    def __init__(self, appium_server_url: str = 'http://localhost:4723', force_app_launch: bool = False, device_id: str = None):
+    def __init__(self, appium_server_url: str, force_app_launch: bool = False, device_id: str = None):
         """
         初始化小红书操作器
         Args:
@@ -1848,14 +1848,12 @@ class XHSOperator:
                         
                     # 如果没找到，向下滚动
                     self.driver.swipe(500, 1000, 500, 500, 1000)
-                    time.sleep(1)
                     scroll_attempt += 1
                     
                 except Exception as e:
                     print(f"查找评论时出错: {str(e)}")
                     # 如果没找到，向下滚动
                     self.driver.swipe(500, 1000, 500, 500, 1000)
-                    time.sleep(1)
                     scroll_attempt += 1
             
             if not comment_found:
@@ -1864,12 +1862,11 @@ class XHSOperator:
             
             # 点击评论
             comment_element.click()
-            time.sleep(1)
             
             # 等待输入框出现并输入内容
             try:
                 # 等待输入框出现
-                reply_input = WebDriverWait(self.driver, 5).until(
+                reply_input = WebDriverWait(self.driver, 1).until(
                     EC.presence_of_element_located((
                         AppiumBy.CLASS_NAME,
                         "android.widget.EditText"
@@ -1878,17 +1875,15 @@ class XHSOperator:
                 # 输入回复内容
                 reply_input.clear()
                 reply_input.send_keys(reply_content)
-                time.sleep(1)
                 
                 # 点击发送按钮
-                send_button = WebDriverWait(self.driver, 5).until(
+                send_button = WebDriverWait(self.driver, 1).until(
                     EC.presence_of_element_located((
                         AppiumBy.XPATH,
                         "//android.widget.TextView[@text='发送']"
                     ))
                 )
                 send_button.click()
-                time.sleep(1)
                 
                 print(f"成功回复评论: {reply_content}")
                 return True
