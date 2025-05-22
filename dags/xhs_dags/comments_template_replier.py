@@ -34,7 +34,7 @@ def get_reply_templates_from_db(**context):
     print(f"成功获取 {len(templates)} 条回复模板")
     return templates
 
-def get_reply_contents_from_db(comment_ids: list, max_comments: int = 10, **context):
+def get_reply_contents_from_db(comment_ids: list, max_comments: int = 10):
     """从xhs_comments表获取需要回复的评论
     Args:
         comment_ids: 评论ID列表，对应xhs_comments表中的id字段
@@ -67,8 +67,8 @@ def get_reply_contents_from_db(comment_ids: list, max_comments: int = 10, **cont
     if comment_ids:
         placeholders = ','.join(['%s'] * len(comment_ids))
         cursor.execute(
-            f"SELECT id, note_url, author, content FROM xhs_comments WHERE id IN ({placeholders}) LIMIT %s",
-            (*comment_ids, max_comments)
+            f"SELECT id, note_url, author, content FROM xhs_comments WHERE id IN ({placeholders})",
+            comment_ids
         )
     else:
         cursor.execute(
@@ -153,13 +153,8 @@ def reply_with_template(**context):
         **context: Airflow上下文参数字典
     """
     # 从DAG运行配置中获取参数，如果没有则使用默认值
-    comment_ids = (context['dag_run'].conf.get('comment_ids', [970, 971]) 
-        if context['dag_run'].conf 
-        else [970, 971])
-    
-    max_comments = (context['dag_run'].conf.get('max_comments', 2) 
-        if context['dag_run'].conf 
-        else 2)
+    comment_ids = context['dag_run'].conf.get('comment_ids') 
+    max_comments = context['dag_run'].conf.get('max_comments') 
     
     # 获取回复模板
     reply_templates = get_reply_templates_from_db()
