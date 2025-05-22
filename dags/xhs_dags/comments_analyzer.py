@@ -428,7 +428,7 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id='xhs_comments_openrouter',
+    dag_id='comments_analyzer',
     default_args=default_args,
     description='使用Deepseek模型分析小红书评论的用户意向',
     schedule_interval=None,
