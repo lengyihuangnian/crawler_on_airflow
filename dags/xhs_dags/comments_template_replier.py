@@ -1,15 +1,17 @@
 from datetime import datetime
 import time
 import random
+import concurrent.futures
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
+from airflow.exceptions import AirflowSkipException
 
 from utils.xhs_appium import XHSOperator
 
-def get_reply_templates_from_db(**context):
+def get_reply_templates_from_db():
     """从数据库获取回复模板
     Returns:
         回复模板内容列表
@@ -145,16 +147,84 @@ def insert_manual_reply(comment_id: int, note_url: str, author: str, content: st
 
 # 移除了对comment_reply表的更新操作
 
-def reply_with_template(**context):       
+def process_comment(comment, reply_templates, device_info, device_index=0):
+    """处理单条评论的回复逻辑
+    Args:
+        comment: 评论内容字典
+        reply_templates: 回复模板列表
+        device_info: 设备信息字典
+        device_index: 设备索引
+    Returns:
+        是否成功处理
+    """
+    try:
+        # 获取设备信息
+        device_ip = device_info.get('device_ip')
+        device_port = device_info.get('available_appium_ports')[device_index]
+        device_id = device_info.get('phone_device_list')[device_index]
+        appium_server_url = f"http://{device_ip}:{device_port}"
+        
+        note_url = comment['note_url']
+        author = comment['author']
+        comment_content = comment['content']
+        comment_id = comment['comment_id']
+        
+        # 随机选择一条回复模板
+        reply_content = random.choice(reply_templates)
+        
+        print(f"设备 {device_id} 正在回复评论 - 作者: {author}, 内容: {comment_content}")
+        print(f"选择的回复模板: {reply_content}")
+        
+        # 初始化小红书操作器
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
+        
+        try:
+            # 调用评论回复功能
+            success = xhs.comments_reply(
+                note_url=note_url,
+                author=author,
+                comment_content=comment_content,
+                reply_content=reply_content
+            )
+            
+            if success:
+                print(f"设备 {device_id} 成功回复评论: {comment_content}")
+                # 插入到manual_reply表
+                insert_manual_reply(
+                    comment_id=comment_id,
+                    note_url=note_url,
+                    author=author,
+                    content=comment_content,
+                    reply=reply_content
+                )
+                return True
+            else:
+                print(f"设备 {device_id} 回复评论失败: {comment_content}")
+                return False
+        finally:
+            # 确保关闭小红书操作器
+            xhs.close()
+            
+    except Exception as e:
+        print(f"设备处理评论时出错: {str(e)}")
+        return False
+
+def reply_with_template(device_index: int = 0, **context):       
     """使用模板自动回复评论
     Args:
-        comment_ids: 评论ID列表
-        max_comments: 本次要回复的评论数量
+        device_index: 设备索引
         **context: Airflow上下文参数字典
     """
+    print(f"dag_run_conf: {context['dag_run'].conf}")
+    
     # 从DAG运行配置中获取参数，如果没有则使用默认值
     comment_ids = context['dag_run'].conf.get('comment_ids') 
     max_comments = context['dag_run'].conf.get('max_comments') 
+    email = context['dag_run'].conf.get('email')
+    max_workers = context['dag_run'].conf.get('max_workers', 1)  # 并发工作线程数，默认1
+    
+    if not email:
+        raise ValueError("email参数不能为空")
     
     # 获取回复模板
     reply_templates = get_reply_templates_from_db()
@@ -162,64 +232,49 @@ def reply_with_template(**context):
     # 获取评论内容
     initial_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
     
-    # 获取Appium服务器URL
-    appium_server_url = Variable.get("APPIUM_LOCAL_SERVER_URL", "http://localhost:4723")
+    # 获取设备列表
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    
+    # 根据email查找设备信息
+    device_info = next((device for device in device_info_list if device.get('email') == email), None)
+    if device_info:
+        print(f"device_info: {device_info}")
+    else:
+        raise ValueError("email参数不能为空或设备信息不存在")
 
-    print(f"开始使用模板回复评论... 本次要回复的评论数量: {len(initial_contents)}")
+    # 检查设备总数
+    device_count = len(device_info.get('phone_device_list', []))
+    if device_count == 0:
+        raise ValueError("没有可用的设备")
+    
+    # 确保并发线程数不超过设备数
+    max_workers = min(max_workers, device_count)
+    
+    print(f"开始使用模板并发回复评论... 本次要回复的评论数量: {len(initial_contents)}, 并发线程数: {max_workers}")
     
     try:
-        # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id='63ebd8370906')
+        # 使用线程池并发处理评论
+        successful_replies = 0
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 建立任务列表
+            futures = []
+            
+            # 分配评论给不同的设备
+            for i, content in enumerate(initial_contents):
+                # 按照顺序轮流使用设备
+                device_idx = i % max_workers
+                futures.append(executor.submit(process_comment, content, reply_templates, device_info, device_idx))
+            
+            # 等待所有任务完成
+            for future in concurrent.futures.as_completed(futures):
+                if future.result():
+                    successful_replies += 1
         
-        # 遍历每条评论进行回复
-        for content in initial_contents:
-            try:
-                note_url = content['note_url']
-                author = content['author']
-                comment_content = content['content']
-                comment_id = content['comment_id']
-                
-                # 随机选择一条回复模板
-                reply_content = random.choice(reply_templates)
-                
-                print(f"正在回复评论 - 作者: {author}, 内容: {comment_content}")
-                print(f"选择的回复模板: {reply_content}")
-                
-                # 调用评论回复功能
-                success = xhs.comments_reply(
-                    note_url=note_url,
-                    author=author,
-                    comment_content=comment_content,
-                    reply_content=reply_content
-                )
-                
-                if success:
-                    print(f"成功回复评论: {comment_content}")
-                    # 插入到manual_reply表
-                    insert_manual_reply(
-                        comment_id=comment_id,
-                        note_url=note_url,
-                        author=author,
-                        content=comment_content,
-                        reply=reply_content
-                    )
-                else:
-                    print(f"回复评论失败: {comment_content}")
-                
-                # 添加延时，避免操作过快
-                time.sleep(2)
-                
-            except Exception as e:
-                print(f"处理评论时出错: {str(e)}")
-                continue
+        print(f"完成评论回复任务，成功回复: {successful_replies}/{len(initial_contents)}")
         
     except Exception as e:
         print(f"运行出错: {str(e)}")
         raise e
-    finally:
-        # 确保关闭小红书操作器
-        if 'xhs' in locals():
-            xhs.close()
 
 # DAG 定义
 default_args = {
@@ -240,6 +295,7 @@ dag = DAG(
 reply_comments_task = PythonOperator(
     task_id='reply_with_template',
     python_callable=reply_with_template,
+    op_kwargs={'device_index': 0},
     provide_context=True,
     dag=dag,
 )
