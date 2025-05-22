@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+# -*- coding: utf8 -*-
+"""
+获取回复模板数据
+
+Author: by cursor
+Date: 2025-05-22
+"""
+
+import json
+import os
+import pymysql
+import logging
+from datetime import datetime
+
+# 配置日志
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def get_db_connection():
+    """
+    获取数据库连接
+    """
+    try:
+        # 从环境变量获取数据库连接信息
+        db_name = os.environ.get('DB_NAME')
+        db_ip = os.environ.get('DB_IP')
+        db_port = int(os.environ.get('DB_PORT', 3306))
+        db_user = os.environ.get('DB_USER')
+        db_password = os.environ.get('DB_PASSWORD')
+        
+        # 创建数据库连接
+        connection = pymysql.connect(
+            host=db_ip,
+            port=db_port,
+            user=db_user,
+            password=db_password,
+            database=db_name,
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        
+        return connection
+    except Exception as e:
+        logger.error(f"数据库连接失败: {str(e)}")
+        raise e
+
+
+def get_reply_templates(user_id="zacks"):
+    """
+    获取用户的回复模板
+    
+    Args:
+        user_id: 用户ID，默认为zacks
+        
+    Returns:
+        list: 回复模板列表
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 查询用户的回复模板
+        query = "SELECT id, user_id, content, created_at FROM reply_template WHERE user_id = %s ORDER BY created_at DESC"
+        cursor.execute(query, (user_id,))
+        templates = cursor.fetchall()
+        
+        # 关闭连接
+        cursor.close()
+        conn.close()
+        
+        # 处理日期时间格式，使其可JSON序列化
+        for template in templates:
+            for key, value in template.items():
+                if isinstance(value, datetime):
+                    template[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+        
+        return templates
+    except Exception as e:
+        logger.error(f"获取回复模板失败: {str(e)}")
+        return []
+
+
+def get_template_by_id(template_id):
+    """
+    获取指定ID的回复模板
+    
+    Args:
+        template_id: 模板ID
+        
+    Returns:
+        dict: 回复模板信息
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 查询指定ID的回复模板
+        query = "SELECT id, user_id, content, created_at FROM reply_template WHERE id = %s"
+        cursor.execute(query, (template_id,))
+        template = cursor.fetchone()
+        
+        # 关闭连接
+        cursor.close()
+        conn.close()
+        
+        # 处理日期时间格式，使其可JSON序列化
+        if template:
+            for key, value in template.items():
+                if isinstance(value, datetime):
+                    template[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+        
+        return template
+    except Exception as e:
+        logger.error(f"获取回复模板失败: {str(e)}")
+        return None
+
+
+def main_handler(event, context):
+    """
+    云函数入口函数，获取回复模板数据
+    
+    Args:
+        event: 触发事件，包含查询参数
+        context: 函数上下文
+        
+    Returns:
+        JSON格式的回复模板列表
+    """
+    logger.info(f"收到请求: {json.dumps(event, ensure_ascii=False)}")
+    
+    # 解析查询参数
+    query_params = {}
+    if 'queryString' in event:
+        query_params = event['queryString']
+    elif 'body' in event:
+        try:
+            # 尝试解析body为JSON
+            if isinstance(event['body'], str):
+                query_params = json.loads(event['body'])
+            else:
+                query_params = event['body']
+        except:
+            pass
+    
+    try:
+        # 根据参数决定使用哪种查询方式
+        if 'template_id' in query_params:
+            # 按模板ID查询
+            template_id = query_params.get('template_id')
+            template = get_template_by_id(template_id)
+            
+            if template:
+                result = {
+                    "code": 0,
+                    "message": "success",
+                    "data": template
+                }
+            else:
+                result = {
+                    "code": 1,
+                    "message": "模板不存在",
+                    "data": None
+                }
+        else:
+            # 使用默认查询，带有可选的user_id参数
+            user_id = query_params.get('user_id', 'zacks')
+            templates = get_reply_templates(user_id)
+            total_count = len(templates)
+            
+            result = {
+                "code": 0,
+                "message": "success",
+                "data": {
+                    "total": total_count,
+                    "records": templates
+                }
+            }
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"查询失败: {str(e)}")
+        return {
+            "code": 1,
+            "message": f"查询失败: {str(e)}",
+            "data": None
+        }
+
+
+if __name__ == "__main__":
+    # 本地测试用
+    test_event = {
+        'queryString': {
+            'user_id': 'zacks'
+        }
+    }
+    result = main_handler(test_event, {})
+    print(json.dumps(result, ensure_ascii=False, indent=2))
