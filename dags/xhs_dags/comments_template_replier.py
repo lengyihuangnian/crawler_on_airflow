@@ -207,12 +207,15 @@ def reply_with_template(device_index: int = 0, **context):
     print(f"使用Appium服务器: {appium_server_url}")
     print(f"使用设备ID: {device_id}")
     
+    # 初始化小红书操作器
+    xhs = None
+    successful_replies = 0
+    
     try:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
-        # 处理评论
-        successful_replies = 0
+        # 处理所有分配的评论
         for comment in comments_to_process:
             try:
                 note_url = comment['note_url']
@@ -249,7 +252,7 @@ def reply_with_template(device_index: int = 0, **context):
                     print(f"设备 {device_id} 回复评论失败: {comment_content}")
                 
                 # 添加延时，避免操作过快
-                time.sleep(1)
+                time.sleep(2)  # 增加延时，确保有足够时间处理下一条评论
                 
             except Exception as e:
                 print(f"设备 {device_id} 处理评论时出错: {str(e)}")
@@ -263,7 +266,8 @@ def reply_with_template(device_index: int = 0, **context):
         raise e
     finally:
         # 确保关闭小红书操作器
-        if 'xhs' in locals():
+        if xhs is not None:
+            print(f"关闭设备 {device_id} 的控制器")
             xhs.close()
 
 # DAG 定义
