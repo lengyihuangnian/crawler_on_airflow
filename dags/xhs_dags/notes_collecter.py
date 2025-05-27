@@ -44,9 +44,9 @@ def save_notes_to_db(notes: list) -> None:
         """)
         db_conn.commit()
         
-        # 准备插入数据的SQL语句
+        # 准备插入数据的SQL语句 - 使用INSERT IGNORE避免重复插入
         insert_sql = """
-        INSERT INTO xhs_notes 
+        INSERT IGNORE INTO xhs_notes 
         (keyword, title, author, content, likes, collects, comments, note_url, collect_time) 
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
