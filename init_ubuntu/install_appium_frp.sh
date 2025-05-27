@@ -55,7 +55,7 @@ check_status "基础工具安装"
 # 步骤2: 下载FRP
 show_progress 2 14
 # log_info "下载 FRP..."
-# wget https://github.com/fatedier/frp/releases/download/v0.51.3/frp_0.51.3_linux_arm.tar.gz
+# wget https://github.com/fatedier/frp/releases/download/v0.51.3/frp_0.51.3_linux_amd64.tar.gz
 # check_status "FRP下载"
 
 # 步骤3: 解压FRP
