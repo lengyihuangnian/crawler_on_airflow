@@ -15,7 +15,7 @@ import os
 import json
 import time
 import subprocess
-
+import random
 import requests
 import re
 
@@ -1151,7 +1151,7 @@ class XHSOperator:
                 "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
     
-
+#改动
     def scroll_down(self):
         """
         向下滑动页面
@@ -1159,15 +1159,16 @@ class XHSOperator:
         try:
             screen_size = self.driver.get_window_size()
             start_x = screen_size['width'] * 0.5
-            start_y = screen_size['height'] * 0.8
-            end_y = screen_size['height'] * 0.4
+            start_y = screen_size['height'] * 0.9
+            end_y = screen_size['height'] * 0.3
             
-            self.driver.swipe(start_x, start_y, start_x, end_y, 1000)
-            time.sleep(0.5)  # 等待内容加载
+            self.driver.swipe(start_x, start_y, start_x, end_y, 800)
+            time.sleep(1)  # 等待内容加载
         except Exception as e:
             print(f"页面滑动失败: {str(e)}")
             raise
-        
+    
+           
     def return_to_home_page(self):
         """
         返回小红书首页
@@ -1375,7 +1376,7 @@ class XHSOperator:
             start_x = location['x'] + size['width'] * 0.5
             start_y = location['y'] + size['height'] * 0.8
             end_y = location['y'] + size['height'] * 0.2
-            
+            #更改滑动距离,提高总体效率和稳定性
             # 执行滑动
             self.driver.swipe(start_x, start_y, start_x, end_y, 1000)
             time.sleep(0.5)  # 等待内容加载
@@ -1388,7 +1389,7 @@ class XHSOperator:
         滑动到页面底部
         """
         last_page_source = None
-        max_attempts = 5
+        max_attempts = 10
         attempts = 0
         
         while attempts < max_attempts:
@@ -1408,14 +1409,10 @@ class XHSOperator:
             attempts += 1
 
     def publish_note(self, title: str, content: str):
-
         """
         发布笔记
         """
         pass
-
-
-
     def get_redirect_url(self, short_url):
         try:
             # 添加请求头，模拟浏览器请求
@@ -1461,7 +1458,7 @@ class XHSOperator:
                     WebDriverWait(self.driver, 0.3).until(
                         EC.presence_of_element_located((
                             AppiumBy.XPATH,
-                            "//android.widget.TextView[contains(@text, '')]"
+                            "//androidx.recyclerview.widget.RecyclerView[@resource-id='com.xingin.xhs:id/-']"
                         ))
                     )
                     print("找到评论区")
@@ -1482,14 +1479,9 @@ class XHSOperator:
 
                 print(f"第 {attempt + 1} 次滑动加载评论...")
 
-                # 获取当前页面源码
-                page_source = self.driver.page_source
+                # 获取翻页前源码
+                before_scroll_page_source = self.driver.page_source
 
-                # 如果页面没有变化，说明已经到底
-                if page_source == last_page_source:
-                    print("页面未发生变化，可能已到底")
-                    break
-                
                 # 解析当前页面的评论
                 try:
                     # 查找评论元素
@@ -1696,10 +1688,22 @@ class XHSOperator:
                     continue
 
                 # 更新最后的页面源码
-                last_page_source = page_source
+                # last_page_source = page_source
 
                 # 模拟滑动加载更多评论
                 self.scroll_down()
+                #将判断页面是否变动的逻辑调整为前后对比的方式,页面滑动前后分别获取页面源码,进行对比
+                after_scroll_page_source=self.driver.page_source
+                #防止机器卡顿页面未更新
+                time.sleep(1) 
+                if before_scroll_page_source == after_scroll_page_source:
+                    print("页面未发生变化，可能已到底")
+                    break
+                
+                # page_source = self.driver.page_source
+                # if page_source == last_page_source:
+                #     print("页面未发生变化，可能已到底")
+                #     break
 
             print(f"评论获取完成，共收集到 {len(all_comments)} 条评论")
             return all_comments
@@ -1908,17 +1912,15 @@ if __name__ == "__main__":
     # 加载.env文件
     load_dotenv(os.path.join(current_dir, '.env'))
     print(os.path.join(current_dir, '.env'))
-    
     # 获取Appium服务器URL
     appium_server_url = os.getenv('APPIUM_SERVER_URL', 'http://localhost:4723')
-
     print(appium_server_url)
     # 初始化小红书操作器
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="c2c56d1b0107",
-        system_port=8200
+        device_id="261508780007",
+        # system_port=8200
     )
 
     try:
@@ -1948,7 +1950,7 @@ if __name__ == "__main__":
 
         # 2 测试收集评论
         print("\n开始测试收集评论...")
-        note_url = "http://xhslink.com/a/KARbkJb1qGSbb"
+        note_url = "http://xhslink.com/a/oQdPkq5j4hwdb"
         full_url = xhs.get_redirect_url(note_url)
         print(f"帖子 URL: {full_url}")
         
