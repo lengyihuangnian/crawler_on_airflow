@@ -61,7 +61,7 @@ show_progress 2 14
 # 步骤3: 解压FRP
 show_progress 3 14
 log_info "解压 FRP..."
-tar -zxvf frp_0.51.3_linux_arm.tar.gz
+tar -zxvf frp_0.51.3_linux_amd64.tar.gz
 check_status "FRP解压"
 
 # 步骤4: 设置Node.js源
