@@ -92,7 +92,7 @@ check_status "Appium安装"
 # 步骤7: 安装Appium Python客户端
 show_progress 7 14
 log_info "安装Appium Python客户端..."
-pip install --break-system-packages Appium-Python-Client
+sudo pip install Appium-Python-Client -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host pypi.tuna.tsinghua.edu.cn
 check_status "Appium Python客户端安装"
 
 # 步骤8: 安装Java和Android SDK
