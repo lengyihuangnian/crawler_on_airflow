@@ -66,15 +66,22 @@ check_status "FRP解压"
 
 # 步骤4: 设置Node.js源
 show_progress 4 14
+log_info "安装curl..."
+sudo apt install curl
 log_info "设置Node.js源..."
-curl -sL https://deb.nodesource.com/setup_16.x | sudo bash -
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 check_status "Node.js源设置"
 
-# 步骤5: 安装Node.js
+# 步骤5: 安装Node.js和npm
 show_progress 5 14
 log_info "安装Node.js..."
 sudo apt-get install nodejs -y
 check_status "Node.js安装"
+log_info "安装npm..."
+sudo apt-get install npm -y
+check_status "npm安装"
+sudo apt install -y python3-pip
+check_status "pip3安装"
 
 # 步骤6: 安装Appium
 show_progress 6 14
