@@ -4,7 +4,7 @@ After=network.target appium.service
 
 [Service]
 Type=simple
-ExecStart=/root/frp_0.51.3_linux_arm/frpc -c /root/frp_0.51.3_linux_arm/frpc.ini
+ExecStart=/root/frp_0.51.3_linux_amd64/frpc -c /root/frp_0.51.3_linux_amd64/frpc.ini
 StandardOutput=append:/var/log/frpc.log
 StandardError=append:/var/log/frpc.log
 Restart=always
