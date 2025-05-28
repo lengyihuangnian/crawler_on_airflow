@@ -1461,8 +1461,9 @@ class XHSOperator:
                         WebDriverWait(self.driver, 0.3).until(
                             EC.presence_of_element_located((
                 AppiumBy.XPATH,
-                "(//androidx.recyclerview.widget.RecyclerView[@resource-id='com.xingin.xhs:id/'])"
+                "//androidx.recyclerview.widget.RecyclerView[@resource-id='com.xingin.xhs:id/-']/android.widget.FrameLayout/android.widget.LinearLayout"
             ))
+            
             #更换了评论区定位元素
                         )
                         print("找到评论区")
@@ -1925,7 +1926,7 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="5b75daec",
+        device_id="27d76ca29907",
         # system_port=8200
     )
 
@@ -1956,7 +1957,7 @@ if __name__ == "__main__":
 
         # 2 测试收集评论
         print("\n开始测试收集评论...")
-        note_url = " http://xhslink.com/a/fVMdLa0U71Bdb"
+        note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
         full_url = xhs.get_redirect_url(note_url)
         print(f"帖子 URL: {full_url}")
         
