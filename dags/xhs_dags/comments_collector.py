@@ -172,18 +172,20 @@ def collect_xhs_comments(device_index: int = 0, **context):
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     device_info = next((device for device in device_info_list if device.get('email') == email), None)
     if not device_info:
-        raise ValueError("email参数不能为空")
+        print(f"跳过当前任务，因为找不到email为 {email} 的设备信息")
+        raise AirflowSkipException("找不到设备信息")
     
     total_devices = len(device_info.get('phone_device_list', []))
     if total_devices == 0:
-        raise ValueError("没有可用的设备")
+        print(f"跳过当前任务，因为没有可用的设备")
+        raise AirflowSkipException("没有可用的设备")
     
     if note_urls:
         # 将URL列表分配给不同设备
         device_urls = distribute_urls(note_urls, device_index, total_devices)
         if not device_urls:
             print(f"设备索引 {device_index}: 没有分配到笔记URL，跳过")
-            return []
+            raise AirflowSkipException(f"设备索引 {device_index} 没有分配到笔记URL")
         
         print(f"设备索引 {device_index}: 分配到 {len(device_urls)} 个笔记URL进行收集")
         return get_notes_by_url_list(device_urls, keyword, device_index, email)
@@ -196,7 +198,7 @@ def collect_xhs_comments(device_index: int = 0, **context):
         device_urls = distribute_urls(all_note_urls, device_index, total_devices)
         if not device_urls:
             print(f"设备索引 {device_index}: 没有分配到笔记URL，跳过")
-            return []
+            raise AirflowSkipException(f"设备索引 {device_index} 没有分配到笔记URL")
         
         print(f"设备索引 {device_index}: 分配到 {len(device_urls)} 个笔记URL进行收集")
         return get_notes_by_url_list(device_urls, keyword, device_index, email)
