@@ -52,8 +52,8 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
             author TEXT,
             content TEXT,
             likes INT DEFAULT 0,
-            note_url TEXT,
-            keyword TEXT,
+            note_url VARCHAR(512),
+            keyword VARCHAR(255) NOT NULL DEFAULT '网球',
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
@@ -81,9 +81,18 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
             ))
         
         cursor.executemany(insert_sql, insert_data)
+        
+        # 更新xhs_notes表中的last_comments_collected_at字段
+        update_sql = """
+        UPDATE xhs_notes 
+        SET last_comments_collected_at = NOW() 
+        WHERE note_url = %s
+        """
+        cursor.execute(update_sql, (note_url,))
+        
         db_conn.commit()
         
-        print(f"成功保存 {len(comments)} 条评论到数据库")
+        print(f"成功保存 {len(comments)} 条评论到数据库，并更新笔记评论收集时间")
     except Exception as e:
         db_conn.rollback()
         print(f"保存评论到数据库失败: {str(e)}")
