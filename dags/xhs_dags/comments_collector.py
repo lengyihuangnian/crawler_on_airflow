@@ -168,16 +168,62 @@ def collect_xhs_comments(device_index: int = 0, **context):
     if not keyword and not note_urls:
         raise ValueError("keyword和note_urls参数不能同时为空")
     
+    # 获取设备总数，用于分配URL
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    device_info = next((device for device in device_info_list if device.get('email') == email), None)
+    if not device_info:
+        raise ValueError("email参数不能为空")
+    
+    total_devices = len(device_info.get('phone_device_list', []))
+    if total_devices == 0:
+        raise ValueError("没有可用的设备")
+    
     if note_urls:
-        # 如果有传入的URL列表，直接使用
-        print(f"设备索引 {device_index}: 使用传入的{len(note_urls)}个笔记URL收集评论")
-        return get_notes_by_url_list(note_urls, keyword, device_index, email)
+        # 将URL列表分配给不同设备
+        device_urls = distribute_urls(note_urls, device_index, total_devices)
+        if not device_urls:
+            print(f"设备索引 {device_index}: 没有分配到笔记URL，跳过")
+            return []
+        
+        print(f"设备索引 {device_index}: 分配到 {len(device_urls)} 个笔记URL进行收集")
+        return get_notes_by_url_list(device_urls, keyword, device_index, email)
     else:
-        # 否则从数据库获取笔记URL和关键词
+        # 从数据库获取笔记URL和关键词
         notes_data = get_note_url(keyword)
         # 提取URL列表
-        note_urls = [note['note_url'] for note in notes_data]
-        return get_notes_by_url_list(note_urls, keyword, device_index, email)
+        all_note_urls = [note['note_url'] for note in notes_data]
+        # 分配URL给当前设备
+        device_urls = distribute_urls(all_note_urls, device_index, total_devices)
+        if not device_urls:
+            print(f"设备索引 {device_index}: 没有分配到笔记URL，跳过")
+            return []
+        
+        print(f"设备索引 {device_index}: 分配到 {len(device_urls)} 个笔记URL进行收集")
+        return get_notes_by_url_list(device_urls, keyword, device_index, email)
+
+def distribute_urls(urls: list, device_index: int, total_devices: int) -> list:
+    """将URL列表分配给特定设备
+    Args:
+        urls: 所有URL列表
+        device_index: 当前设备索引
+        total_devices: 设备总数
+    Returns:
+        分配给当前设备的URL列表
+    """
+    if not urls or total_devices <= 0:
+        return []
+    
+    # 计算每个设备应处理的URL数量
+    urls_per_device = len(urls) // total_devices
+    remainder = len(urls) % total_devices
+    
+    # 计算当前设备的起始和结束索引
+    start_index = device_index * urls_per_device + min(device_index, remainder)
+    # 如果设备索引小于余数，则多分配一个URL
+    end_index = start_index + urls_per_device + (1 if device_index < remainder else 0)
+    
+    # 返回分配给当前设备的URL
+    return urls[start_index:end_index]
 
 # DAG 定义
 with DAG(
