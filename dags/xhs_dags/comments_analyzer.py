@@ -56,7 +56,7 @@ def analyze_comments_intent(comments: List[Dict[str, str]], profile_sentence: st
             # 添加断点继续功能 - 每10个评论打印进度并则进行短暂停
             if i > 1 and i % 10 == 0:
                 print(f"完成 {i}/{total_comments} 条评论的分析，短暂停后继续...")
-                time.sleep(2)  # 每10个评论后暂停2秒，避免过快请求API
+                time.sleep(1)  # 每10个评论后暂停1秒，避免过快请求API
             
             intent = _analyze_single_comment(content, author, profile_sentence)
             
@@ -74,7 +74,7 @@ def analyze_comments_intent(comments: List[Dict[str, str]], profile_sentence: st
             results.append(result)
             
             # 出错后暂停一会再继续
-            time.sleep(3)
+            time.sleep(0.5)
     
     print(f"完成全部 {total_comments} 条评论的分析")
     return results

@@ -52,8 +52,8 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
             author TEXT,
             content TEXT,
             likes INT DEFAULT 0,
-            note_url TEXT,
-            keyword TEXT,
+            note_url VARCHAR(512),
+            keyword VARCHAR(255) NOT NULL DEFAULT '网球',
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
@@ -81,9 +81,18 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
             ))
         
         cursor.executemany(insert_sql, insert_data)
+        
+        # 更新xhs_notes表中的last_comments_collected_at字段
+        update_sql = """
+        UPDATE xhs_notes 
+        SET last_comments_collected_at = NOW() 
+        WHERE note_url = %s
+        """
+        cursor.execute(update_sql, (note_url,))
+        
         db_conn.commit()
         
-        print(f"成功保存 {len(comments)} 条评论到数据库")
+        print(f"成功保存 {len(comments)} 条评论到数据库，并更新笔记评论收集时间")
     except Exception as e:
         db_conn.rollback()
         print(f"保存评论到数据库失败: {str(e)}")
@@ -168,16 +177,64 @@ def collect_xhs_comments(device_index: int = 0, **context):
     if not keyword and not note_urls:
         raise ValueError("keyword和note_urls参数不能同时为空")
     
+    # 获取设备总数，用于分配URL
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    device_info = next((device for device in device_info_list if device.get('email') == email), None)
+    if not device_info:
+        print(f"跳过当前任务，因为找不到email为 {email} 的设备信息")
+        raise AirflowSkipException("找不到设备信息")
+    
+    total_devices = len(device_info.get('phone_device_list', []))
+    if total_devices == 0:
+        print(f"跳过当前任务，因为没有可用的设备")
+        raise AirflowSkipException("没有可用的设备")
+    
     if note_urls:
-        # 如果有传入的URL列表，直接使用
-        print(f"设备索引 {device_index}: 使用传入的{len(note_urls)}个笔记URL收集评论")
-        return get_notes_by_url_list(note_urls, keyword, device_index, email)
+        # 将URL列表分配给不同设备
+        device_urls = distribute_urls(note_urls, device_index, total_devices)
+        if not device_urls:
+            print(f"设备索引 {device_index}: 没有分配到笔记URL，跳过")
+            raise AirflowSkipException(f"设备索引 {device_index} 没有分配到笔记URL")
+        
+        print(f"设备索引 {device_index}: 分配到 {len(device_urls)} 个笔记URL进行收集")
+        return get_notes_by_url_list(device_urls, keyword, device_index, email)
     else:
-        # 否则从数据库获取笔记URL和关键词
+        # 从数据库获取笔记URL和关键词
         notes_data = get_note_url(keyword)
         # 提取URL列表
-        note_urls = [note['note_url'] for note in notes_data]
-        return get_notes_by_url_list(note_urls, keyword, device_index, email)
+        all_note_urls = [note['note_url'] for note in notes_data]
+        # 分配URL给当前设备
+        device_urls = distribute_urls(all_note_urls, device_index, total_devices)
+        if not device_urls:
+            print(f"设备索引 {device_index}: 没有分配到笔记URL，跳过")
+            raise AirflowSkipException(f"设备索引 {device_index} 没有分配到笔记URL")
+        
+        print(f"设备索引 {device_index}: 分配到 {len(device_urls)} 个笔记URL进行收集")
+        return get_notes_by_url_list(device_urls, keyword, device_index, email)
+
+def distribute_urls(urls: list, device_index: int, total_devices: int) -> list:
+    """将URL列表分配给特定设备
+    Args:
+        urls: 所有URL列表
+        device_index: 当前设备索引
+        total_devices: 设备总数
+    Returns:
+        分配给当前设备的URL列表
+    """
+    if not urls or total_devices <= 0:
+        return []
+    
+    # 计算每个设备应处理的URL数量
+    urls_per_device = len(urls) // total_devices
+    remainder = len(urls) % total_devices
+    
+    # 计算当前设备的起始和结束索引
+    start_index = device_index * urls_per_device + min(device_index, remainder)
+    # 如果设备索引小于余数，则多分配一个URL
+    end_index = start_index + urls_per_device + (1 if device_index < remainder else 0)
+    
+    # 返回分配给当前设备的URL
+    return urls[start_index:end_index]
 
 # DAG 定义
 with DAG(

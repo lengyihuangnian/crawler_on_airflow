@@ -28,24 +28,25 @@ from airflow.operators.python import PythonOperator
 
 
 def check_port_availability(ssh_client, port):
-    """检查远程主机上的端口是否正在运行Appium服务
+    """检查远程主机上的端口是否被Appium服务占用
     
     Args:
         ssh_client: SSH客户端连接
-        port: 要检查的端口号
+        port: 要检查的端口
         
     Returns:
         bool: 如果端口被Appium服务占用返回True，否则返回False
     """        
-    # 检查是否有Appium进程在使用该端口
-    command = f"ps aux | grep appium | grep {port}"
+    # 使用更精确的命令检查指定端口的Appium进程
+    # 使用-p参数精确匹配端口号
+    command = f"ps aux | grep 'appium -p {port}' | grep -v grep"
     stdin, stdout, stderr = ssh_client.exec_command(command)
     output = stdout.read().decode('utf-8')
     
-    print(f"检查端口{port}是否被占用: \n{output}")
+    print(f"检查端口{port}是否被占用(精确匹配): \n{output}")
     
-    # 如果找到Appium进程且包含指定端口，则返回True
-    if output.strip() and str(port) in output and "node" in output:
+    # 如果输出不为空，说明找到了使用该端口的Appium进程
+    if output.strip():
         return True
         
     return False
@@ -100,7 +101,7 @@ def get_remote_devices():
             
             # 检查Appium可用端口（6001-6033）
             available_appium_ports = []
-            for appium_port in range(6001, 6050):
+            for appium_port in range(6001, 6060):
                 if check_port_availability(ssh_client, appium_port):
                     available_appium_ports.append(appium_port)
             print(f"available_appium_ports: {available_appium_ports}")
