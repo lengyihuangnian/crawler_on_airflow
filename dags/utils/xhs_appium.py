@@ -1159,7 +1159,7 @@ class XHSOperator:
         try:
             screen_size = self.driver.get_window_size()
             start_x = screen_size['width'] * 0.5
-            start_y = screen_size['height'] * 0.9
+            start_y = screen_size['height'] * 0.8
             end_y = screen_size['height'] * 0.3
             
             self.driver.swipe(start_x, start_y, start_x, end_y, 800)
@@ -1447,27 +1447,33 @@ class XHSOperator:
 
             # 打开帖子页面
             self.driver.get(note_url)
-            # time.sleep(0.5)  # 等待页面加载
-
+            
             # 等待评论区加载
             print("等待评论区加载...")
             self.scroll_down()
-            try:
-                # 查找评论列表
+            # 等待页面加载
+            time.sleep(1)  
+            # 修改寻找评论区逻辑，避免正文过长导致评论区不能正常加载
+            for i in range(4):
                 try:
-                    WebDriverWait(self.driver, 0.3).until(
-                        EC.presence_of_element_located((
-                            AppiumBy.XPATH,
-                            "//androidx.recyclerview.widget.RecyclerView[@resource-id='com.xingin.xhs:id/-']"
-                        ))
-                    )
-                    print("找到评论区")
-                except:
-                    print("未找到评论区")
+                    # 查找评论列表
+                    try:
+                        WebDriverWait(self.driver, 0.3).until(
+                            EC.presence_of_element_located((
+                AppiumBy.XPATH,
+                "(//androidx.recyclerview.widget.RecyclerView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated'])"
+            ))
+            #更换了评论区定位元素
+                        )
+                        print("找到评论区")
+                        break
+                    except:
+                        print("未找到评论区,再次滑动页面...")
+                        self.scroll_down()
+                        time.sleep(1)
+                except Exception as e:
+                    print(f"等待评论区加载失败: {str(e)}")
                     return []
-            except Exception as e:
-                print(f"等待评论区加载失败: {str(e)}")
-                return []
 
             last_page_source = None
             all_comments = []  # 用于存储解析后的评论
@@ -1476,8 +1482,6 @@ class XHSOperator:
             is_first_comment = True  # 标记是否是第一条评论
 
             for attempt in range(max_attempts):
-
-                print(f"第 {attempt + 1} 次滑动加载评论...")
 
                 # 获取翻页前源码
                 before_scroll_page_source = self.driver.page_source
@@ -1692,10 +1696,12 @@ class XHSOperator:
 
                 # 模拟滑动加载更多评论
                 self.scroll_down()
-                #将判断页面是否变动的逻辑调整为前后对比的方式,页面滑动前后分别获取页面源码,进行对比
-                after_scroll_page_source=self.driver.page_source
+                print(f"第 {attempt + 1} 次滑动加载评论...")
                 #防止机器卡顿页面未更新
                 time.sleep(1) 
+                #将判断页面是否变动的逻辑调整为前后对比的方式,页面滑动前后分别获取页面源码,进行对比
+                after_scroll_page_source=self.driver.page_source
+                
                 if before_scroll_page_source == after_scroll_page_source:
                     print("页面未发生变化，可能已到底")
                     break
@@ -1919,7 +1925,7 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="261508780007",
+        device_id="5b75daec",
         # system_port=8200
     )
 
@@ -1950,7 +1956,7 @@ if __name__ == "__main__":
 
         # 2 测试收集评论
         print("\n开始测试收集评论...")
-        note_url = "http://xhslink.com/a/oQdPkq5j4hwdb"
+        note_url = " http://xhslink.com/a/fVMdLa0U71Bdb"
         full_url = xhs.get_redirect_url(note_url)
         print(f"帖子 URL: {full_url}")
         
