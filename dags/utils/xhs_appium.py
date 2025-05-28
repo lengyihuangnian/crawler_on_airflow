@@ -1461,7 +1461,7 @@ class XHSOperator:
                         WebDriverWait(self.driver, 0.3).until(
                             EC.presence_of_element_located((
                 AppiumBy.XPATH,
-                "(//androidx.recyclerview.widget.RecyclerView[@resource-id='com.xingin.xhs:id/0_resource_name_obfuscated'])"
+                "(//androidx.recyclerview.widget.RecyclerView[@resource-id='com.xingin.xhs:id/'])"
             ))
             #更换了评论区定位元素
                         )
@@ -1470,7 +1470,7 @@ class XHSOperator:
                     except:
                         print("未找到评论区,再次滑动页面...")
                         self.scroll_down()
-                        time.sleep(1)
+                        time.sleep(2)
                 except Exception as e:
                     print(f"等待评论区加载失败: {str(e)}")
                     return []
