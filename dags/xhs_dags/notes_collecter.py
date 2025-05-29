@@ -201,14 +201,14 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
     
     while len(collected_notes) < max_notes:
         try:
-        related_search = xhs.driver.find_elements(
-            by=AppiumBy.XPATH,
-            value="//android.widget.TextView[contains(@content-desc, '相关搜索')]"
-        )
-        if related_search and len(related_search) > 0:
-            print("检测到'相关搜索'元素，执行滚动")
-            for _ in range(4): xhs.scroll_down()
-            time.sleep(0.5)
+            related_search = xhs.driver.find_elements(
+                by=AppiumBy.XPATH,
+                value="//android.widget.TextView[contains(@content-desc, '相关搜索')]"
+            )
+            if related_search and len(related_search) > 0:
+                print("检测到'相关搜索'元素，执行滚动")
+                for _ in range(4): xhs.scroll_down()
+                time.sleep(0.5)
         except Exception as e:
             print(f"检测'相关搜索'元素时出错: {str(e)}")
     
