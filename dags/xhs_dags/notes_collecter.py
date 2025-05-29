@@ -250,7 +250,8 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                     author = author_element.text
                     if note_title_and_text not in collected_titles:
                         print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
-                        note_card.click()
+                        # 点击标题元素而不是整个卡片
+                        title_element.click()
                         time.sleep(0.5)
                         note_data = xhs.get_note_data(note_title_and_text)
                         if note_data:
@@ -309,7 +310,8 @@ def get_note_card(xhs, collected_notes, collected_titles, max_notes, process_not
                     author = author_elements[0].text
                     if note_title_and_text not in collected_titles:
                         print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
-                        note_card.click()
+                        # 点击标题元素而不是整个卡片
+                        title_element.click()
                         time.sleep(0.5)
                         note_data = xhs.get_note_data(note_title_and_text)
                         if note_data:
