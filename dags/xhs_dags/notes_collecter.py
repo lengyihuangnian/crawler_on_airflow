@@ -155,6 +155,8 @@ def collect_xhs_notes(device_index=0, **context) -> None:
                     if cursor.fetchone():
                         print(f"笔记已存在，跳过: {note.get('title', '')}")
                         return
+                    else:
+                        print(f"笔记不存在，添加: {note.get('title', '')},{note.get('keyword', '')},{note.get('note_url', '')}")
                 finally:
                     cursor.close()
                     db_conn.close()
