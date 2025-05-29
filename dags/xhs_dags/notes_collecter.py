@@ -252,9 +252,28 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                     author = author_element.text
                     if note_title_and_text not in collected_titles:
                         print(f"收集笔记: {note_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_notes)}")
-                        # 点击标题元素而不是整个卡片
-                        title_element.click()
-                        time.sleep(0.5)
+                        
+                        # 获取屏幕尺寸和元素位置
+                        try:
+                            screen_size = xhs.driver.get_window_size()
+                            element_location = title_element.location
+                            screen_height = screen_size['height']
+                            element_y = element_location['y']
+                            
+                            # 检查元素是否位于屏幕高度的3/4以上
+                            if element_y < screen_height * 0.75:
+                                # 点击标题元素而不是整个卡片
+                                print(f"元素位置正常，位于屏幕{element_y/screen_height:.2%}处，执行点击")
+                                title_element.click()
+                                time.sleep(0.5)
+                            else:
+                                print(f"元素位置过高，位于屏幕{element_y/screen_height:.2%}处，跳过点击")
+                                continue
+                        except Exception as e:
+                            print(f"检测元素位置失败: {str(e)}，执行默认点击")
+                            # 默认点击标题元素
+                            title_element.click()
+                            time.sleep(0.5)
                         note_data = xhs.get_note_data(note_title_and_text)
                         if note_data:
                             note_data['keyword'] = keyword
