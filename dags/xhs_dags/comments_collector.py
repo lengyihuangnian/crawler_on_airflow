@@ -53,7 +53,7 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
             content TEXT,
             likes INT DEFAULT 0,
             note_url VARCHAR(512),
-            keyword VARCHAR(255) NOT NULL DEFAULT '网球',
+            keyword VARCHAR(255) NOT NULL,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
@@ -101,7 +101,7 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
         cursor.close()
         db_conn.close()
 
-def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: int = 0, email: str = None):
+def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: int = 0, email: str = None, max_comments: int = 10):
     """根据传入的笔记URL列表收集评论
     Args:
         note_urls: 笔记URL列表
@@ -144,7 +144,7 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: in
             try:
                 # 收集评论
                 full_url = xhs.get_redirect_url(note_url)
-                comments = xhs.collect_comments_by_url(full_url)
+                comments = xhs.collect_comments_by_url(full_url, max_comments=max_comments)
                 # 保存评论到数据库
                 save_comments_to_db(comments, note_url, keyword)
                 all_comments.extend(comments)
@@ -173,6 +173,7 @@ def collect_xhs_comments(device_index: int = 0, **context):
     email = context['dag_run'].conf.get('email')
     keyword = context['dag_run'].conf.get('keyword')
     note_urls = context['dag_run'].conf.get('note_urls')
+    max_comments = context['dag_run'].conf.get('max_comments', 10)  # 默认收集10条评论
 
     if not keyword and not note_urls:
         raise ValueError("keyword和note_urls参数不能同时为空")
