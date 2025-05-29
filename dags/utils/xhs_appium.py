@@ -1160,7 +1160,7 @@ class XHSOperator:
             screen_size = self.driver.get_window_size()
             start_x = screen_size['width'] * 0.5
             start_y = screen_size['height'] * 0.8
-            end_y = screen_size['height'] * 0.3
+            end_y = screen_size['height'] * 0.4
             
             self.driver.swipe(start_x, start_y, start_x, end_y, 800)
             time.sleep(1)  # 等待内容加载
@@ -1454,7 +1454,7 @@ class XHSOperator:
             # 等待页面加载
             time.sleep(1)  
             # 修改寻找评论区逻辑，避免正文过长导致评论区不能正常加载
-            for i in range(4):
+            for i in range(10):
                 try:
                     # 查找评论列表
                     try:
