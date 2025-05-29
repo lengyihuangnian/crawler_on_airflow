@@ -36,7 +36,7 @@ def save_notes_to_db(notes: list) -> None:
             likes INT DEFAULT 0,
             collects INT DEFAULT 0,
             comments INT DEFAULT 0,
-            note_url TEXT,
+            note_url VARCHAR(512) DEFAULT NULL,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
@@ -66,10 +66,16 @@ def save_notes_to_db(notes: list) -> None:
                 note.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             ))
         
+        # 执行插入操作
         cursor.executemany(insert_sql, insert_data)
+        
+        # 获取实际插入的记录数
+        cursor.execute("SELECT ROW_COUNT()")
+        affected_rows = cursor.fetchone()[0]
+        
         db_conn.commit()
         
-        print(f"成功保存 {len(notes)} 条笔记到数据库")
+        print(f"成功保存 {affected_rows} 条新笔记到数据库，跳过 {len(notes) - affected_rows} 条重复笔记")
         
     except Exception as e:
         db_conn.rollback()
@@ -105,6 +111,9 @@ def collect_xhs_notes(device_index=0, **context) -> None:
     else:
         raise ValueError("email参数不能为空")
     
+    # 创建数据库连接信息，用于process_note中检查笔记是否存在
+    db_hook = BaseHook.get_connection("xhs_db").get_hook()
+    
     # 获取设备信息
     try:
         device_ip = device_info.get('device_ip')
@@ -134,6 +143,22 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         # 定义处理笔记的回调函数
         def process_note(note):
             nonlocal collected_notes, current_batch
+            
+            # 检查笔记URL是否已存在
+            note_url = note.get('note_url', '')
+            if note_url:
+                # 直接查询数据库
+                db_conn = db_hook.get_conn()
+                cursor = db_conn.cursor()
+                try:
+                    cursor.execute("SELECT 1 FROM xhs_notes WHERE note_url = %s AND keyword = %s LIMIT 1", (note_url, keyword))
+                    if cursor.fetchone():
+                        print(f"笔记已存在，跳过: {note.get('title', '')}")
+                        return
+                finally:
+                    cursor.close()
+                    db_conn.close()
+                
             collected_notes.append(note)
             current_batch.append(note)
             
