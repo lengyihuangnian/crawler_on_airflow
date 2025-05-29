@@ -203,7 +203,7 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
         try:
             related_search = xhs.driver.find_elements(
                 by=AppiumBy.XPATH,
-                value="//android.widget.TextView[@text='相关搜索']"
+                value="//android.widget.TextView[@text='相关搜索]"
             )
             if related_search and len(related_search) > 0:
                 print("检测到'相关搜索'元素，执行滚动")
