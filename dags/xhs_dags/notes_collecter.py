@@ -261,7 +261,7 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                             element_y = element_location['y']
                             
                             # 检查元素是否位于屏幕高度的3/4以上
-                            if element_y < screen_height * 0.5:
+                            if element_y > screen_height * 0.25:
                                 # 点击标题元素而不是整个卡片
                                 print(f"元素位置正常，位于屏幕{element_y/screen_height:.2%}处，执行点击")
                                 title_element.click()
