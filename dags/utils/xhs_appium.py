@@ -1160,7 +1160,7 @@ class XHSOperator:
             screen_size = self.driver.get_window_size()
             start_x = screen_size['width'] * 0.5
             start_y = screen_size['height'] * 0.8
-            end_y = screen_size['height'] * 0.4
+            end_y = screen_size['height'] * 0.35
             
             self.driver.swipe(start_x, start_y, start_x, end_y, 800)
             time.sleep(1)  # 等待内容加载
