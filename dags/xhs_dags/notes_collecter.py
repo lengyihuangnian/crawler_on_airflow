@@ -277,7 +277,7 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                         note_data = xhs.get_note_data(note_title_and_text)
                         if note_data:
                             note_data['keyword'] = keyword
-                            collected_titles.append(note_data)
+                            collected_titles.append(note_title_and_text)
                             process_note(note_data)
                         xhs.driver.press_keycode(4)
                         time.sleep(0.5)
