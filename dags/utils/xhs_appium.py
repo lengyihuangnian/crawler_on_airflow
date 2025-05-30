@@ -711,7 +711,7 @@ class XHSOperator:
                         
                     content_element = self.driver.find_element(
                         by=AppiumBy.XPATH,
-                        value="//android.view.View[string-length(@content-desc) > 0 and @text = '']"
+                        value="//android.view.View[contains(@content-desc, '-') and @text='']"
                     )
                     note_content = content_element.text
                     print(f"找到笔记修改时间: {note_content} 字符")
