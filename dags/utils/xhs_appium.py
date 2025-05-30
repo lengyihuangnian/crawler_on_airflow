@@ -681,7 +681,7 @@ class XHSOperator:
             
             # 获取笔记内容 - 需要滑动查找
             content = ""
-            max_scroll_attempts = 3  # 最大滑动次数
+            max_scroll_attempts = 5  # 最大滑动次数
             scroll_count = 0
             
             note_title = ""
@@ -949,7 +949,7 @@ class XHSOperator:
             }
     
 
-    def get_note_data_init(self, note_title_and_text: str):
+    
         """
         获取笔记内容和评论
         Args:
