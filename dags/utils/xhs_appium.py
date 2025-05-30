@@ -692,7 +692,7 @@ class XHSOperator:
                         # 如果失败，使用原来的方法
                         title_element = self.driver.find_element(
                             by=AppiumBy.XPATH,
-                            value="//android.widget.TextView[contains(@text, '') and string-length(@text) > 0 and not(contains(@text, '关注')) and not(contains(@text, '分享')) and not(contains(@text, '作者')) and not(@resource-id='com.xingin.xhs:id/nickNameTV')]"
+                            value="//android.widget.TextView[contains(@text, '') and string-length(@text) > 0 and not(contains(@text, '1/')) and not(contains(@text, '关注')) and not(contains(@text, '分享')) and not(contains(@text, '作者')) and not(@resource-id='com.xingin.xhs:id/nickNameTV')]"
                         )
                         note_title = title_element.text
                         print(f"找到标题: {note_title}")
