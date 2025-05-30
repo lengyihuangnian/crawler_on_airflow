@@ -706,7 +706,19 @@ class XHSOperator:
                 note_title = title_element.text
                 print(f"通过resource-id找到标题: {note_title}")
             while scroll_count < max_scroll_attempts:
-                
+                #查找笔记编辑时间
+                try:
+                        
+                    content_element = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.view.View[string-length(@content-desc) > 0 and @text = '']"
+                    )
+                    note_content = content_element.text
+                    print(f"找到笔记修改时间: {note_content} 字符")
+                except:
+                   
+                    print(f"找到笔记修改时间")
+                    
                 try:
                    
                     # 尝试获取正文内容 - 优先匹配长文本
