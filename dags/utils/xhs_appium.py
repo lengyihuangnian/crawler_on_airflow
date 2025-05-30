@@ -686,8 +686,9 @@ class XHSOperator:
             
             note_title = ""
             note_content = ""
+           
             #修改标题定位逻辑，一般进入笔记时就可定位到标题，无需滑动，嵌套在循环中会导致二次定位成错误元素
-            # 尝试获取标题 - 使用resource-id模式匹配
+            # 尝试获取标题 
             try:
                 # 如果失败，使用原来的方法
                 title_element = self.driver.find_element(
@@ -698,7 +699,7 @@ class XHSOperator:
                 print(f"找到标题: {note_title}")
                         
             except:
-                # 首先尝试使用resource-id匹配标题
+                # 尝试使用resource-id匹配标题
                 title_element = self.driver.find_element(
                     by=AppiumBy.XPATH,
                     value="//android.widget.TextView[contains(@resource-id, 'com.xingin.xhs:id/') and string-length(@text) > 0 and string-length(@text) < 50]"
@@ -707,16 +708,18 @@ class XHSOperator:
                 print(f"通过resource-id找到标题: {note_title}")
             while scroll_count < max_scroll_attempts:
                 #查找笔记编辑时间
-                try:
-                        
-                    note_time_element = self.driver.find_element(
-                        by=AppiumBy.XPATH,
-                        value="//android.view.View[contains(@content-desc, '-') or contains(@content-desc, ':') or contains(@content-desc, '编辑于')]"
-                    )
-                    time_content = note_time_element.get_attribute("content-desc")
-                    print(f"找到笔记修改时间: {time_content} ")
-                except:
-                    print(f"未找到笔记修改时间")
+                note_time_exists = False
+                if note_time_exists == False:
+                    try:
+                        note_time_element = self.driver.find_element(
+                            by=AppiumBy.XPATH,
+                            value="//android.view.View[contains(@content-desc, '-') or contains(@content-desc, ':') or contains(@content-desc, '编辑于')]"
+                        )
+                        time_content = note_time_element.get_attribute("content-desc")
+                        print(f"找到笔记修改时间: {time_content} ")
+                        note_time_exists = True
+                    except:
+                        print(f"未找到笔记修改时间")
                     
                 try:
                    
@@ -742,7 +745,9 @@ class XHSOperator:
                         print("找到正文内容和标题")
                         print(f"标题: {note_title}")
                         print(f"正文前100字符: {note_content[:100]}...")
-                        break
+                        if note_time_exists == True:
+                            #修改时间位于正文下方，找到时间后再退出循环
+                            break
                 except:
                     print(f"第 {scroll_count + 1} 次滑动查找正文...")
                     # 向下滑动
