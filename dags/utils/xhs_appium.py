@@ -711,12 +711,11 @@ class XHSOperator:
                         
                     note_time_element = self.driver.find_element(
                         by=AppiumBy.XPATH,
-                        value="//android.view.View[contains(@content-desc, '-')]"
+                        value="//android.view.View[contains(@content-desc, '-') or contains(@content-desc, ':') or contains(@content-desc, '编辑于')]"
                     )
-                    time_content = note_time_element.text
+                    time_content = note_time_element.get_attribute("content-desc")
                     print(f"找到笔记修改时间: {time_content} ")
                 except:
-                   
                     print(f"未找到笔记修改时间")
                     
                 try:
