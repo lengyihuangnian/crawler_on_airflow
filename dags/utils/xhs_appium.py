@@ -748,6 +748,10 @@ class XHSOperator:
                         if note_time_exists == True:
                             #修改时间位于正文下方，找到时间后再退出循环
                             break
+                        else:
+                            self.scroll_down()
+                            time.sleep(0.5)
+                            scroll_count += 1
                 except:
                     print(f"第 {scroll_count + 1} 次滑动查找正文...")
                     # 向下滑动
