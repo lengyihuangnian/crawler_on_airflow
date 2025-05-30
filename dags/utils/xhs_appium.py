@@ -690,14 +690,6 @@ class XHSOperator:
                 try:
                     # 尝试获取标题 - 使用resource-id模式匹配
                     try:
-                        # 首先尝试使用resource-id匹配标题
-                        title_element = self.driver.find_element(
-                            by=AppiumBy.XPATH,
-                            value="//android.widget.TextView[contains(@resource-id, 'com.xingin.xhs:id/') and string-length(@text) > 0 and string-length(@text) < 50]"
-                        )
-                        note_title = title_element.text
-                        print(f"通过resource-id找到标题: {note_title}")
-                    except:
                         # 如果失败，使用原来的方法
                         title_element = self.driver.find_element(
                             by=AppiumBy.XPATH,
@@ -705,6 +697,15 @@ class XHSOperator:
                         )
                         note_title = title_element.text
                         print(f"找到标题: {note_title}")
+                        
+                    except:
+                        # 首先尝试使用resource-id匹配标题
+                        title_element = self.driver.find_element(
+                            by=AppiumBy.XPATH,
+                            value="//android.widget.TextView[contains(@resource-id, 'com.xingin.xhs:id/') and string-length(@text) > 0 and string-length(@text) < 50]"
+                        )
+                        note_title = title_element.text
+                        print(f"通过resource-id找到标题: {note_title}")
 
                     # 尝试获取正文内容 - 优先匹配长文本
                     try:
