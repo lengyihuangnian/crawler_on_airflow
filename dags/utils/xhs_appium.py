@@ -916,8 +916,9 @@ class XHSOperator:
                             value="//android.view.View[contains(@content-desc, '-') or contains(@content-desc, ':') or contains(@content-desc, '编辑于')]"
                         )
                         time_content = note_time_element.get_attribute("content-desc")
-                        format_time=self.process_time_string(time_content.strip())['timestamp']
-                        print(f"找到笔记修改时间: {time_content}, 时间格式化为: {format_time}")
+                        print(f"找到笔记修改时间: {time_content}")
+                        format_time=self.process_time_string(time_content)['timestamp']
+                        print(f"时间格式化为: {format_time}")
                         note_time_exists = True
                     except:
                         print(f"未找到笔记修改时间")
