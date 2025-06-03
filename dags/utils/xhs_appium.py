@@ -197,8 +197,8 @@ class XHSOperator:
         except Exception as e:
             print(f"搜索或筛选失败: {str(e)}")
             raise
-    
-    def process_time_string(input_str):
+
+    def process_time_string(self, input_str):
         """
         完整处理时间字符串，支持多种时间格式
         返回标准化时间戳和地区信息
