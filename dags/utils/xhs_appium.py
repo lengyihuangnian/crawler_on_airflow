@@ -428,6 +428,77 @@ class XHSOperator:
         
         return result
 
+    def extract_time_location_from_text(self,text):
+        """
+        从文本中提取时间和地点信息
+        
+        Args:
+            text (str): 输入文本
+            
+        Returns:
+            tuple: (timestamp, location)
+        """
+        # 获取当前日期和时间
+        now = datetime.datetime.now()
+        current_year = now.year
+        
+        # 初始化结果
+        timestamp = ""
+        location = "无地区"
+        
+        # 1. 处理完整的YYYY-MM-DD格式 (优先处理，避免误匹配)
+        date_match_full = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
+        
+        if date_match_full:
+            
+            year = date_match_full.group(1)
+            month = date_match_full.group(2)
+            day = date_match_full.group(3)
+            # 使用提取的年份，而不是当前年份
+            timestamp = f"{year}-{month}-{day} 00:00:00"
+            
+            # 提取地区信息 (通常在日期后面)
+            location_match = re.search(r"\d{4}-\d{2}-\d{2}\s+([^\s]+)\s+回复", text)
+            if location_match:
+                location = location_match.group(1)
+                cleaned_text=text.replace(f'{location}','').replace('回复','').strip()
+            return {cleaned_text,timestamp, location}
+        
+        # 2. 处理"x小时前"格式
+        time_ago_match = re.search(r"(\d+)\s*小时前", text)
+        if time_ago_match:
+            cleaned_text=text.replace(f'{time_ago_match.group(1)}小时前','')
+            hours_ago = int(time_ago_match.group(1))
+            timestamp = (now - datetime.timedelta(hours=hours_ago)).strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 提取地区信息 (通常在时间后面)
+            location_match = re.search(r"小时前\s+([^\s]+)\s+回复", text)
+            if location_match:
+                location = location_match.group(1)
+                cleaned_text=cleaned_text.replace(f'{location}','').replace('回复','').strip()
+            return {cleaned_text,timestamp, location}
+        
+        # 3. 处理MM-DD格式
+        date_match = re.search(r"(\d{2})-(\d{2})", text)
+        if date_match:
+            cleaned_text=text.replace(f'{date_match.group(1)}-{date_match.group(2)}','')
+            print(date_match.groups())
+            month = date_match.group(1)
+            day = date_match.group(2)
+            # 使用当前年份
+            timestamp = f"{current_year}-{month}-{day} 00:00:00"
+            
+            # 提取地区信息 (通常在日期后面)
+            location_match = re.search(r"\d{2}-\d{2}\s+([^\s]+)\s+回复", text)
+            if location_match:
+                location = location_match.group(1)
+                cleaned_text=cleaned_text.replace(f'{location}','').replace('回复','').strip()
+            return {cleaned_text,timestamp, location}
+        
+        # 如果没有找到时间信息，返回空字符串
+        cleaned_text=text.replace('回复','').strip()
+        return {cleaned_text,timestamp, location}
+
 
     def collect_notes_by_keyword_sony(self, keyword: str, max_notes: int = 10, filters: dict = None):
         """
@@ -949,7 +1020,7 @@ class XHSOperator:
                         time_content = note_time_element.get_attribute("content-desc")
                         print(f"找到笔记修改时间: {time_content}")
                         format_time=self.process_time_string(time_content)['timestamp']
-                        format_location=self.process_time_string(time_content)['location']
+                        format_location=self.process_time_string(time_content)['location'].replace("编辑于","")
                         print(f"时间格式化为: {format_time},地区格式化为: {format_location}")
                         note_time_exists = True
                     except:
@@ -1927,17 +1998,22 @@ class XHSOperator:
                                     print(f"获取作者信息时出错: {str(e)}")
                                 
                             
-                                
+                                info_of_comment=self.extract_time_location_from_text(comment_text)
                                 # 构建评论数据
                                 comment_data = {
                                     "author": author,
-                                    "content": comment_text,
+                                    "content": info_of_comment['cleaned_text'],
                                     "likes": likes,
-                                    "collect_time": collect_time
-                                }
+                                    "collect_time": collect_time,
+                                    "comment_time": info_of_comment.get('timestamp', collect_time),
+                                    "location": info_of_comment.get('location', '未知'),
                                 
+                                }
+                                print(f"解析到评论: {comment_data}")
+                                # 添加到结果列表
                                 all_comments.append(comment_data)
                                 seen_comments.add(comment_text)
+                                
                                 print(f"发现新评论: {comment_text[:50]}...")
                                 
                                 # 如果达到最大评论数，退出循环
