@@ -427,90 +427,113 @@ class XHSOperator:
             result["location"] = location
         
         return result
-
+#解析评论中包含的时间和地点信息，适配多种格式
     def extract_time_location_from_text(self,text):
-        """
-        从文本中提取时间和地点信息
         
-        Args:
-            text (str): 输入文本
-            
-        Returns:
-            tuple: (timestamp, location)
-        """
-        # 获取当前日期和时间
         now = datetime.now()
         current_year = now.year
         
         # 初始化结果
         timestamp = ""
-        location = "无地区"
+        location = "无地区"  # 默认为"无地区"
+        cleaned_text = text
         
         # 1. 处理完整的YYYY-MM-DD格式 (优先处理，避免误匹配)
         date_match_full = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
-        
+
         if date_match_full:
-            
+        
             year = date_match_full.group(1)
             month = date_match_full.group(2)
             day = date_match_full.group(3)
-            # 使用提取的年份，而不是当前年份
-            timestamp = f"{year}-{month}-{day} 00:00:00"
+            date_str = f"{year}-{month}-{day}"
+            timestamp = f"{date_str} 00:00:00"
             
             # 提取地区信息 (通常在日期后面)
-            location_match = re.search(r"\d{4}-\d{2}-\d{2}\s+([^\s]+)\s+回复", text)
+            location_match = re.search(f"{re.escape(date_str)}\s+([^\s]+)(?=\s+回复|$)", text)
             if location_match:
                 location = location_match.group(1)
-                cleaned_text=text.replace(f'{location}','').replace('回复','').strip()
-            return {
-                'cleaned_text':cleaned_text,
-                'timestamp':timestamp, 
-                'location':location}
+                # 只删除时间戳和地区标记的组合，不影响评论内容中的地区名称
+                pattern = f"\s*{re.escape(date_str)}\s+{re.escape(location)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+            else:
+                # 如果没有找到地区信息，只删除日期和回复字样
+                pattern = f"\s*{re.escape(date_str)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+                # 确保地区为"无地区"
+                location = "无地区"
         
         # 2. 处理"x小时前"格式
-        time_ago_match = re.search(r"(\d+)\s*小时前", text)
-        if time_ago_match:
-            cleaned_text=text.replace(f'{time_ago_match.group(1)}小时前','')
+        elif time_ago_match := re.search(r"(\d+)\s*小时前", text):
             hours_ago = int(time_ago_match.group(1))
+            time_str = f"{hours_ago}小时前"
             timestamp = (now - datetime.timedelta(hours=hours_ago)).strftime("%Y-%m-%d %H:%M:%S")
             
             # 提取地区信息 (通常在时间后面)
-            location_match = re.search(r"小时前\s+([^\s]+)\s+回复", text)
+            location_match = re.search(f"{re.escape(time_str)}\s+([^\s]+)(?=\s+回复|$)", text)
             if location_match:
                 location = location_match.group(1)
-                cleaned_text=cleaned_text.replace(f'{location}','').replace('回复','').strip()
-            return {
-                'cleaned_text':cleaned_text,
-                'timestamp':timestamp, 
-                'location':location}
+                # 只删除时间戳和地区标记的组合，不影响评论内容中的地区名称
+                pattern = f"\s*{re.escape(time_str)}\s+{re.escape(location)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+            else:
+                # 如果没有找到地区信息，只删除时间和回复字样
+                pattern = f"\s*{re.escape(time_str)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+                # 确保地区为"无地区"
+                location = "无地区"
         
         # 3. 处理MM-DD格式
-        date_match = re.search(r"(\d{2})-(\d{2})", text)
-        if date_match:
-            cleaned_text=text.replace(f'{date_match.group(1)}-{date_match.group(2)}','')
-            print(date_match.groups())
+        elif date_match := re.search(r"(\d{2})-(\d{2})", text):
             month = date_match.group(1)
             day = date_match.group(2)
-            # 使用当前年份
+            date_str = f"{month}-{day}"
             timestamp = f"{current_year}-{month}-{day} 00:00:00"
             
             # 提取地区信息 (通常在日期后面)
-            location_match = re.search(r"\d{2}-\d{2}\s+([^\s]+)\s+回复", text)
+            location_match = re.search(f"{re.escape(date_str)}\s+([^\s]+)(?=\s+回复|$)", text)
             if location_match:
                 location = location_match.group(1)
-                cleaned_text=cleaned_text.replace(f'{location}','').replace('回复','').strip()
-            return {
-                'cleaned_text':cleaned_text,
-                'timestamp':timestamp, 
-                'location':location}
+                # 只删除时间戳和地区标记的组合，不影响评论内容中的地区名称
+                pattern = f"\s*{re.escape(date_str)}\s+{re.escape(location)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+            else:
+                # 如果没有找到地区信息，只删除日期和回复字样
+                pattern = f"\s*{re.escape(date_str)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+                # 确保地区为"无地区"
+                location = "无地区"
         
-        # 如果没有找到时间信息，返回空字符串
-        cleaned_text=text.replace('回复','').strip()
+        # 如果没有找到时间信息，但有回复字样，删除回复字样
+        else:
+            cleaned_text = re.sub(r"\s+回复$", "", text).strip()
+            # 确保地区为"无地区"
+            location = "无地区"
+        
+        # 移除表情符号 (简单处理，移除方括号内的内容)
+        cleaned_text = re.sub(r"\[.*?\]", "", cleaned_text)
+        
+        # 移除多余空格
+        cleaned_text = re.sub(r"\s+", " ", cleaned_text).strip()
+        
         return {
-                'cleaned_text':cleaned_text,
-                'timestamp':timestamp, 
-                'location':location}
-
+            "cleaned_text": cleaned_text.replace("翻译", ""),
+            "timestamp": timestamp,
+            "location": location.replace("回复", "").strip()
+        }
+    
 
     def collect_notes_by_keyword_sony(self, keyword: str, max_notes: int = 10, filters: dict = None):
         """
@@ -1904,10 +1927,10 @@ class XHSOperator:
                                         collect_time = (now - timedelta(minutes=value)).strftime('%Y-%m-%d')
                             
                             # 移除时间信息和回复后缀
-                            comment_text = re.sub(time_pattern, '', comment_text)
+                            # comment_text = re.sub(time_pattern, '', comment_text)
                             # 额外清理可能的回复后缀
-                            comment_text = re.sub(r'\s*回复\s*$', '', comment_text)
-                            comment_text = comment_text.strip()
+                            # comment_text = re.sub(r'\s*回复\s*$', '', comment_text)
+                            # comment_text = comment_text.strip()
                             
                             # 跳过第一条评论（文章内容）
                             if is_first_comment:
