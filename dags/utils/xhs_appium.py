@@ -247,7 +247,27 @@ class XHSOperator:
                 result["location"] = location
             return result
         
-        # 2. 处理"昨天"格式
+        # 2. 处理"今天"格式（新增对"今天 10:39山东"格式的专门处理）
+        # =================================================================
+        today_match = re.search(r"今天\s*(\d{1,2}:\d{1,2})", input_str)
+        if today_match:
+            # 提取时间部分 (如 "10:39")
+            time_str = today_match.group(1)
+            try:
+                # 尝试解析时间
+                time_part = datetime.strptime(time_str, "%H:%M").time()
+                result["timestamp"] = datetime.combine(current_date, time_part).strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                # 时间解析失败，使用中午12点
+                result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            
+            # 提取地点 - 移除"今天"和时间部分
+            location = re.sub(r"今天\s*\d{1,2}:\d{1,2}\s*", "", input_str).strip()
+            if location:
+                result["location"] = location
+            return result
+        
+        # 3. 处理"昨天"格式
         # =================================================================
         if "昨天" in input_str:
             # 提取时间部分 (如 "16:59")
@@ -275,13 +295,30 @@ class XHSOperator:
                 result["location"] = location
             return result
         
-        # 3. 处理"今天"格式
+        # 4. 处理"编辑于"格式
         # =================================================================
-        if "今天" in input_str:
-            # 提取时间部分 (如 "10:34")
-            time_match = re.search(r"(\d{1,2}:\d{1,2})", input_str)
+        if "编辑于" in input_str:
+            # 先尝试匹配完整的YYYY-MM-DD格式
+            date_match_full = re.search(r"编辑于(\d{4}-\d{2}-\d{2})", input_str)
+            if date_match_full:
+                date_str = date_match_full.group(1)
+                try:
+                    # 尝试解析完整日期
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                    result["timestamp"] = date_obj.strftime("%Y-%m-%d 12:00:00")
+                except ValueError:
+                    # 日期无效，使用当前日期
+                    result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+                    
+                # 提取地点
+                location = re.sub(r"编辑于\d{4}-\d{2}-\d{2}\s*", "", input_str).strip()
+                if location:
+                    result["location"] = location
+                return result
+            
+            # 如果没有匹配到完整格式，尝试匹配HH:MM时间格式
+            time_match = re.search(r"编辑于(\d{1,2}:\d{2})", input_str)
             if time_match:
-                # 使用当前日期 + 提取的时间
                 time_str = time_match.group(1)
                 try:
                     # 尝试解析时间
@@ -290,20 +327,14 @@ class XHSOperator:
                 except ValueError:
                     # 时间解析失败，使用中午12点
                     result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
-            else:
-                # 没有时间部分，使用中午12点
-                result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+                    
+                # 提取地点
+                location = re.sub(r"编辑于\d{1,2}:\d{2}\s*", "", input_str).strip()
+                if location:
+                    result["location"] = location
+                return result
             
-            # 提取地点
-            location = re.sub(r"今天\s*\d{1,2}:\d{1,2}\s*", "", input_str).strip()
-            if location:
-                result["location"] = location
-            return result
-        
-        # 4. 处理"编辑于"格式
-        # =================================================================
-        if "编辑于" in input_str:
-            # 提取日期部分
+            # 如果没有匹配到时间格式，尝试匹配MM-DD格式
             date_match = re.search(r"编辑于(\d{2}-\d{2})", input_str)
             if date_match:
                 date_str = date_match.group(1)
