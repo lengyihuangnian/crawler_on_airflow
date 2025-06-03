@@ -40,17 +40,17 @@ def save_notes_to_db(notes: list) -> None:
             comments INT DEFAULT 0,
             note_url VARCHAR(512) DEFAULT NULL,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
+            note_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            note_location TEXT 
         )
         """)
         db_conn.commit()
         
         # 准备插入数据的SQL语句 - 使用INSERT IGNORE避免重复插入
         insert_sql = """
-        INSERT IGNORE INTO xhs_notes 
-        (keyword, title, author, content, likes, collects, comments, note_url, collect_time) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT IGNORE INTO xhs_notes
+        (keyword, title, author, content, likes, collects, comments, note_url, collect_time, note_time, note_location)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # 批量插入笔记数据
@@ -65,12 +65,14 @@ def save_notes_to_db(notes: list) -> None:
                 note.get('collects', 0),
                 note.get('comments', 0),
                 note.get('note_url', ''),
-                note.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                note.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                note.get('note_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                note.get('note_location', ''),
             ))
-        
+
         # 执行插入操作
         cursor.executemany(insert_sql, insert_data)
-        
+
         # 获取实际插入的记录数
         cursor.execute("SELECT ROW_COUNT()")
         affected_rows = cursor.fetchone()[0]

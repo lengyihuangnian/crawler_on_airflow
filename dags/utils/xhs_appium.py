@@ -918,7 +918,8 @@ class XHSOperator:
                         time_content = note_time_element.get_attribute("content-desc")
                         print(f"找到笔记修改时间: {time_content}")
                         format_time=self.process_time_string(time_content)['timestamp']
-                        print(f"时间格式化为: {format_time}")
+                        format_location=self.process_time_string(time_content)['location']
+                        print(f"时间格式化为: {format_time},地区格式化为: {format_location}")
                         note_time_exists = True
                     except:
                         print(f"未找到笔记修改时间")
@@ -1131,7 +1132,9 @@ class XHSOperator:
                 "collects": int(collects),
                 "comments": int(comments),
                 "note_url": note_url,
-                "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
+                "collect_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "note_time": format_time,
+                "note_location": format_location
             }
             
             print(f"获取笔记数据: {note_data}")
