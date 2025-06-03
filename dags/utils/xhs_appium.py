@@ -471,7 +471,7 @@ class XHSOperator:
         elif time_ago_match := re.search(r"(\d+)\s*小时前", text):
             hours_ago = int(time_ago_match.group(1))
             time_str = f"{hours_ago}小时前"
-            timestamp = (now - datetime.timedelta(hours=hours_ago)).strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = (now - timedelta(hours=hours_ago)).strftime("%Y-%m-%d %H:%M:%S")
             
             # 提取地区信息 (通常在时间后面)
             location_match = re.search(f"{re.escape(time_str)}\s+([^\s]+)(?=\s+回复|$)", text)
@@ -530,7 +530,7 @@ class XHSOperator:
         
         return {
             "cleaned_text": cleaned_text.replace("翻译", ""),
-            "timestamp": timestamp,
+            "timestamp": timestamp if timestamp else now.strftime("%Y-%m-%d %H:%M:%S"),
             "location": location.replace("回复", "").strip()
         }
     
