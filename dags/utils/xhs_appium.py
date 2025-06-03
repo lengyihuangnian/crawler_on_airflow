@@ -427,7 +427,113 @@ class XHSOperator:
             result["location"] = location
         
         return result
+#解析评论中包含的时间和地点信息，适配多种格式
+    def extract_time_location_from_text(self,text):
+        
+        now = datetime.now()
+        current_year = now.year
+        
+        # 初始化结果
+        timestamp = ""
+        location = "无地区"  # 默认为"无地区"
+        cleaned_text = text
+        
+        # 1. 处理完整的YYYY-MM-DD格式 (优先处理，避免误匹配)
+        date_match_full = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
 
+        if date_match_full:
+        
+            year = date_match_full.group(1)
+            month = date_match_full.group(2)
+            day = date_match_full.group(3)
+            date_str = f"{year}-{month}-{day}"
+            timestamp = f"{date_str} 00:00:00"
+            
+            # 提取地区信息 (通常在日期后面)
+            location_match = re.search(f"{re.escape(date_str)}\s+([^\s]+)(?=\s+回复|$)", text)
+            if location_match:
+                location = location_match.group(1)
+                # 只删除时间戳和地区标记的组合，不影响评论内容中的地区名称
+                pattern = f"\s*{re.escape(date_str)}\s+{re.escape(location)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+            else:
+                # 如果没有找到地区信息，只删除日期和回复字样
+                pattern = f"\s*{re.escape(date_str)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+                # 确保地区为"无地区"
+                location = "无地区"
+        
+        # 2. 处理"x小时前"格式
+        elif time_ago_match := re.search(r"(\d+)\s*小时前", text):
+            hours_ago = int(time_ago_match.group(1))
+            time_str = f"{hours_ago}小时前"
+            timestamp = (now - datetime.timedelta(hours=hours_ago)).strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 提取地区信息 (通常在时间后面)
+            location_match = re.search(f"{re.escape(time_str)}\s+([^\s]+)(?=\s+回复|$)", text)
+            if location_match:
+                location = location_match.group(1)
+                # 只删除时间戳和地区标记的组合，不影响评论内容中的地区名称
+                pattern = f"\s*{re.escape(time_str)}\s+{re.escape(location)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+            else:
+                # 如果没有找到地区信息，只删除时间和回复字样
+                pattern = f"\s*{re.escape(time_str)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+                # 确保地区为"无地区"
+                location = "无地区"
+        
+        # 3. 处理MM-DD格式
+        elif date_match := re.search(r"(\d{2})-(\d{2})", text):
+            month = date_match.group(1)
+            day = date_match.group(2)
+            date_str = f"{month}-{day}"
+            timestamp = f"{current_year}-{month}-{day} 00:00:00"
+            
+            # 提取地区信息 (通常在日期后面)
+            location_match = re.search(f"{re.escape(date_str)}\s+([^\s]+)(?=\s+回复|$)", text)
+            if location_match:
+                location = location_match.group(1)
+                # 只删除时间戳和地区标记的组合，不影响评论内容中的地区名称
+                pattern = f"\s*{re.escape(date_str)}\s+{re.escape(location)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+            else:
+                # 如果没有找到地区信息，只删除日期和回复字样
+                pattern = f"\s*{re.escape(date_str)}(?=\s+回复|$)"
+                cleaned_text = re.sub(pattern, "", text)
+                # 删除末尾的回复字样
+                cleaned_text = re.sub(r"\s+回复$", "", cleaned_text).strip()
+                # 确保地区为"无地区"
+                location = "无地区"
+        
+        # 如果没有找到时间信息，但有回复字样，删除回复字样
+        else:
+            cleaned_text = re.sub(r"\s+回复$", "", text).strip()
+            # 确保地区为"无地区"
+            location = "无地区"
+        
+        # 移除表情符号 (简单处理，移除方括号内的内容)
+        cleaned_text = re.sub(r"\[.*?\]", "", cleaned_text)
+        
+        # 移除多余空格
+        cleaned_text = re.sub(r"\s+", " ", cleaned_text).strip()
+        
+        return {
+            "cleaned_text": cleaned_text.replace("翻译", ""),
+            "timestamp": timestamp,
+            "location": location.replace("回复", "").strip()
+        }
+    
 
     def collect_notes_by_keyword_sony(self, keyword: str, max_notes: int = 10, filters: dict = None):
         """
@@ -949,7 +1055,7 @@ class XHSOperator:
                         time_content = note_time_element.get_attribute("content-desc")
                         print(f"找到笔记修改时间: {time_content}")
                         format_time=self.process_time_string(time_content)['timestamp']
-                        format_location=self.process_time_string(time_content)['location']
+                        format_location=self.process_time_string(time_content)['location'].replace("编辑于","")
                         print(f"时间格式化为: {format_time},地区格式化为: {format_location}")
                         note_time_exists = True
                     except:
@@ -1821,10 +1927,10 @@ class XHSOperator:
                                         collect_time = (now - timedelta(minutes=value)).strftime('%Y-%m-%d')
                             
                             # 移除时间信息和回复后缀
-                            comment_text = re.sub(time_pattern, '', comment_text)
+                            # comment_text = re.sub(time_pattern, '', comment_text)
                             # 额外清理可能的回复后缀
-                            comment_text = re.sub(r'\s*回复\s*$', '', comment_text)
-                            comment_text = comment_text.strip()
+                            # comment_text = re.sub(r'\s*回复\s*$', '', comment_text)
+                            # comment_text = comment_text.strip()
                             
                             # 跳过第一条评论（文章内容）
                             if is_first_comment:
@@ -1927,17 +2033,22 @@ class XHSOperator:
                                     print(f"获取作者信息时出错: {str(e)}")
                                 
                             
-                                
+                                info_of_comment=self.extract_time_location_from_text(comment_text)
                                 # 构建评论数据
                                 comment_data = {
                                     "author": author,
-                                    "content": comment_text,
+                                    "content": info_of_comment['cleaned_text'], #去除无用信息后的评论
                                     "likes": likes,
-                                    "collect_time": collect_time
-                                }
+                                    "comment_time": info_of_comment.get('timestamp', collect_time), #评论时间
+                                    "collect_time": time.strftime("%Y-%m-%d %H:%M:%S"), #评论收集时间
+                                    "location": info_of_comment.get('location', '未知'), #评论地区
                                 
+                                }
+                                print(f"解析到评论: {comment_data}")
+                                # 添加到结果列表
                                 all_comments.append(comment_data)
                                 seen_comments.add(comment_text)
+                                
                                 print(f"发现新评论: {comment_text[:50]}...")
                                 
                                 # 如果达到最大评论数，退出循环
@@ -2192,44 +2303,44 @@ if __name__ == "__main__":
 
     try:
         # 1 测试收集文章
-        print("\n开始测试收集文章...")
-        notes = xhs.collect_notes_by_keyword(
-            keyword="龙图",
-            max_notes=10,
-            filters={
-                "note_type": "图文",  # 只收集图文笔记
-                "sort_by": "最新"  # 按最新排序
-            }
-        )
+        # print("\n开始测试收集文章...")
+        # notes = xhs.collect_notes_by_keyword(
+        #     keyword="龙图",
+        #     max_notes=10,
+        #     filters={
+        #         "note_type": "图文",  # 只收集图文笔记
+        #         "sort_by": "最新"  # 按最新排序
+        #     }
+        # )
         
-        print(f"\n共收集到 {len(notes)} 条笔记:")
-        for i, note in enumerate(notes, 1):
-            print(f"\n笔记 {i}:")
-            print(f"标题: {note.get('title', 'N/A')}")
-            print(f"作者: {note.get('author', 'N/A')}")
-            print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
-            print(f"URL: {note.get('note_url', 'N/A')}")
-            print(f"点赞: {note.get('likes', 'N/A')}")
-            print(f"收藏: {note.get('collects', 'N/A')}")
-            print(f"评论: {note.get('comments', 'N/A')}")
-            print(f"收集时间: {note.get('collect_time', 'N/A')}")
-            print("-" * 50) 
+        # print(f"\n共收集到 {len(notes)} 条笔记:")
+        # for i, note in enumerate(notes, 1):
+        #     print(f"\n笔记 {i}:")
+        #     print(f"标题: {note.get('title', 'N/A')}")
+        #     print(f"作者: {note.get('author', 'N/A')}")
+        #     print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
+        #     print(f"URL: {note.get('note_url', 'N/A')}")
+        #     print(f"点赞: {note.get('likes', 'N/A')}")
+        #     print(f"收藏: {note.get('collects', 'N/A')}")
+        #     print(f"评论: {note.get('comments', 'N/A')}")
+        #     print(f"收集时间: {note.get('collect_time', 'N/A')}")
+        #     print("-" * 50) 
 
         # 2 测试收集评论
-        # print("\n开始测试收集评论...")
-        # note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
-        # full_url = xhs.get_redirect_url(note_url)
-        # print(f"帖子 URL: {full_url}")
+        print("\n开始测试收集评论...")
+        note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
+        full_url = xhs.get_redirect_url(note_url)
+        print(f"帖子 URL: {full_url}")
         
-        # comments = xhs.collect_comments_by_url(full_url,max_comments=10)
-        # print(f"\n共收集到 {len(comments)} 条评论:")
-        # for i, comment in enumerate(comments, 1):
-        #     print(f"\n评论 {i}:")
-        #     print(f"作者: {comment['author']}")
-        #     print(f"内容: {comment['content']}")
-        #     print(f"点赞: {comment['likes']}")
-        #     print(f"时间: {comment['collect_time']}")
-        #     print("-" * 50)
+        comments = xhs.collect_comments_by_url(full_url,max_comments=10)
+        print(f"\n共收集到 {len(comments)} 条评论:")
+        for i, comment in enumerate(comments, 1):
+            print(f"\n评论 {i}:")
+            print(f"作者: {comment['author']}")
+            print(f"内容: {comment['content']}")
+            print(f"点赞: {comment['likes']}")
+            print(f"时间: {comment['collect_time']}")
+            print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
         # note_url = "http://xhslink.com/a/Hr4QFxdhrNrbb"
