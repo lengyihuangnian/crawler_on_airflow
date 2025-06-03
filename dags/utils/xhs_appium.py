@@ -197,7 +197,207 @@ class XHSOperator:
         except Exception as e:
             print(f"搜索或筛选失败: {str(e)}")
             raise
+    
+    def process_time_string(input_str):
+        """
+        完整处理时间字符串，支持多种时间格式
+        返回标准化时间戳和地区信息
         
+        参数:
+            input_str (str): 原始时间地点字符串
+            
+        返回:
+            dict: 包含 'timestamp' (YYYY-MM-DD HH:MM:SS) 和 'location' 的字典
+        """
+        # 获取当前日期和时间
+        now = datetime.now()
+        current_date = now.date()
+        current_year = now.year
+        
+        # 初始化结果
+        result = {
+            "timestamp": "",
+            "location": "无地区"
+        }
+        
+        # 0. 预处理 - 统一全角半角符号
+        input_str = input_str.replace("：", ":")  # 全角冒号转半角
+        input_str = input_str.replace("Ｘ", "X")  # 全角X转半角
+        
+        # 1. 处理"x小时前"、"x分钟前"、"x秒前"格式
+        # =================================================================
+        time_ago_match = re.search(r"(\d+)\s*(小时|分钟|秒)[以之]?前", input_str)
+        if time_ago_match:
+            num = int(time_ago_match.group(1))
+            unit = time_ago_match.group(2)
+            
+            # 根据单位减去相应时间
+            if unit == "小时":
+                target_time = now - timedelta(hours=num)
+            elif unit == "分钟":
+                target_time = now - timedelta(minutes=num)
+            else:  # 秒
+                target_time = now - timedelta(seconds=num)
+            
+            result["timestamp"] = target_time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 提取地点
+            location = re.sub(r"(\d+)\s*(小时|分钟|秒)[以之]?前\s*", "", input_str).strip()
+            if location:
+                result["location"] = location
+            return result
+        
+        # 2. 处理"昨天"格式
+        # =================================================================
+        if "昨天" in input_str:
+            # 提取时间部分 (如 "16:59")
+            time_match = re.search(r"(\d{1,2}:\d{1,2})", input_str)
+            target_date = current_date - timedelta(days=1)  # 减去一天
+            
+            if time_match:
+                # 使用昨天日期 + 提取的时间
+                time_str = time_match.group(1)
+                try:
+                    # 尝试解析时间
+                    time_part = datetime.strptime(time_str, "%H:%M").time()
+                    result["timestamp"] = datetime.combine(target_date, time_part).strftime("%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    # 时间解析失败，使用中午12点
+                    result["timestamp"] = target_date.strftime("%Y-%m-%d 12:00:00")
+            else:
+                # 没有时间部分，使用中午12点
+                result["timestamp"] = target_date.strftime("%Y-%m-%d 12:00:00")
+            
+            # 提取地点
+            location = re.sub(r"昨天\s*\d{1,2}:\d{1,2}\s*", "", input_str)
+            location = re.sub(r"昨天\s*", "", location).strip()
+            if location:
+                result["location"] = location
+            return result
+        
+        # 3. 处理"今天"格式
+        # =================================================================
+        if "今天" in input_str:
+            # 提取时间部分 (如 "10:34")
+            time_match = re.search(r"(\d{1,2}:\d{1,2})", input_str)
+            if time_match:
+                # 使用当前日期 + 提取的时间
+                time_str = time_match.group(1)
+                try:
+                    # 尝试解析时间
+                    time_part = datetime.strptime(time_str, "%H:%M").time()
+                    result["timestamp"] = datetime.combine(current_date, time_part).strftime("%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    # 时间解析失败，使用中午12点
+                    result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            else:
+                # 没有时间部分，使用中午12点
+                result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            
+            # 提取地点
+            location = re.sub(r"今天\s*\d{1,2}:\d{1,2}\s*", "", input_str).strip()
+            if location:
+                result["location"] = location
+            return result
+        
+        # 4. 处理"编辑于"格式
+        # =================================================================
+        if "编辑于" in input_str:
+            # 提取日期部分
+            date_match = re.search(r"编辑于(\d{2}-\d{2})", input_str)
+            if date_match:
+                date_str = date_match.group(1)
+                try:
+                    # 尝试解析日期
+                    date_obj = datetime.strptime(f"{current_year}-{date_str}", "%Y-%m-%d")
+                    result["timestamp"] = date_obj.strftime("%Y-%m-%d 12:00:00")
+                except ValueError:
+                    # 日期无效，使用当前日期
+                    result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            else:
+                result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            
+            # 提取地点
+            location = re.sub(r"编辑于\d{2}-\d{2}\s*", "", input_str).strip()
+            location = re.sub(r"编辑于\s*", "", location).strip()
+            if location:
+                result["location"] = location
+            return result
+        
+        # 5. 处理 YYYY-MM-DD 格式
+        # =================================================================
+        if re.match(r"\d{4}-\d{2}-\d{2}", input_str):
+            try:
+                # 尝试解析完整日期
+                date_match = re.search(r"(\d{4}-\d{2}-\d{2})", input_str)
+                if date_match:
+                    date_obj = datetime.strptime(date_match.group(1), "%Y-%m-%d")
+                    result["timestamp"] = date_obj.strftime("%Y-%m-%d 12:00:00")
+            except ValueError:
+                # 日期无效，使用当前日期
+                result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            
+            # 提取地点
+            location = re.sub(r"\d{4}-\d{2}-\d{2}\s*", "", input_str).strip()
+            if location:
+                result["location"] = location
+            return result
+        
+        # 6. 处理 MM-DD 格式
+        # =================================================================
+        if re.match(r"\d{2}-\d{2}", input_str):
+            date_match = re.search(r"(\d{2}-\d{2})", input_str)
+            if date_match:
+                date_str = date_match.group(1)
+                try:
+                    # 尝试解析日期
+                    date_obj = datetime.strptime(f"{current_year}-{date_str}", "%Y-%m-%d")
+                    result["timestamp"] = date_obj.strftime("%Y-%m-%d 12:00:00")
+                except ValueError:
+                    # 日期无效，使用当前日期
+                    result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            else:
+                result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            
+            # 提取地点
+            location = re.sub(r"\d{2}-\d{2}\s*", "", input_str).strip()
+            if location:
+                result["location"] = location
+            return result
+        
+        # 7. 处理仅时间格式 (如 "16:59北京")
+        # =================================================================
+        time_match = re.search(r"(\d{1,2}:\d{1,2})", input_str)
+        if time_match:
+            # 使用当前日期 + 提取的时间
+            time_str = time_match.group(1)
+            try:
+                # 尝试解析时间
+                time_part = datetime.strptime(time_str, "%H:%M").time()
+                result["timestamp"] = datetime.combine(current_date, time_part).strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                # 时间解析失败，使用中午12点
+                result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+            
+            # 提取地点
+            location = re.sub(r"\d{1,2}:\d{1,2}\s*", "", input_str).strip()
+            if location:
+                result["location"] = location
+            return result
+        
+        # 8. 默认处理 - 当所有格式都不匹配时
+        # =================================================================
+        result["timestamp"] = current_date.strftime("%Y-%m-%d 12:00:00")
+        
+        # 尝试提取任何可能的地点信息
+        # 移除数字和特殊字符，保留中文字符
+        location = re.sub(r"[\d\s\-:]+", "", input_str).strip()
+        if location:
+            result["location"] = location
+        
+        return result
+
+
     def collect_notes_by_keyword_sony(self, keyword: str, max_notes: int = 10, filters: dict = None):
         """
         根据关键词收集笔记
@@ -716,7 +916,8 @@ class XHSOperator:
                             value="//android.view.View[contains(@content-desc, '-') or contains(@content-desc, ':') or contains(@content-desc, '编辑于')]"
                         )
                         time_content = note_time_element.get_attribute("content-desc")
-                        print(f"找到笔记修改时间: {time_content} ")
+                        format_time=self.process_time_string(time_content.strip())
+                        print(f"找到笔记修改时间: {time_content}, 时间格式化为: {format_time}")
                         note_time_exists = True
                     except:
                         print(f"未找到笔记修改时间")
@@ -1173,6 +1374,7 @@ class XHSOperator:
                 "url": "",
                 "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
+    
     
 #改动
     def scroll_down(self):
@@ -1949,50 +2151,50 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="27d76ca29907",
+        device_id="ZY22G2Z4PH",
         # system_port=8200
     )
 
     try:
         # 1 测试收集文章
-        # print("\n开始测试收集文章...")
-        # notes = xhs.collect_notes_by_keyword(
-        #     keyword="龙图",
-        #     max_notes=10,
-        #     filters={
-        #         "note_type": "图文",  # 只收集图文笔记
-        #         "sort_by": "最新"  # 按最新排序
-        #     }
-        # )
+        print("\n开始测试收集文章...")
+        notes = xhs.collect_notes_by_keyword(
+            keyword="龙图",
+            max_notes=10,
+            filters={
+                "note_type": "图文",  # 只收集图文笔记
+                "sort_by": "最新"  # 按最新排序
+            }
+        )
         
-        # print(f"\n共收集到 {len(notes)} 条笔记:")
-        # for i, note in enumerate(notes, 1):
-        #     print(f"\n笔记 {i}:")
-        #     print(f"标题: {note.get('title', 'N/A')}")
-        #     print(f"作者: {note.get('author', 'N/A')}")
-        #     print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
-        #     print(f"URL: {note.get('note_url', 'N/A')}")
-        #     print(f"点赞: {note.get('likes', 'N/A')}")
-        #     print(f"收藏: {note.get('collects', 'N/A')}")
-        #     print(f"评论: {note.get('comments', 'N/A')}")
-        #     print(f"收集时间: {note.get('collect_time', 'N/A')}")
-        #     print("-" * 50) 
+        print(f"\n共收集到 {len(notes)} 条笔记:")
+        for i, note in enumerate(notes, 1):
+            print(f"\n笔记 {i}:")
+            print(f"标题: {note.get('title', 'N/A')}")
+            print(f"作者: {note.get('author', 'N/A')}")
+            print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
+            print(f"URL: {note.get('note_url', 'N/A')}")
+            print(f"点赞: {note.get('likes', 'N/A')}")
+            print(f"收藏: {note.get('collects', 'N/A')}")
+            print(f"评论: {note.get('comments', 'N/A')}")
+            print(f"收集时间: {note.get('collect_time', 'N/A')}")
+            print("-" * 50) 
 
         # 2 测试收集评论
-        print("\n开始测试收集评论...")
-        note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
-        full_url = xhs.get_redirect_url(note_url)
-        print(f"帖子 URL: {full_url}")
+        # print("\n开始测试收集评论...")
+        # note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
+        # full_url = xhs.get_redirect_url(note_url)
+        # print(f"帖子 URL: {full_url}")
         
-        comments = xhs.collect_comments_by_url(full_url,max_comments=10)
-        print(f"\n共收集到 {len(comments)} 条评论:")
-        for i, comment in enumerate(comments, 1):
-            print(f"\n评论 {i}:")
-            print(f"作者: {comment['author']}")
-            print(f"内容: {comment['content']}")
-            print(f"点赞: {comment['likes']}")
-            print(f"时间: {comment['collect_time']}")
-            print("-" * 50)
+        # comments = xhs.collect_comments_by_url(full_url,max_comments=10)
+        # print(f"\n共收集到 {len(comments)} 条评论:")
+        # for i, comment in enumerate(comments, 1):
+        #     print(f"\n评论 {i}:")
+        #     print(f"作者: {comment['author']}")
+        #     print(f"内容: {comment['content']}")
+        #     print(f"点赞: {comment['likes']}")
+        #     print(f"时间: {comment['collect_time']}")
+        #     print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
         # note_url = "http://xhslink.com/a/Hr4QFxdhrNrbb"
