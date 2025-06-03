@@ -439,7 +439,7 @@ class XHSOperator:
             tuple: (timestamp, location)
         """
         # 获取当前日期和时间
-        now = datetime.datetime.now()
+        now = datetime.now()
         current_year = now.year
         
         # 初始化结果
@@ -462,7 +462,10 @@ class XHSOperator:
             if location_match:
                 location = location_match.group(1)
                 cleaned_text=text.replace(f'{location}','').replace('回复','').strip()
-            return {cleaned_text,timestamp, location}
+            return {
+                'cleaned_text':cleaned_text,
+                'timestamp':timestamp, 
+                'location':location}
         
         # 2. 处理"x小时前"格式
         time_ago_match = re.search(r"(\d+)\s*小时前", text)
@@ -476,7 +479,10 @@ class XHSOperator:
             if location_match:
                 location = location_match.group(1)
                 cleaned_text=cleaned_text.replace(f'{location}','').replace('回复','').strip()
-            return {cleaned_text,timestamp, location}
+            return {
+                'cleaned_text':cleaned_text,
+                'timestamp':timestamp, 
+                'location':location}
         
         # 3. 处理MM-DD格式
         date_match = re.search(r"(\d{2})-(\d{2})", text)
@@ -493,11 +499,17 @@ class XHSOperator:
             if location_match:
                 location = location_match.group(1)
                 cleaned_text=cleaned_text.replace(f'{location}','').replace('回复','').strip()
-            return {cleaned_text,timestamp, location}
+            return {
+                'cleaned_text':cleaned_text,
+                'timestamp':timestamp, 
+                'location':location}
         
         # 如果没有找到时间信息，返回空字符串
         cleaned_text=text.replace('回复','').strip()
-        return {cleaned_text,timestamp, location}
+        return {
+                'cleaned_text':cleaned_text,
+                'timestamp':timestamp, 
+                'location':location}
 
 
     def collect_notes_by_keyword_sony(self, keyword: str, max_notes: int = 10, filters: dict = None):
@@ -1868,34 +1880,34 @@ class XHSOperator:
                             time_match = re.search(time_pattern, comment_text)
                             collect_time = None
                             
-                            if time_match:
-                                if time_match.group('date'):
-                                    # 标准日期格式，只保留日期
-                                    collect_time = time_match.group('date')
-                                elif time_match.group('short_date'):
-                                    # 短日期格式，添加当前年份
-                                    current_year = datetime.now().year
-                                    date_str = time_match.group('short_date')
-                                    collect_time = f"{current_year}-{date_str}"
-                                elif time_match.group('yesterday'):
-                                    # 昨天格式，获取当前日期并减一天
-                                    yesterday = datetime.now() - timedelta(days=1)
-                                    collect_time = yesterday.strftime('%Y-%m-%d')
-                                elif time_match.group('relative'):
-                                    # 相对时间格式（X小时/分钟前）
-                                    now = datetime.now()
-                                    value = int(time_match.group('value'))  # 直接使用捕获的数字
-                                    unit = time_match.group('unit')
-                                    if unit == '小时':
-                                        collect_time = (now - timedelta(hours=value)).strftime('%Y-%m-%d')
-                                    else:  # 分钟
-                                        collect_time = (now - timedelta(minutes=value)).strftime('%Y-%m-%d')
+                            # if time_match:
+                            #     if time_match.group('date'):
+                            #         # 标准日期格式，只保留日期
+                            #         collect_time = time_match.group('date')
+                            #     elif time_match.group('short_date'):
+                            #         # 短日期格式，添加当前年份
+                            #         current_year = datetime.now().year
+                            #         date_str = time_match.group('short_date')
+                            #         collect_time = f"{current_year}-{date_str}"
+                            #     elif time_match.group('yesterday'):
+                            #         # 昨天格式，获取当前日期并减一天
+                            #         yesterday = datetime.now() - timedelta(days=1)
+                            #         collect_time = yesterday.strftime('%Y-%m-%d')
+                            #     elif time_match.group('relative'):
+                            #         # 相对时间格式（X小时/分钟前）
+                            #         now = datetime.now()
+                            #         value = int(time_match.group('value'))  # 直接使用捕获的数字
+                            #         unit = time_match.group('unit')
+                            #         if unit == '小时':
+                            #             collect_time = (now - timedelta(hours=value)).strftime('%Y-%m-%d')
+                            #         else:  # 分钟
+                            #             collect_time = (now - timedelta(minutes=value)).strftime('%Y-%m-%d')
                             
                             # 移除时间信息和回复后缀
-                            comment_text = re.sub(time_pattern, '', comment_text)
-                            # 额外清理可能的回复后缀
-                            comment_text = re.sub(r'\s*回复\s*$', '', comment_text)
-                            comment_text = comment_text.strip()
+                            # comment_text = re.sub(time_pattern, '', comment_text)
+                            # # 额外清理可能的回复后缀
+                            # comment_text = re.sub(r'\s*回复\s*$', '', comment_text)
+                            # comment_text = comment_text.strip()
                             
                             # 跳过第一条评论（文章内容）
                             if is_first_comment:
@@ -2002,11 +2014,11 @@ class XHSOperator:
                                 # 构建评论数据
                                 comment_data = {
                                     "author": author,
-                                    "content": info_of_comment['cleaned_text'],
+                                    "content": info_of_comment['cleaned_text'], #去除无用信息后的评论
                                     "likes": likes,
-                                    "collect_time": collect_time,
-                                    "comment_time": info_of_comment.get('timestamp', collect_time),
-                                    "location": info_of_comment.get('location', '未知'),
+                                    "comment_time": info_of_comment.get('timestamp', collect_time), #评论时间
+                                    "collect_time": time.strftime("%Y-%m-%d %H:%M:%S"), #评论收集时间
+                                    "location": info_of_comment.get('location', '未知'), #评论地区
                                 
                                 }
                                 print(f"解析到评论: {comment_data}")
@@ -2268,44 +2280,44 @@ if __name__ == "__main__":
 
     try:
         # 1 测试收集文章
-        print("\n开始测试收集文章...")
-        notes = xhs.collect_notes_by_keyword(
-            keyword="龙图",
-            max_notes=10,
-            filters={
-                "note_type": "图文",  # 只收集图文笔记
-                "sort_by": "最新"  # 按最新排序
-            }
-        )
+        # print("\n开始测试收集文章...")
+        # notes = xhs.collect_notes_by_keyword(
+        #     keyword="龙图",
+        #     max_notes=10,
+        #     filters={
+        #         "note_type": "图文",  # 只收集图文笔记
+        #         "sort_by": "最新"  # 按最新排序
+        #     }
+        # )
         
-        print(f"\n共收集到 {len(notes)} 条笔记:")
-        for i, note in enumerate(notes, 1):
-            print(f"\n笔记 {i}:")
-            print(f"标题: {note.get('title', 'N/A')}")
-            print(f"作者: {note.get('author', 'N/A')}")
-            print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
-            print(f"URL: {note.get('note_url', 'N/A')}")
-            print(f"点赞: {note.get('likes', 'N/A')}")
-            print(f"收藏: {note.get('collects', 'N/A')}")
-            print(f"评论: {note.get('comments', 'N/A')}")
-            print(f"收集时间: {note.get('collect_time', 'N/A')}")
-            print("-" * 50) 
+        # print(f"\n共收集到 {len(notes)} 条笔记:")
+        # for i, note in enumerate(notes, 1):
+        #     print(f"\n笔记 {i}:")
+        #     print(f"标题: {note.get('title', 'N/A')}")
+        #     print(f"作者: {note.get('author', 'N/A')}")
+        #     print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
+        #     print(f"URL: {note.get('note_url', 'N/A')}")
+        #     print(f"点赞: {note.get('likes', 'N/A')}")
+        #     print(f"收藏: {note.get('collects', 'N/A')}")
+        #     print(f"评论: {note.get('comments', 'N/A')}")
+        #     print(f"收集时间: {note.get('collect_time', 'N/A')}")
+        #     print("-" * 50) 
 
         # 2 测试收集评论
-        # print("\n开始测试收集评论...")
-        # note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
-        # full_url = xhs.get_redirect_url(note_url)
-        # print(f"帖子 URL: {full_url}")
+        print("\n开始测试收集评论...")
+        note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
+        full_url = xhs.get_redirect_url(note_url)
+        print(f"帖子 URL: {full_url}")
         
-        # comments = xhs.collect_comments_by_url(full_url,max_comments=10)
-        # print(f"\n共收集到 {len(comments)} 条评论:")
-        # for i, comment in enumerate(comments, 1):
-        #     print(f"\n评论 {i}:")
-        #     print(f"作者: {comment['author']}")
-        #     print(f"内容: {comment['content']}")
-        #     print(f"点赞: {comment['likes']}")
-        #     print(f"时间: {comment['collect_time']}")
-        #     print("-" * 50)
+        comments = xhs.collect_comments_by_url(full_url,max_comments=10)
+        print(f"\n共收集到 {len(comments)} 条评论:")
+        for i, comment in enumerate(comments, 1):
+            print(f"\n评论 {i}:")
+            print(f"作者: {comment['author']}")
+            print(f"内容: {comment['content']}")
+            print(f"点赞: {comment['likes']}")
+            print(f"时间: {comment['collect_time']}")
+            print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
         # note_url = "http://xhslink.com/a/Hr4QFxdhrNrbb"
