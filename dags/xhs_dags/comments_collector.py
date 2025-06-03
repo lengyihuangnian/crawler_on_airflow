@@ -54,9 +54,9 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
             likes INT DEFAULT 0,
             note_url VARCHAR(512),
             keyword VARCHAR(255) NOT NULL,
+            comment_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP  
+            location TEXT
         )
         """)
         db_conn.commit()
@@ -64,8 +64,8 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
         # 准备插入数据的SQL语句
         insert_sql = """
         INSERT INTO xhs_comments 
-        (note_url, author, content, likes, keyword, collect_time) 
-        VALUES (%s, %s, %s, %s, %s, %s)
+        (note_url, author, content, likes, keyword, comment_time, collect_time, location) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # 批量插入评论数据
@@ -77,11 +77,13 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
                 comment.get('content', ''),
                 comment.get('likes', 0),
                 keyword,
-                comment.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                comment.get('comment_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                comment.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                comment.get('location', '')
             ))
-        
+
         cursor.executemany(insert_sql, insert_data)
-        
+
         # 更新xhs_notes表中的last_comments_collected_at字段
         update_sql = """
         UPDATE xhs_notes 
