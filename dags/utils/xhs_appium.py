@@ -471,7 +471,7 @@ class XHSOperator:
         elif time_ago_match := re.search(r"(\d+)\s*小时前", text):
             hours_ago = int(time_ago_match.group(1))
             time_str = f"{hours_ago}小时前"
-            timestamp = (now - datetime.timedelta(hours=hours_ago)).strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = (now - timedelta(hours=hours_ago)).strftime("%Y-%m-%d %H:%M:%S")
             
             # 提取地区信息 (通常在时间后面)
             location_match = re.search(f"{re.escape(time_str)}\s+([^\s]+)(?=\s+回复|$)", text)
@@ -530,7 +530,7 @@ class XHSOperator:
         
         return {
             "cleaned_text": cleaned_text.replace("翻译", ""),
-            "timestamp": timestamp,
+            "timestamp": timestamp if timestamp else now.strftime("%Y-%m-%d %H:%M:%S"),
             "location": location.replace("回复", "").strip()
         }
     
@@ -2114,22 +2114,27 @@ class XHSOperator:
             
             # 等待评论区加载
             print("等待评论区加载...")
-            try:
-                # 查找评论列表
+            for i in range(10):
                 try:
-                    WebDriverWait(self.driver, 5).until(
-                        EC.presence_of_element_located((
-                            AppiumBy.XPATH,
-                            "//android.widget.TextView[contains(@text, '')]"
-                        ))
-                    )
-                    print("找到评论区")
-                except:
-                    print("未找到评论区")
-                    return False
-            except Exception as e:
-                print(f"等待评论区加载失败: {str(e)}")
-                return False
+                    # 查找评论列表
+                    try:
+                        WebDriverWait(self.driver, 0.3).until(
+                            EC.presence_of_element_located((
+                AppiumBy.XPATH,
+                "//androidx.recyclerview.widget.RecyclerView[@resource-id='com.xingin.xhs:id/-']/android.widget.FrameLayout/android.widget.LinearLayout"
+            ))
+            
+            #更换了评论区定位元素
+                        )
+                        print("找到评论区")
+                        break
+                    except:
+                        print("未找到评论区,再次滑动页面...")
+                        self.scroll_down()
+                        time.sleep(2)
+                except Exception as e:
+                    print(f"等待评论区加载失败: {str(e)}")
+                    return []
             
             # 查找目标评论
             # 先找到评论内容
@@ -2327,41 +2332,41 @@ if __name__ == "__main__":
         #     print("-" * 50) 
 
         # 2 测试收集评论
-        print("\n开始测试收集评论...")
-        note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
-        full_url = xhs.get_redirect_url(note_url)
-        print(f"帖子 URL: {full_url}")
+        # print("\n开始测试收集评论...")
+        # note_url = "http://xhslink.com/a/x19KvkQFHVBdb"
+        # full_url = xhs.get_redirect_url(note_url)
+        # print(f"帖子 URL: {full_url}")
         
-        comments = xhs.collect_comments_by_url(full_url,max_comments=10)
-        print(f"\n共收集到 {len(comments)} 条评论:")
-        for i, comment in enumerate(comments, 1):
-            print(f"\n评论 {i}:")
-            print(f"作者: {comment['author']}")
-            print(f"内容: {comment['content']}")
-            print(f"点赞: {comment['likes']}")
-            print(f"时间: {comment['collect_time']}")
-            print("-" * 50)
+        # comments = xhs.collect_comments_by_url(full_url,max_comments=10)
+        # print(f"\n共收集到 {len(comments)} 条评论:")
+        # for i, comment in enumerate(comments, 1):
+        #     print(f"\n评论 {i}:")
+        #     print(f"作者: {comment['author']}")
+        #     print(f"内容: {comment['content']}")
+        #     print(f"点赞: {comment['likes']}")
+        #     print(f"时间: {comment['collect_time']}")
+        #     print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
-        # note_url = "http://xhslink.com/a/Hr4QFxdhrNrbb"
-        # author = "小红薯65C0511B"  # 替换为实际的评论者ID
-        # comment_content = "靠，首付6万，两年零息，这也太爽了吧，说的我也想换了"  # 替换为实际的评论内容
-        # reply_content = "有兴趣的私哦"  # 替换为要回复的内容
+        note_url = "http://xhslink.com/a/q7eKBSLS026db"
+        author = "幸运小爱"  # 替换为实际的评论者ID
+        comment_content = "宝宝请问图一是哪个酒店什么房型啊"  # 替换为实际的评论内容
+        reply_content = "有兴趣的私哦"  # 替换为要回复的内容
         
-        # print("\n开始测试评论回复功能...")
-        # success = xhs.comments_reply(
-        #     note_url=note_url,
-        #     author=author,
-        #     comment_content=comment_content,
-        #     reply_content=reply_content
-        # )
+        print("\n开始测试评论回复功能...")
+        success = xhs.comments_reply(
+            note_url=note_url,
+            author=author,
+            comment_content=comment_content,
+            reply_content=reply_content
+        )
         
-        # if success:
-        #     print("评论回复成功！")
-        # else:
-        #     print("评论回复失败！")
+        if success:
+            print("评论回复成功！")
+        else:
+            print("评论回复失败！")
             
-        # print("-" * 50)
+        print("-" * 50)
 
 
     except Exception as e:
