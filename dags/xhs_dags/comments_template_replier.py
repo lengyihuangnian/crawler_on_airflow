@@ -146,59 +146,13 @@ def insert_manual_reply(comment_id: int, note_url: str, author: str, content: st
 
 # 移除了对comment_reply表的更新操作
 
-def reply_with_template(device_index: int = 0, **context):       
+def reply_with_template(comments_to_process:list, device_index: int = 0,email: str = None):       
     """使用模板自动回复评论
     Args:
+        comments_to_process: 需要回复的评论列表
         device_index: 设备索引
-        **context: Airflow上下文参数字典
+        email：用户邮箱（用于查找设备信息）
     """
-    print(f"dag_run_conf: {context['dag_run'].conf}")
-    
-    # 从DAG运行配置中获取参数，如果没有则使用默认值
-    comment_ids = context['dag_run'].conf.get('comment_ids') 
-    max_comments = context['dag_run'].conf.get('max_comments') 
-    email = context['dag_run'].conf.get('email')
-    
-    if not email:
-        raise ValueError("email参数不能为空")
-    
-    # 获取回复模板
-    reply_templates = get_reply_templates_from_db()
-    
-    # 获取评论内容
-    initial_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
-    
-    # 获取设备列表以确定实际可用的设备数量
-    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
-    device_info = next((device for device in device_info_list if device.get('email') == email), None)
-    
-    if not device_info:
-        raise ValueError("email参数不能为空或设备信息不存在")
-        
-    # 确定实际可用的设备数量
-    available_devices = len(device_info.get('phone_device_list', []))
-    print(f"可用设备数量: {available_devices}")
-    
-    # 分配评论 - 根据实际可用设备数量和设备索引分配评论
-    comments_to_process = []
-    
-    # 如果只有一个设备，或者设备索引为0且传入了comment_ids参数，则处理所有评论
-    if available_devices == 1 or (device_index == 0 and comment_ids):
-        comments_to_process = initial_contents
-        print(f"只有一个设备或指定了评论ID，设备索引 {device_index} 将处理所有 {len(initial_contents)} 条评论")
-    else:
-        # 正常按设备数量分配评论
-        total_tasks = 10  # 与下面创建的任务数量保持一致
-        for i, comment in enumerate(initial_contents):
-            if i % total_tasks == device_index:
-                comments_to_process.append(comment)
-    
-    if not comments_to_process:
-        print(f"设备索引 {device_index}: 没有需要处理的评论")
-        return
-    
-    print(f"设备索引 {device_index}: 需要处理 {len(comments_to_process)}/{len(initial_contents)} 条评论")
-    
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     
@@ -228,7 +182,7 @@ def reply_with_template(device_index: int = 0, **context):
     xhs = None
     successful_replies = 0
     failed_replies = 0
-    
+    reply_templates = get_reply_templates_from_db()
     try:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
@@ -300,6 +254,88 @@ def reply_with_template(device_index: int = 0, **context):
                 xhs.close()
             except Exception as close_err:
                 print(f"关闭设备控制器出错: {str(close_err)}")
+
+def reply_xhs_comments(device_index: int = 0, **context):
+    """回复小红书评论
+    Args:
+        device_index: 设备索引
+        **context: Airflow上下文参数字典
+    """
+    print(f"dag_run_conf: {context['dag_run'].conf}")
+    
+    # 从DAG运行配置中获取参数，如果没有则使用默认值
+    email = context['dag_run'].conf.get('email')
+    comment_ids = context['dag_run'].conf.get('comment_ids') 
+    max_comments = context['dag_run'].conf.get('max_comments') 
+    
+    if not email:
+        raise ValueError("email参数不能为空")
+    
+    # 获取评论内容
+    initial_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
+    
+    # 获取设备列表以确定实际可用的设备数量
+    device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
+    device_info = next((device for device in device_info_list if device.get('email') == email), None)
+    
+    if not device_info:
+        print(f"跳过当前任务，因为找不到email为 {email} 的设备信息")
+        raise AirflowSkipException("找不到设备信息")
+        
+    # 确定实际可用的设备数量
+    available_devices = len(device_info.get('phone_device_list', []))
+    print(f"可用设备数量: {available_devices}")
+
+    if available_devices == 0:
+        print(f"跳过当前任务，因为没有可用的设备")
+        raise AirflowSkipException("没有可用的设备")
+    if initial_contents:
+        # 将评论列表分配给不同设备
+        device_urls = distribute_urls(initial_contents, device_index, available_devices)
+        if not device_urls:
+            print(f"设备索引 {device_index}: 没有分配到评论，跳过")
+            raise AirflowSkipException(f"设备索引 {device_index} 没有分配到评论")
+
+        print(f"设备索引 {device_index}: 分配到 {len(device_urls)} 个评论进行回复")
+        return reply_with_template(device_urls, device_index, email)
+    else:
+        # 从数据库获取评论内容
+        comments_data = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
+        # 提取评论ID列表
+        all_comment_ids = [comment['comment_id'] for comment in comments_data]
+        # 分配评论ID给当前设备
+        device_urls = distribute_urls(all_comment_ids, device_index, available_devices)
+        if not device_urls:
+            print(f"设备索引 {device_index}: 没有分配到评论，跳过")
+            raise AirflowSkipException(f"设备索引 {device_index} 没有分配到评论")
+
+        print(f"设备索引 {device_index}: 分配到 {len(device_urls)} 个评论进行回复")
+        return reply_with_template(device_urls, device_index, email)
+
+
+def distribute_urls(urls: list, device_index: int, total_devices: int) -> list:
+    """将URL列表分配给特定设备
+    Args:
+        urls: 所有URL列表
+        device_index: 当前设备索引
+        total_devices: 设备总数
+    Returns:
+        分配给当前设备的URL列表
+    """
+    if not urls or total_devices <= 0:
+        return []
+    
+    # 计算每个设备应处理的URL数量
+    urls_per_device = len(urls) // total_devices
+    remainder = len(urls) % total_devices
+    
+    # 计算当前设备的起始和结束索引
+    start_index = device_index * urls_per_device + min(device_index, remainder)
+    # 如果设备索引小于余数，则多分配一个URL
+    end_index = start_index + urls_per_device + (1 if device_index < remainder else 0)
+    
+    # 返回分配给当前设备的URL
+    return urls[start_index:end_index]
 
 # DAG 定义
 with DAG(
