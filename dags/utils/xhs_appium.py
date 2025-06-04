@@ -2179,7 +2179,7 @@ class XHSOperator:
                         target_content = re.sub(r'\[.*?\]', '', comment_content)  # 移除表情符号
                         target_content = re.sub(r'\s+', ' ', target_content)  # 合并多个空格
                         target_content = target_content.strip()
-                        
+                        print(f'elem_text: {elem_text}， comment_content: {comment_content}， target_content: {target_content}')
                         # 使用部分匹配
                         if target_content in elem_text or elem_text in target_content:
                             print(f"找到匹配评论: {elem_text}")
@@ -2348,10 +2348,10 @@ if __name__ == "__main__":
         #     print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
-        note_url = "http://xhslink.com/a/q7eKBSLS026db"
-        author = "幸运小爱"  # 替换为实际的评论者ID
-        comment_content = "宝宝请问图一是哪个酒店什么房型啊"  # 替换为实际的评论内容
-        reply_content = "有兴趣的私哦"  # 替换为要回复的内容
+        note_url = "http://xhslink.com/a/obpDqQ0omk7db"
+        author = "爱吃的jerry"  # 替换为实际的评论者ID
+        comment_content = "生日还是在那里过的"  # 替换为实际的评论内容
+        reply_content = "哈哈哈"  # 替换为要回复的内容
         
         print("\n开始测试评论回复功能...")
         success = xhs.comments_reply(
