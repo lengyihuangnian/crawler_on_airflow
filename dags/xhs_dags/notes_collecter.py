@@ -34,6 +34,7 @@ def save_notes_to_db(notes: list) -> None:
             keyword TEXT,
             title TEXT NOT NULL,
             author TEXT,
+            userInfo TEXT,
             content TEXT,
             likes INT DEFAULT 0,
             collects INT DEFAULT 0,
@@ -49,8 +50,8 @@ def save_notes_to_db(notes: list) -> None:
         # 准备插入数据的SQL语句 - 使用INSERT IGNORE避免重复插入
         insert_sql = """
         INSERT IGNORE INTO xhs_notes
-        (keyword, title, author, content, likes, collects, comments, note_url, collect_time, note_time, note_location)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        (keyword, title, author, userInfo, content, likes, collects, comments, note_url, collect_time, note_time, note_location)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # 批量插入笔记数据
@@ -60,6 +61,7 @@ def save_notes_to_db(notes: list) -> None:
                 note.get('keyword', ''),
                 note.get('title', ''),
                 note.get('author', ''),
+                note.get('userInfo', ''),
                 note.get('content', ''),
                 note.get('likes', 0),
                 note.get('collects', 0),
@@ -148,6 +150,9 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         def process_note(note):
             nonlocal collected_notes, current_batch
             
+            # 添加email信息到userInfo字段
+            note['userInfo'] = email
+            
             # 检查笔记URL是否已存在
             note_url = note.get('note_url', '')
             if note_url:
@@ -160,7 +165,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
                         print(f"笔记已存在，跳过: {note.get('title', '')}")
                         return
                     else:
-                        print(f"笔记不存在，添加: {note.get('title', '')},{note.get('keyword', '')},{note.get('note_url', '')}")
+                        print(f"笔记不存在，添加: {note.get('title', '')},{note.get('keyword', '')},{note.get('note_url', '')}, email: {email}")
                 finally:
                     cursor.close()
                     db_conn.close()
