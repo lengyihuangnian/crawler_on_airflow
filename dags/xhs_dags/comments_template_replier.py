@@ -271,8 +271,7 @@ def reply_xhs_comments(device_index: int = 0, **context):
     if not email:
         raise ValueError("email参数不能为空")
     
-    # 获取评论内容
-    initial_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
+   
     
     # 获取设备列表以确定实际可用的设备数量
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
@@ -285,7 +284,8 @@ def reply_xhs_comments(device_index: int = 0, **context):
     # 确定实际可用的设备数量
     available_devices = len(device_info.get('phone_device_list', []))
     print(f"可用设备数量: {available_devices}")
-
+    # 获取评论内容
+    initial_contents = get_reply_contents_from_db(comment_ids=comment_ids, max_comments=max_comments)
     if available_devices == 0:
         print(f"跳过当前任务，因为没有可用的设备")
         raise AirflowSkipException("没有可用的设备")
@@ -356,7 +356,7 @@ with DAG(
     for index in range(10):
         PythonOperator(
             task_id=f'reply_with_template_{index}',
-            python_callable=reply_with_template,
+            python_callable=reply_xhs_comments,
             op_kwargs={
                 'device_index': index,
             },
