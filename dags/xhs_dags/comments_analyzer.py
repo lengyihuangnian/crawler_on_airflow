@@ -227,6 +227,7 @@ def save_results_to_db(results, profile_sentence):
             id INT AUTO_INCREMENT PRIMARY KEY,
             comment_id INT NOT NULL,
             author VARCHAR(255),
+            userInfo TEXT,
             note_url VARCHAR(512),
             intent VARCHAR(50) NOT NULL,
             profile_sentence TEXT,
@@ -249,10 +250,11 @@ def save_results_to_db(results, profile_sentence):
                 # 使用INSERT...ON DUPLICATE KEY UPDATE确保更新已存在的记录
                 query = """
                 INSERT INTO customer_intent 
-                (comment_id, author, note_url, intent, profile_sentence, keyword, content)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                (comment_id, author, userInfo, note_url, intent, profile_sentence, keyword, content)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE 
                 author = VALUES(author),
+                userInfo = VALUES(userInfo),
                 note_url = VALUES(note_url),
                 intent = VALUES(intent),
                 profile_sentence = VALUES(profile_sentence),
@@ -265,6 +267,7 @@ def save_results_to_db(results, profile_sentence):
                 params = (
                     comment_id,
                     result.get('author', ''),
+                    result.get('userInfo', ''),
                     result.get('note_url', ''),
                     result.get('intent', '未知'),
                     profile_sentence,
@@ -314,12 +317,12 @@ def get_comments_from_db(comment_ids=None, limit=100):
             # 如果提供了具体的comment_ids，则只获取这些评论
             # 注意：将 comment_ids 列表展平传递给 SQL 查询
             format_strings = ','.join(['%s'] * len(comment_ids))
-            query = f"SELECT id, author, content, note_url, keyword FROM xhs_comments WHERE id IN ({format_strings})"
+            query = f"SELECT id, author, userInfo, content, note_url, keyword FROM xhs_comments WHERE id IN ({format_strings})"
             # 确保 params 是一个元组
             params = tuple(comment_ids)
         else:
             # 如果没有提供具体的comment_ids，则获取最新的一定数量评论
-            query = f"SELECT id, author, content, note_url, keyword FROM xhs_comments ORDER BY id DESC LIMIT {limit}"
+            query = f"SELECT id, author, userInfo, content, note_url, keyword FROM xhs_comments ORDER BY id DESC LIMIT {limit}"
             params = []
         
         # 执行查询
