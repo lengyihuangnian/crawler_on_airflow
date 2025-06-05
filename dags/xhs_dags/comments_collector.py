@@ -33,7 +33,7 @@ def get_note_url(keyword: str = None, **context):
     
     return results
 
-def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
+def save_comments_to_db(comments: list, note_url: str, keyword: str = None, email: str = None):
     """保存评论到数据库
     Args:
         comments: 评论列表
@@ -50,6 +50,7 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
         CREATE TABLE IF NOT EXISTS xhs_comments (
             id INT AUTO_INCREMENT PRIMARY KEY,
             author TEXT,
+            userInfo TEXT,
             content TEXT,
             likes INT DEFAULT 0,
             note_url VARCHAR(512),
@@ -64,8 +65,8 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
         # 准备插入数据的SQL语句
         insert_sql = """
         INSERT INTO xhs_comments 
-        (note_url, author, content, likes, keyword, comment_time, collect_time, location) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        (note_url, author, userInfo, content, likes, keyword, comment_time, collect_time, location) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # 批量插入评论数据
@@ -74,6 +75,7 @@ def save_comments_to_db(comments: list, note_url: str, keyword: str = None):
             insert_data.append((
                 note_url,
                 comment.get('author', ''),
+                email,  # 添加email信息到userInfo字段
                 comment.get('content', ''),
                 comment.get('likes', 0),
                 keyword,
@@ -142,18 +144,22 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: in
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
         all_comments = []
+        total_comments = 0
         for note_url in note_urls:
             try:
                 # 收集评论
                 full_url = xhs.get_redirect_url(note_url)
                 comments = xhs.collect_comments_by_url(full_url, max_comments=max_comments)
                 # 保存评论到数据库
-                save_comments_to_db(comments, note_url, keyword)
+                if comments:
+                    save_comments_to_db(comments, note_url, keyword, email)
+                    total_comments += len(comments)
                 all_comments.extend(comments)
             except Exception as e:
                 print(f"处理笔记 {note_url} 时出错: {str(e)}")
                 continue
         
+        print(f"成功收集 {total_comments} 条评论")
         return all_comments
     except Exception as e:
         print(f"运行出错: {str(e)}")
