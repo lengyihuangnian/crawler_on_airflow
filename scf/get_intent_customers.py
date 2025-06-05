@@ -46,13 +46,14 @@ def get_db_connection():
         raise e
 
 
-def get_customer_intent(keyword=None, intent=None):
+def get_customer_intent(keyword=None, intent=None, email=None):
     """
-    获取意向客户数据，可按关键词和意向类型筛选
+    获取意向客户数据，可按关键词、意向类型和用户邮箱筛选
     
     Args:
         keyword: 关键词筛选
         intent: 意向类型筛选
+        email: 用户邮箱筛选，用于过滤特定用户的意向客户数据
         
     Returns:
         list: 意向客户数据列表
@@ -73,6 +74,9 @@ def get_customer_intent(keyword=None, intent=None):
         if intent:
             where_clauses.append("intent = %s")
             params.append(intent)
+        if email:
+            where_clauses.append("userInfo = %s")
+            params.append(email)
         
         # 添加WHERE子句到查询
         if where_clauses:
@@ -159,9 +163,11 @@ def get_all_intents():
 def main_handler(event, context):
     """
     云函数入口函数，获取意向客户数据
+    支持URL参数: email - 按用户邮箱过滤意向客户数据
+    示例: ${baseUrl}?email=${encodeURIComponent(email)}
     
     Args:
-        event: 触发事件，包含查询参数
+        event: 触发事件，包含查询参数 (keyword, intent, email)
         context: 函数上下文
         
     Returns:
@@ -205,8 +211,12 @@ def main_handler(event, context):
         # 获取客户意向数据，带有可选的筛选条件
         keyword = query_params.get('keyword', None)
         intent = query_params.get('intent', None)
+        email = query_params.get('email', None)
         
-        customers = get_customer_intent(keyword, intent)
+        if email:
+            logger.info(f"按email过滤意向客户数据: {email}")
+            
+        customers = get_customer_intent(keyword, intent, email)
         total_count = len(customers)
         
         # 构建响应
