@@ -104,85 +104,85 @@ def insert_many(query, data):
         return 0
 
 
-def add_reply_template(content, user_id="zacks"):
+def add_reply_template(content, email="zacks@example.com"):
     """
     添加回复模板
     
     Args:
         content: 模板内容
-        user_id: 用户ID，默认为zacks
+        email: 用户邮箱，默认为zacks@example.com
         
     Returns:
         int: 受影响的行数
     """
-    query = "INSERT INTO reply_template (user_id, content) VALUES (%s, %s)"
-    params = (user_id, content)
+    query = "INSERT INTO reply_template (userInfo, content) VALUES (%s, %s)"
+    params = (email, content)
     return execute_update(query, params)
 
 
-def add_reply_templates(templates, user_id="zacks"):
+def add_reply_templates(templates, email="zacks@example.com"):
     """
     批量添加回复模板
     
     Args:
         templates: 模板内容列表
-        user_id: 用户ID，默认为zacks
+        email: 用户邮箱，默认为zacks@example.com
         
     Returns:
         int: 受影响的行数
     """
     if not templates:
         return 0
-    query = "INSERT INTO reply_template (user_id, content) VALUES (%s, %s)"
-    data = [(user_id, template) for template in templates]
+    query = "INSERT INTO reply_template (userInfo, content) VALUES (%s, %s)"
+    data = [(email, template) for template in templates]
     return insert_many(query, data)
 
 
-def delete_reply_template(template_id, user_id="zacks"):
+def delete_reply_template(template_id, email="zacks@example.com"):
     """
     删除指定ID的回复模板
     
     Args:
         template_id: 模板ID
-        user_id: 用户ID，默认为zacks
+        email: 用户邮箱，默认为zacks@example.com
         
     Returns:
         int: 受影响的行数
     """
-    query = "DELETE FROM reply_template WHERE id = %s AND user_id = %s"
-    params = (template_id, user_id)
+    query = "DELETE FROM reply_template WHERE id = %s AND userInfo = %s"
+    params = (template_id, email)
     return execute_update(query, params)
 
 
-def delete_all_reply_templates(user_id="zacks"):
+def delete_all_reply_templates(email="zacks@example.com"):
     """
     删除用户的所有回复模板
     
     Args:
-        user_id: 用户ID，默认为zacks
+        email: 用户邮箱，默认为zacks@example.com
         
     Returns:
         int: 受影响的行数
     """
-    query = "DELETE FROM reply_template WHERE user_id = %s"
-    params = (user_id,)
+    query = "DELETE FROM reply_template WHERE userInfo = %s"
+    params = (email,)
     return execute_update(query, params)
 
 
-def update_reply_template(template_id, content, user_id="zacks"):
+def update_reply_template(template_id, content, email="zacks@example.com"):
     """
     更新指定ID的回复模板内容
     
     Args:
         template_id: 模板ID
         content: 新的模板内容
-        user_id: 用户ID，默认为zacks
+        email: 用户邮箱，默认为zacks@example.com
         
     Returns:
         int: 受影响的行数
     """
-    query = "UPDATE reply_template SET content = %s WHERE id = %s AND user_id = %s"
-    params = (content, template_id, user_id)
+    query = "UPDATE reply_template SET content = %s WHERE id = %s AND userInfo = %s"
+    params = (content, template_id, email)
     return execute_update(query, params)
 
 
@@ -199,26 +199,22 @@ def main_handler(event, context):
     """
     logger.info(f"收到请求: {json.dumps(event, ensure_ascii=False)}")
     
-    # 解析参数 - 只使用POST请求的body
     params = {}
-    if 'body' in event:
+    if 'queryString' in event:
+        params = event['queryString']
+    elif 'body' in event:
         try:
-            # 尝试解析body为JSON
             if isinstance(event['body'], str):
                 params = json.loads(event['body'])
             else:
                 params = event['body']
-        except Exception as e:
-            logger.error(f"解析请求体失败: {str(e)}")
-            return {
-                "code": 1,
-                "message": f"解析请求体失败: {str(e)}",
-                "data": None
-            }
+        except:
+            pass
     
-    # 获取操作类型
-    action = params.get('action', '')
-    user_id = params.get('user_id', 'zacks')
+    # 打印接收到的参数
+    print(f"Received parameters: {json.dumps(params, ensure_ascii=False)}")
+    logger.info(f"Received parameters: {json.dumps(params, ensure_ascii=False)}")
+    email = params.get('email', 'zacks@example.com')
     
     try:
         # 根据操作类型执行相应操作
@@ -232,7 +228,7 @@ def main_handler(event, context):
                     "data": None
                 }
             
-            affected_rows = add_reply_template(content, user_id)
+            affected_rows = add_reply_template(content, email)
             return {
                 "code": 0 if affected_rows > 0 else 1,
                 "message": "success" if affected_rows > 0 else "添加失败",
@@ -251,7 +247,7 @@ def main_handler(event, context):
                     "data": None
                 }
             
-            affected_rows = add_reply_templates(templates, user_id)
+            affected_rows = add_reply_templates(templates, email)
             return {
                 "code": 0 if affected_rows > 0 else 1,
                 "message": "success" if affected_rows > 0 else "批量添加失败",
@@ -270,7 +266,7 @@ def main_handler(event, context):
                     "data": None
                 }
             
-            affected_rows = delete_reply_template(template_id, user_id)
+            affected_rows = delete_reply_template(template_id, email)
             return {
                 "code": 0 if affected_rows > 0 else 1,
                 "message": "success" if affected_rows > 0 else "删除失败",
@@ -281,7 +277,7 @@ def main_handler(event, context):
             
         elif action == 'delete_all':
             # 删除用户的所有模板
-            affected_rows = delete_all_reply_templates(user_id)
+            affected_rows = delete_all_reply_templates(email)
             return {
                 "code": 0,
                 "message": "success",
@@ -309,7 +305,7 @@ def main_handler(event, context):
                     "data": None
                 }
             
-            affected_rows = update_reply_template(template_id, content, user_id)
+            affected_rows = update_reply_template(template_id, content, userInfo)
             return {
                 "code": 0 if affected_rows > 0 else 1,
                 "message": "success" if affected_rows > 0 else "更新失败",
@@ -339,7 +335,7 @@ if __name__ == "__main__":
     test_event = {
         'body': json.dumps({
             'action': 'add',
-            'user_id': 'zacks',
+            'userInfo': 'zacks',
             'content': '这是一个测试模板'
         })
     }
