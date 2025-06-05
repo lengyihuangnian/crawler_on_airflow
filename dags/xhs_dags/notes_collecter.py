@@ -290,7 +290,7 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                             collected_titles.append(note_title_and_text)
                             process_note(note_data)
                         back_btn = xhs.driver.find_element( by=AppiumBy.XPATH,
-                        value="//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']")
+                        value="//android.widget.Button[@content-desc='返回']")
                         back_btn.click()
                         time.sleep(0.5)
                 except Exception as e:
