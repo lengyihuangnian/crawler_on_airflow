@@ -283,13 +283,15 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                             # title_element.click()
                             time.sleep(0.5)
                         note_data = xhs.get_note_data(note_title_and_text)
-                        time.sleep(0.5)
+                        # time.sleep(0.5)
                         # xhs.bypass_share()
                         if note_data:
                             note_data['keyword'] = keyword
                             collected_titles.append(note_title_and_text)
                             process_note(note_data)
-                        xhs.driver.press_keycode(4)
+                        back_btn = xhs.driver.find_element( by=AppiumBy.XPATH,
+                        value="//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']")
+                        back_btn.click()
                         time.sleep(0.5)
                 except Exception as e:
                     print(f"处理笔记卡片失败: {str(e)}")
