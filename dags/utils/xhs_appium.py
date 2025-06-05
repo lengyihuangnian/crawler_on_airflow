@@ -648,6 +648,7 @@ class XHSOperator:
 
                             # 获取笔记内容
                             note_data = self.get_note_data(note_title_and_text)
+                            time.sleep(1)
                             
                             # 如果笔记数据不为空，则添加到列表中
                             if note_data:
@@ -2283,7 +2284,16 @@ class XHSOperator:
             print(f"回复评论失败: {str(e)}")
             return False
 
-
+    def bypass_share(self):
+        size = self.driver.get_window_size()
+        print(f"当前屏幕大小: {size}")
+        screen_width = size['width']
+        screen_height = size['height']
+        self.driver.tap([(screen_width/2, screen_height/6)], 500) 
+        print(f"点击位置: ({screen_width/2}, {screen_height/6})")
+        time.sleep(1)  # 等待页面加载
+        
+        # 计算点击位置
 # 测试代码
 if __name__ == "__main__":
     # 加载.env文件
@@ -2302,21 +2312,21 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="ZY22G2Z4PH",
+        device_id="ZD222DW7Y3",
         # system_port=8200
     )
 
     try:
         # 1 测试收集文章
-        # print("\n开始测试收集文章...")
-        # notes = xhs.collect_notes_by_keyword(
-        #     keyword="龙图",
-        #     max_notes=10,
-        #     filters={
-        #         "note_type": "图文",  # 只收集图文笔记
-        #         "sort_by": "最新"  # 按最新排序
-        #     }
-        # )
+        print("\n开始测试收集文章...")
+        notes = xhs.collect_notes_by_keyword(
+            keyword="龙图",
+            
+            filters={
+                "note_type": "图文",  # 只收集图文笔记
+                "sort_by": "最新"  # 按最新排序
+            }
+        )
         
         # print(f"\n共收集到 {len(notes)} 条笔记:")
         # for i, note in enumerate(notes, 1):
@@ -2348,25 +2358,25 @@ if __name__ == "__main__":
         #     print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
-        note_url = "http://xhslink.com/a/obpDqQ0omk7db"
-        author = "爱吃的jerry"  # 替换为实际的评论者ID
-        comment_content = "生日还是在那里过的"  # 替换为实际的评论内容
-        reply_content = "哈哈哈"  # 替换为要回复的内容
+        # note_url = "http://xhslink.com/a/obpDqQ0omk7db"
+        # author = "爱吃的jerry"  # 替换为实际的评论者ID
+        # comment_content = "生日还是在那里过的"  # 替换为实际的评论内容
+        # reply_content = "哈哈哈"  # 替换为要回复的内容
         
-        print("\n开始测试评论回复功能...")
-        success = xhs.comments_reply(
-            note_url=note_url,
-            author=author,
-            comment_content=comment_content,
-            reply_content=reply_content
-        )
+        # print("\n开始测试评论回复功能...")
+        # success = xhs.comments_reply(
+        #     note_url=note_url,
+        #     author=author,
+        #     comment_content=comment_content,
+        #     reply_content=reply_content
+        # )
         
-        if success:
-            print("评论回复成功！")
-        else:
-            print("评论回复失败！")
+        # if success:
+        #     print("评论回复成功！")
+        # else:
+        #     print("评论回复失败！")
             
-        print("-" * 50)
+        # print("-" * 50)
 
 
     except Exception as e:
