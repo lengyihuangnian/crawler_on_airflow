@@ -102,10 +102,13 @@ def get_customer_intent(keyword=None, intent=None, email=None):
         return []
 
 
-def get_all_keywords():
+def get_all_keywords(email=None):
     """
-    获取所有不重复的关键词
+    获取所有不重复的关键词，可按email过滤
     
+    Args:
+        email: 可选，用户邮箱，用于过滤特定用户的关键词
+        
     Returns:
         list: 所有不重复的关键词列表
     """
@@ -113,9 +116,14 @@ def get_all_keywords():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 查询所有不重复的关键词
-        query = "SELECT DISTINCT keyword FROM customer_intent"
-        cursor.execute(query)
+        # 查询所有不重复的关键词，可选按email过滤
+        if email:
+            query = "SELECT DISTINCT keyword FROM customer_intent WHERE userInfo = %s"
+            cursor.execute(query, (email,))
+        else:
+            query = "SELECT DISTINCT keyword FROM customer_intent"
+            cursor.execute(query)
+            
         result = cursor.fetchall()
         
         # 关闭连接
@@ -131,10 +139,13 @@ def get_all_keywords():
         return []
 
 
-def get_all_intents():
+def get_all_intents(email=None):
     """
-    获取所有不重复的意向类型
+    获取所有不重复的意向类型，可按email过滤
     
+    Args:
+        email: 可选，用户邮箱，用于过滤特定用户的意向类型
+        
     Returns:
         list: 所有不重复的意向类型列表
     """
@@ -142,9 +153,14 @@ def get_all_intents():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 查询所有不重复的意向类型
-        query = "SELECT DISTINCT intent FROM customer_intent"
-        cursor.execute(query)
+        # 查询所有不重复的意向类型，可选按email过滤
+        if email:
+            query = "SELECT DISTINCT intent FROM customer_intent WHERE userInfo = %s"
+            cursor.execute(query, (email,))
+        else:
+            query = "SELECT DISTINCT intent FROM customer_intent"
+            cursor.execute(query)
+            
         result = cursor.fetchall()
         
         # 关闭连接
@@ -190,9 +206,15 @@ def main_handler(event, context):
             pass
     
     try:
+        # 首先获取email参数，用于过滤所有数据
+        email = query_params.get('email', None)
+        if email:
+            logger.info(f"按email过滤意向客户数据: {email}")
+        
         # 检查是否请求关键词列表
         if query_params.get('get_keywords', False) or query_params.get('keywords', False):
-            keywords = get_all_keywords()
+            # 根据email过滤关键词
+            keywords = get_all_keywords(email)
             return {
                 'code': 0,
                 'message': 'success',
@@ -201,7 +223,8 @@ def main_handler(event, context):
         
         # 检查是否请求意向类型列表
         if query_params.get('get_intents', False) or query_params.get('intents', False):
-            intents = get_all_intents()
+            # 根据email过滤意向类型
+            intents = get_all_intents(email)
             return {
                 'code': 0,
                 'message': 'success',
@@ -211,15 +234,12 @@ def main_handler(event, context):
         # 获取客户意向数据，带有可选的筛选条件
         keyword = query_params.get('keyword', None)
         intent = query_params.get('intent', None)
-        email = query_params.get('email', None)
         
-        if email:
-            logger.info(f"按email过滤意向客户数据: {email}")
-            
+        # 获取客户意向数据，带有可选的筛选条件
         customers = get_customer_intent(keyword, intent, email)
         total_count = len(customers)
         
-        # 构建响应
+        # 构建响应，使用相同的email参数获取过滤器数据
         response = {
             'code': 0,
             'message': 'success',
@@ -227,8 +247,8 @@ def main_handler(event, context):
                 'total': total_count,
                 'records': customers,
                 'filters': {
-                    'keywords': get_all_keywords(),
-                    'intents': get_all_intents()
+                    'keywords': get_all_keywords(email),
+                    'intents': get_all_intents(email)
                 }
             }
         }
