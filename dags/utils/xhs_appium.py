@@ -1892,7 +1892,7 @@ class XHSOperator:
                             "resource-id": comment_elem.get_attribute("resource-id"),
                             "class": comment_elem.get_attribute("class"),
                             "bounds": comment_elem.get_attribute("bounds"),
-                            "content-desc": comment_elem.get_attribute("content-desc")
+                            "content-desc": comment_elem.get_attribute("content-desc"),
                             "long-clickable": comment_elem.get_attribute("long-clickable")
                         })
                         
