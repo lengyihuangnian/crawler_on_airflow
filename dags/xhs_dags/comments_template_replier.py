@@ -55,6 +55,7 @@ def get_reply_contents_from_db(comment_ids: list, max_comments: int = 10):
         comment_id INT NOT NULL,
         note_url VARCHAR(512),
         author VARCHAR(255),
+        userInfo TEXT,
         content TEXT,
         reply TEXT NOT NULL,
         replied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -68,28 +69,29 @@ def get_reply_contents_from_db(comment_ids: list, max_comments: int = 10):
     if comment_ids:
         placeholders = ','.join(['%s'] * len(comment_ids))
         cursor.execute(
-            f"SELECT id, note_url, author, content FROM xhs_comments WHERE id IN ({placeholders})",
+            f"SELECT id, note_url, author, userInfo, content FROM xhs_comments WHERE id IN ({placeholders})",
             comment_ids
         )
     else:
         cursor.execute(
-            "SELECT id, note_url, author, content FROM xhs_comments LIMIT %s",
+            "SELECT id, note_url, author, userInfo, content FROM xhs_comments LIMIT %s",
             (max_comments,)
         )
 
-    results = [{'comment_id': row[0], 'note_url': row[1], 'author': row[2], 'content': row[3]} for row in cursor.fetchall()]
+    results = [{'comment_id': row[0], 'note_url': row[1], 'author': row[2], 'userInfo': row[3], 'content': row[4]} for row in cursor.fetchall()]
 
     cursor.close()
     db_conn.close()
 
     return results
 
-def insert_manual_reply(comment_id: int, note_url: str, author: str, content: str, reply: str):
+def insert_manual_reply(comment_id: int, note_url: str, author: str, userInfo: str, content: str, reply: str):
     """将回复记录插入到comment_manual_reply表
     Args:
         comment_id: 评论ID
         note_url: 笔记URL
         author: 评论作者
+        userInfo: 用户信息（邮箱）
         content: 评论内容
         reply: 回复内容
     """
@@ -106,6 +108,7 @@ def insert_manual_reply(comment_id: int, note_url: str, author: str, content: st
             comment_id INT NOT NULL,
             note_url VARCHAR(512),
             author VARCHAR(255),
+            userInfo TEXT,
             content TEXT,
             reply TEXT NOT NULL,
             replied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -118,16 +121,17 @@ def insert_manual_reply(comment_id: int, note_url: str, author: str, content: st
         cursor.execute(
             """
             INSERT INTO comment_manual_reply 
-            (comment_id, note_url, author, content, reply) 
-            VALUES (%s, %s, %s, %s, %s)
+            (comment_id, note_url, author, userInfo, content, reply) 
+            VALUES (%s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
             note_url = VALUES(note_url),
             author = VALUES(author),
+            userInfo = VALUES(userInfo),
             content = VALUES(content),
             reply = VALUES(reply),
             replied_at = CURRENT_TIMESTAMP
             """,
-            (comment_id, note_url, author, content, reply)
+            (comment_id, note_url, author, userInfo, content, reply)
         )
         
         # 提交事务
@@ -213,10 +217,13 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                     print(f"设备 {device_id} 成功回复评论: {comment_content}")
                     # 插入到manual_reply表
                     try:
+                        # 获取userInfo字段，如果存在
+                        userInfo = comment.get('userInfo')
                         insert_manual_reply(
                             comment_id=comment_id,
                             note_url=note_url,
                             author=author,
+                            userInfo=userInfo,
                             content=comment_content,
                             reply=reply_content
                         )
