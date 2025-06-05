@@ -46,23 +46,33 @@ def get_db_connection():
         raise e
 
 
-def get_reply_templates(user_id="zacks"):
+def get_reply_templates(email=None):
     """
     获取用户的回复模板
     
     Args:
-        user_id: 用户ID，默认为zacks
+        email: 用户邮箱，如果为空，返回所有模板
         
     Returns:
         list: 回复模板列表
     """
+    # 打印email参数
+    print(f"get_reply_templates called with email: {email}")
+    logger.info(f"get_reply_templates called with email: {email}")
+    
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # 查询用户的回复模板
-        query = "SELECT id, user_id, content, created_at FROM reply_template WHERE user_id = %s ORDER BY created_at DESC"
-        cursor.execute(query, (user_id,))
+        if email:
+            # 如果指定了email，只查询特定用户的模板
+            query = "SELECT id, userInfo, content, created_at FROM reply_template WHERE userInfo = %s ORDER BY created_at DESC"
+            cursor.execute(query, (email,))
+        else:
+            # 如果没有指定email，返回所有模板
+            query = "SELECT id, userInfo, content, created_at FROM reply_template ORDER BY created_at DESC"
+            cursor.execute(query)
         templates = cursor.fetchall()
         
         # 关闭连接
@@ -96,7 +106,7 @@ def get_template_by_id(template_id):
         cursor = conn.cursor()
         
         # 查询指定ID的回复模板
-        query = "SELECT id, user_id, content, created_at FROM reply_template WHERE id = %s"
+        query = "SELECT id, userInfo, content, created_at FROM reply_template WHERE id = %s"
         cursor.execute(query, (template_id,))
         template = cursor.fetchone()
         
@@ -143,6 +153,10 @@ def main_handler(event, context):
         except:
             pass
     
+    # 打印参数信息
+    print(f"Query parameters: {json.dumps(query_params, ensure_ascii=False)}")
+    logger.info(f"Query parameters: {json.dumps(query_params, ensure_ascii=False)}")
+    
     try:
         # 根据参数决定使用哪种查询方式
         if 'template_id' in query_params:
@@ -163,9 +177,9 @@ def main_handler(event, context):
                     "data": None
                 }
         else:
-            # 使用默认查询，带有可选的user_id参数
-            user_id = query_params.get('user_id', 'zacks')
-            templates = get_reply_templates(user_id)
+            # 使用默认查询，带有可选的email参数
+            email = query_params.get('email')
+            templates = get_reply_templates(email)
             total_count = len(templates)
             
             result = {
@@ -192,8 +206,13 @@ if __name__ == "__main__":
     # 本地测试用
     test_event = {
         'queryString': {
-            'user_id': 'zacks'
+            'email': 'zacks@example.com'
         }
     }
+    
+    # 测试获取所有模板
+    # test_event = {
+    #     'queryString': {}
+    # }
     result = main_handler(test_event, {})
     print(json.dumps(result, ensure_ascii=False, indent=2))
