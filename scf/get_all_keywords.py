@@ -46,10 +46,13 @@ def get_db_connection():
         raise e
 
 
-def get_all_keywords():
+def get_all_keywords(email=None):
     """
-    获取所有关键字
+    获取所有关键字，可以按email过滤
     
+    Args:
+        email: 可选，用户邮箱，用于过滤特定用户的关键字
+        
     Returns:
         list: 所有不重复的关键字列表
     """
@@ -57,9 +60,14 @@ def get_all_keywords():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 查询所有不重复的关键字
-        query = "SELECT DISTINCT keyword FROM xhs_notes"
-        cursor.execute(query)
+        # 查询所有不重复的关键字，可选按email过滤
+        if email:
+            query = "SELECT DISTINCT keyword FROM xhs_notes WHERE userInfo = %s"
+            cursor.execute(query, (email,))
+        else:
+            query = "SELECT DISTINCT keyword FROM xhs_notes"
+            cursor.execute(query)
+            
         result = cursor.fetchall()
         
         # 关闭连接
@@ -78,6 +86,8 @@ def get_all_keywords():
 def main_handler(event, context):
     """
     云函数入口函数，获取所有小红书笔记关键字
+    支持URL参数: email - 按用户邮箱过滤关键字
+    示例: ${baseUrl}?email=${encodeURIComponent(email)}
     
     Args:
         event: 触发事件
@@ -89,8 +99,18 @@ def main_handler(event, context):
     logger.info(f"收到请求: {json.dumps(event, ensure_ascii=False)}")
     
     try:
-        # 获取所有关键字
-        keywords = get_all_keywords()
+        # 从请求中获取email参数
+        email = None
+        if 'queryString' in event and 'email' in event['queryString']:
+            email = event['queryString']['email']
+        elif 'queryStringParameters' in event and event['queryStringParameters'] and 'email' in event['queryStringParameters']:
+            email = event['queryStringParameters']['email']
+        
+        if email:
+            logger.info(f"按email过滤关键字: {email}")
+        
+        # 获取关键字，可选按email过滤
+        keywords = get_all_keywords(email)
         
         # 构建响应
         response = {

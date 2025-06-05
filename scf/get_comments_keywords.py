@@ -46,10 +46,13 @@ def get_db_connection():
         raise e
 
 
-def get_comments_keywords():
+def get_comments_keywords(email=None):
     """
-    获取评论中的所有关键字
+    获取评论中的所有关键字，可以按email过滤
     
+    Args:
+        email: 可选，用户邮箱，用于过滤特定用户的评论关键字
+        
     Returns:
         list: 所有不重复的评论关键字列表
     """
@@ -57,9 +60,14 @@ def get_comments_keywords():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 查询所有不重复的评论关键字
-        query = "SELECT DISTINCT keyword FROM xhs_comments"
-        cursor.execute(query)
+        # 查询所有不重复的评论关键字，可选按email过滤
+        if email:
+            query = "SELECT DISTINCT keyword FROM xhs_comments WHERE userInfo = %s"
+            cursor.execute(query, (email,))
+        else:
+            query = "SELECT DISTINCT keyword FROM xhs_comments"
+            cursor.execute(query)
+            
         result = cursor.fetchall()
         
         # 关闭连接
@@ -75,9 +83,12 @@ def get_comments_keywords():
         return []
 
 
-def get_comments_count_by_keyword():
+def get_comments_count_by_keyword(email=None):
     """
-    获取每个关键字对应的评论数量
+    获取每个关键字对应的评论数量，可以按email过滤
+    
+    Args:
+        email: 可选，用户邮箱，用于过滤特定用户的评论关键字
     
     Returns:
         list: 包含关键字和对应评论数量的字典列表
@@ -86,14 +97,25 @@ def get_comments_count_by_keyword():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 查询每个关键字对应的评论数量
-        query = """
-        SELECT keyword, COUNT(*) as count 
-        FROM xhs_comments 
-        GROUP BY keyword 
-        ORDER BY count DESC
-        """
-        cursor.execute(query)
+        # 查询每个关键字对应的评论数量，可选按email过滤
+        if email:
+            query = """
+            SELECT keyword, COUNT(*) as count 
+            FROM xhs_comments 
+            WHERE userInfo = %s
+            GROUP BY keyword 
+            ORDER BY count DESC
+            """
+            cursor.execute(query, (email,))
+        else:
+            query = """
+            SELECT keyword, COUNT(*) as count 
+            FROM xhs_comments 
+            GROUP BY keyword 
+            ORDER BY count DESC
+            """
+            cursor.execute(query)
+            
         result = cursor.fetchall()
         
         # 关闭连接
@@ -110,6 +132,8 @@ def get_comments_count_by_keyword():
 def main_handler(event, context):
     """
     云函数入口函数，获取所有小红书评论关键字
+    支持URL参数: email - 按用户邮箱过滤关键字
+    示例: ${baseUrl}?email=${encodeURIComponent(email)}
     
     Args:
         event: 触发事件
@@ -121,15 +145,31 @@ def main_handler(event, context):
     logger.info(f"收到请求: {json.dumps(event, ensure_ascii=False)}")
     
     try:
+        # 从请求中获取email参数
+        email = None
+        if 'queryString' in event and 'email' in event['queryString']:
+            email = event['queryString']['email']
+        elif 'queryStringParameters' in event and event['queryStringParameters'] and 'email' in event['queryStringParameters']:
+            email = event['queryStringParameters']['email']
+        
+        if email:
+            logger.info(f"按email过滤评论关键字: {email}")
+        
         # 检查是否需要统计数量
-        with_count = event.get('with_count', False)
+        with_count = False
+        if 'with_count' in event:
+            with_count = event['with_count']
+        elif 'queryString' in event and 'with_count' in event['queryString']:
+            with_count = event['queryString']['with_count'] == 'true'
+        elif 'queryStringParameters' in event and event['queryStringParameters'] and 'with_count' in event['queryStringParameters']:
+            with_count = event['queryStringParameters']['with_count'] == 'true'
         
         if with_count:
             # 获取带有数量统计的关键字列表
-            keywords_data = get_comments_count_by_keyword()
+            keywords_data = get_comments_count_by_keyword(email)
         else:
             # 获取所有关键字
-            keywords = get_comments_keywords()
+            keywords = get_comments_keywords(email)
             keywords_data = keywords
         
         # 构建响应
