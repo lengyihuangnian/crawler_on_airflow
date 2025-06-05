@@ -284,7 +284,7 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                             time.sleep(0.5)
                         note_data = xhs.get_note_data(note_title_and_text)
                         time.sleep(0.5)
-                        xhs.bypass_share()
+                        # xhs.bypass_share()
                         if note_data:
                             note_data['keyword'] = keyword
                             collected_titles.append(note_title_and_text)

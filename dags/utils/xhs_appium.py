@@ -2283,7 +2283,7 @@ class XHSOperator:
         except Exception as e:
             print(f"回复评论失败: {str(e)}")
             return False
-
+    #摩托罗拉14版本 会跳过分享页面,此函数用来绕过
     def bypass_share(self):
         size = self.driver.get_window_size()
         print(f"当前屏幕大小: {size}")
