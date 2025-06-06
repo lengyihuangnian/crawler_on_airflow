@@ -230,13 +230,12 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                     print(f"设备 {device_id} 成功回复评论: {comment_content}")
                     # 插入到manual_reply表
                     try:
-                        # 获取userInfo字段，如果存在
-                        userInfo = comment.get('userInfo')
+                        # 使用DAG配置中的email作为userInfo
                         insert_manual_reply(
                             comment_id=comment_id,
                             note_url=note_url,
                             author=author,
-                            userInfo=userInfo,
+                            userInfo=email,
                             content=comment_content,
                             reply=reply_content
                         )
