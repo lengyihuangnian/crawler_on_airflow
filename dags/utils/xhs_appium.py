@@ -1859,7 +1859,7 @@ class XHSOperator:
                     # 查找评论元素
                     comment_elements = self.driver.find_elements(
                         by=AppiumBy.XPATH,
-                        value="//android.widget.TextView[contains(@text, '')"
+                        value="//android.widget.TextView[contains(@text, '')]"
                     )
                     
                     # 过滤出可能是评论的元素（排除非评论文本）
