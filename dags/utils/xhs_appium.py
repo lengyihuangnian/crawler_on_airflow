@@ -1859,7 +1859,7 @@ class XHSOperator:
                     # 查找评论元素
                     comment_elements = self.driver.find_elements(
                         by=AppiumBy.XPATH,
-                        value="//android.widget.TextView[contains(@text, '') and contains(@long-clickable, 'true')"
+                        value="//android.widget.TextView[contains(@text, '')"
                     )
                     
                     # 过滤出可能是评论的元素（排除非评论文本）
@@ -2418,21 +2418,21 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="ZD222DW7Y3",
+        device_id="ZY22GS335P",
         # system_port=8200
     )
 
     try:
         # 1 测试收集文章
-        print("\n开始测试收集文章...")
-        notes = xhs.collect_notes_by_keyword(
-            keyword="龙图",
+        # print("\n开始测试收集文章...")
+        # notes = xhs.collect_notes_by_keyword(
+        #     keyword="龙图",
             
-            filters={
-                "note_type": "图文",  # 只收集图文笔记
-                "sort_by": "最新"  # 按最新排序
-            }
-        )
+        #     filters={
+        #         "note_type": "图文",  # 只收集图文笔记
+        #         "sort_by": "最新"  # 按最新排序
+        #     }
+        # )
         
         # print(f"\n共收集到 {len(notes)} 条笔记:")
         # for i, note in enumerate(notes, 1):
@@ -2464,25 +2464,22 @@ if __name__ == "__main__":
         #     print("-" * 50)
 
         #3 测试根据评论者id和评论内容定位该条评论并回复
-        # note_url = "http://xhslink.com/a/obpDqQ0omk7db"
-        # author = "爱吃的jerry"  # 替换为实际的评论者ID
-        # comment_content = "生日还是在那里过的"  # 替换为实际的评论内容
-        # reply_content = "哈哈哈"  # 替换为要回复的内容
+        note_url = "http://xhslink.com/a/obpDqQ0omk7db"
+        author = "爱吃的jerry"  # 替换为实际的评论者ID
+        comment_content = "生日还是在那里过的"  # 替换为实际的评论内容
+        reply_content = "哈哈哈"  # 替换为要回复的内容
         
-        # print("\n开始测试评论回复功能...")
-        # success = xhs.comments_reply(
-        #     note_url=note_url,
-        #     author=author,
-        #     comment_content=comment_content,
-        #     reply_content=reply_content
-        # )
+        print("\n开始测试评论回复功能...")
+        success = xhs.reply_to_msg (
+           
+        )
         
-        # if success:
-        #     print("评论回复成功！")
-        # else:
-        #     print("评论回复失败！")
+        if success:
+            print("评论回复成功！")
+        else:
+            print("评论回复失败！")
             
-        # print("-" * 50)
+        print("-" * 50)
 
 
     except Exception as e:
