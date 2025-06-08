@@ -1851,6 +1851,7 @@ class XHSOperator:
 
             for attempt in range(max_attempts):
 
+
                 # 获取翻页前源码
                 before_scroll_page_source = self.driver.page_source
 
