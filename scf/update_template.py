@@ -198,22 +198,41 @@ def main_handler(event, context):
         JSON格式的操作结果
     """
     logger.info(f"收到请求: {json.dumps(event, ensure_ascii=False)}")
+    print(f"收到请求: {json.dumps(event, ensure_ascii=False)}")
     
     params = {}
-    if 'queryString' in event:
+    
+    # 打印原始请求信息便于调试
+    print(f"Original event: {json.dumps(event, ensure_ascii=False)}")
+    
+    if 'queryString' in event and event['queryString']:
         params = event['queryString']
-    elif 'body' in event:
+        print(f"Using queryString parameters: {json.dumps(params, ensure_ascii=False)}")
+    
+    if 'body' in event and event['body']:
         try:
+            # 处理body参数
+            body_data = None
             if isinstance(event['body'], str):
-                params = json.loads(event['body'])
+                body_data = json.loads(event['body'])
+                print(f"Parsed body string: {json.dumps(body_data, ensure_ascii=False)}")
             else:
-                params = event['body']
-        except:
-            pass
+                body_data = event['body']
+                print(f"Using body object: {json.dumps(body_data, ensure_ascii=False)}")
+            
+            # 将body中的参数合并到params
+            if body_data and isinstance(body_data, dict):
+                params.update(body_data)
+        except Exception as e:
+            print(f"Error parsing body: {str(e)}")
+            logger.error(f"Error parsing body: {str(e)}")
     
     # 打印接收到的参数
     print(f"Received parameters: {json.dumps(params, ensure_ascii=False)}")
     logger.info(f"Received parameters: {json.dumps(params, ensure_ascii=False)}")
+    
+    # 获取参数
+    action = params.get('action', '')
     email = params.get('email', 'zacks@example.com')
     
     try:
@@ -305,7 +324,7 @@ def main_handler(event, context):
                     "data": None
                 }
             
-            affected_rows = update_reply_template(template_id, content, userInfo)
+            affected_rows = update_reply_template(template_id, content, email)
             return {
                 "code": 0 if affected_rows > 0 else 1,
                 "message": "success" if affected_rows > 0 else "更新失败",
@@ -335,7 +354,7 @@ if __name__ == "__main__":
     test_event = {
         'body': json.dumps({
             'action': 'add',
-            'userInfo': 'zacks',
+            'email': 'zacks@example.com',
             'content': '这是一个测试模板'
         })
     }

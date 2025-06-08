@@ -10,8 +10,12 @@ from airflow.exceptions import AirflowSkipException
 
 from utils.xhs_appium import XHSOperator
 
-def get_reply_templates_from_db():
+def get_reply_templates_from_db(email=None):
     """从数据库获取回复模板
+    
+    Args:
+        email: 用户邮箱，如果指定则只获取该用户的模板，否则获取所有模板
+        
     Returns:
         回复模板内容列表
     """
@@ -21,8 +25,16 @@ def get_reply_templates_from_db():
     cursor = db_conn.cursor()
 
     # 查询回复模板
-    cursor.execute("SELECT content FROM reply_template")
-    templates = [row[0] for row in cursor.fetchall()]
+    if email:
+        print(f"根据用户邮箱 {email} 查询模板")
+        cursor.execute("SELECT userInfo, content FROM reply_template WHERE userInfo = %s", (email,))
+        templates_data = cursor.fetchall()
+        templates = [row[1] for row in templates_data]  # 只取content字段
+    else:
+        print("查询所有模板")
+        cursor.execute("SELECT userInfo, content FROM reply_template")
+        templates_data = cursor.fetchall()
+        templates = [row[1] for row in templates_data]  # 只取content字段
 
     cursor.close()
     db_conn.close()
@@ -186,7 +198,8 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
     xhs = None
     successful_replies = 0
     failed_replies = 0
-    reply_templates = get_reply_templates_from_db()
+    # 使用email参数获取用户的回复模板
+    reply_templates = get_reply_templates_from_db(email=email)
     try:
         # 初始化小红书操作器
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
@@ -217,13 +230,12 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                     print(f"设备 {device_id} 成功回复评论: {comment_content}")
                     # 插入到manual_reply表
                     try:
-                        # 获取userInfo字段，如果存在
-                        userInfo = comment.get('userInfo')
+                        # 使用DAG配置中的email作为userInfo
                         insert_manual_reply(
                             comment_id=comment_id,
                             note_url=note_url,
                             author=author,
-                            userInfo=userInfo,
+                            userInfo=email,
                             content=comment_content,
                             reply=reply_content
                         )
