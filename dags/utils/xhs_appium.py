@@ -2313,7 +2313,7 @@ class XHSOperator:
                     EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.RelativeLayout[contains(@content-desc,'评论和@')]"))
                 )
                 recomment_text=reply_frame.get_attribute("content-desc")
-                recomment_cnt=re.findall(r'\d+', recomment_text) 
+                recomment_cnt=re.findall(r'\d+', recomment_text)[0] 
                 print(f"回评数量: {recomment_cnt}")
             except Exception as e:
                 print(f"没有回评: {e}")
