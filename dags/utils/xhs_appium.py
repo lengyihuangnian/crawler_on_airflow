@@ -1814,11 +1814,17 @@ class XHSOperator:
             list: 解析后的评论列表
         """
         try:
-            print(f"开始获取并解析评论，帖子 URL: {note_url}")
+            if len(note_url) == 34:  # 链接长度34则为短链接
+                full_url = self.get_redirect_url(note_url)
+                print(f"处理笔记URL: {full_url}")
+            else:
+                full_url = note_url  # 长链不需要处理直接使用
+
+            print(f"开始获取并解析评论，帖子 URL: {full_url}")
 
             # 打开帖子页面
-            self.driver.get(note_url)
-            
+            self.driver.get(full_url)
+
             # 等待评论区加载
             print("等待评论区加载...")
             self.scroll_down()
