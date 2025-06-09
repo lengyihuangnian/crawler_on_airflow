@@ -148,7 +148,12 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: in
         for note_url in note_urls:
             try:
                 # 收集评论
-                full_url = xhs.get_redirect_url(note_url)
+                if len(note_url) == 34:  # 链接长度34则为短链接
+                    full_url = xhs.get_redirect_url(note_url)
+                    print(f"处理笔记URL: {full_url}")
+                else:
+                    full_url = note_url  # 长链不需要处理直接使用
+
                 comments = xhs.collect_comments_by_url(full_url, max_comments=max_comments)
                 # 保存评论到数据库
                 if comments:

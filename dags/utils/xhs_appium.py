@@ -1800,7 +1800,7 @@ class XHSOperator:
                 redirect_url = response.headers['Location']  # 获取重定向链接
                 return redirect_url
             else:
-                return "无法获取重定向链接，状态码: {}".format(response.status_code)
+                return  "无法获取重定向链接，状态码: {}".format(response.status_code)
         except Exception as e:
             return "请求失败: {}".format(str(e))
 
