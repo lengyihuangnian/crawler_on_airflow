@@ -1255,6 +1255,9 @@ class XHSOperator:
                 if url_start != -1:
                     note_url = share_text[url_start:url_end] if url_end != -1 else share_text[url_start:]
                     print(f"提取到笔记URL: {note_url}")
+                    note_url = self.get_redirect_url(note_url)
+                    print(f"重定向后的笔记URL: {note_url}")
+                    
                 else:
                     note_url = "未知"
                     print(f"未能从分享链接中提取URL: {url_start}")
@@ -2109,9 +2112,13 @@ class XHSOperator:
         """
         try:
             # 获取完整URL（处理短链接）
-            full_url = self.get_redirect_url(note_url)
-            print(f"处理笔记URL: {full_url}")
-            
+            # 获取完整URL（处理短链接）
+            if len(note_url) == 34:  # 连接长度34则为短链接
+                full_url = self.get_redirect_url(note_url)
+                print(f"处理笔记URL: {full_url}")
+            else:
+                full_url = note_url #长连不需要处理直接使用
+
             # 打开笔记
             self.driver.get(full_url)
             time.sleep(1)  # 等待页面加载
@@ -2468,7 +2475,7 @@ class XHSOperator:
                 "total_unreplied": total_unreplied,
                 "unreplied_users": unreplied_msg_list,
                 "check_time": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "recomment_cnt": recomment_cnt if recomment_cnt != '' else 0
+                "recomment_cnt": int(recomment_cnt) if recomment_cnt != '' else 0
             }
             
             # 将结果存储到Airflow Variable中（多设备合并存储）
