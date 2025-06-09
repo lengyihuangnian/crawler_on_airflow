@@ -2480,7 +2480,7 @@ class XHSOperator:
                     existing_data.append(result)
                 
                 # 保存更新后的数据
-                Variable.set("XHS_DEVICES_MSG_LIST", existing_data, serialize_json=True, description=f"多设备未回复私信检查结果，最后更新时间: {result['check_time']}")
+                Variable.set("XHS_DEVICES_MSG_LIST", existing_data, serialize_json=True, ensure_ascii=False,indent=2,description=f"多设备未回复私信检查结果，最后更新时间: {result['check_time']}")
                 print(f"设备 {device_id} 的检查结果已存储到Airflow Variable: XHS_DEVICES_MSG_LIST")
             except Exception as e:
                 print(f"存储到Airflow Variable失败: {str(e)}")
