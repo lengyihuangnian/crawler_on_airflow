@@ -25,6 +25,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from appium.options.android import UiAutomator2Options
+from airflow.models.variable import Variable
 from xml.etree import ElementTree
 
 
