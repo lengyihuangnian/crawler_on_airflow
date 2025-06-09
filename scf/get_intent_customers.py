@@ -62,39 +62,43 @@ def get_customer_intent(keyword=None, intent=None, email=None):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 构建SQL查询
-        query = "SELECT * FROM customer_intent"
+        where_clauses = []
         params = []
         
-        # 构建WHERE子句
-        where_clauses = []
         if keyword:
-            where_clauses.append("keyword = %s")
+            where_clauses.append("ci.keyword = %s")
             params.append(keyword)
+        
         if intent:
-            where_clauses.append("intent = %s")
+            where_clauses.append("ci.intent = %s")
             params.append(intent)
+        
         if email:
-            where_clauses.append("userInfo = %s")
+            where_clauses.append("ci.userInfo = %s")
             params.append(email)
         
-        # 添加WHERE子句到查询
+        # Modified query to join with comment_manual_reply table and add is_reply field
+        query = """
+        SELECT ci.*, 
+               CASE WHEN cmr.comment_id IS NOT NULL THEN 1 ELSE 0 END AS is_reply
+        FROM customer_intent ci
+        LEFT JOIN comment_manual_reply cmr ON ci.comment_id = cmr.comment_id
+        """
+        
         if where_clauses:
             query += " WHERE " + " AND ".join(where_clauses)
         
-        # 执行查询
         cursor.execute(query, tuple(params) if params else None)
         customers = cursor.fetchall()
         
-        # 关闭连接
-        cursor.close()
-        conn.close()
-        
-        # 处理日期时间格式，使其可JSON序列化
+        # Format dates for JSON serialization
         for customer in customers:
             for key, value in customer.items():
                 if isinstance(value, datetime):
                     customer[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+        
+        cursor.close()
+        conn.close()
         
         return customers
     except Exception as e:
