@@ -2416,8 +2416,8 @@ class XHSOperator:
                                         
                                         # 添加到未回复列表
                                         unreplied_msg_list.append({
-                                            'username': msg_author.encode('utf-8').decode('utf-8') if isinstance(msg_author, str) else str(msg_author),
-                                            'message_type': '正常私信'.encode('utf-8').decode('utf-8') if isinstance(msg_author, str) else str(msg_author)
+                                            'username': msg_author.encode('utf-8'),
+                                            'message_type': '正常私信'.encode('utf-8')
                                         })
                                         total_unreplied += 1
                                         print(f"发现未回复私信: {msg_author}")
@@ -2452,7 +2452,7 @@ class XHSOperator:
             
             # 返回结果
             result = {
-                'devices_id': device_id,   
+                'device_id': device_id,   
                 'total_unreplied': total_unreplied,
                 'unreplied_users': unreplied_msg_list,
                 'check_time': time.strftime("%Y-%m-%d %H:%M:%S")
@@ -2466,8 +2466,6 @@ class XHSOperator:
                 existing_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=[], deserialize_json=True)
                 if not isinstance(existing_data, list):
                     existing_data = []
-                
-                # 构造当前设备的数据
                 
                 # 查找是否已存在当前设备的数据
                 device_found = False
