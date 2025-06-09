@@ -53,7 +53,7 @@ with DAG(
 
     for index in range(10):
         PythonOperator(
-            task_id=f'check_unreplied_messages{index}',
+            task_id=f'xhs_msg_check{index}',
             python_callable=xhs_msg_check,
             op_kwargs={
                 'device_index': index,
