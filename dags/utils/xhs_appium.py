@@ -18,7 +18,7 @@ import subprocess
 import random
 import requests
 import re
-
+from airflow.models import Variable
 
 from appium.webdriver.webdriver import WebDriver as AppiumWebDriver
 from appium.webdriver.common.appiumby import AppiumBy
@@ -2452,15 +2452,38 @@ class XHSOperator:
             
             # 返回结果
             result = {
+                'devices_id': self.device_id,   
                 'total_unreplied': total_unreplied,
                 'unreplied_users': unreplied_msg_list,
                 'check_time': time.strftime("%Y-%m-%d %H:%M:%S")
             }
             
-            # 将结果存储到Airflow Variable中
+            # 将结果存储到Airflow Variable中（多设备合并存储）
             try:
-                Variable.set("XHS_DEVICES_MSG_LIST", result, serialize_json=True, description=f"未回复私信检查结果，更新时间: {result['check_time']}")
-                print(f"检查结果已存储到Airflow Variable: XHS_DEVICES_MSG_LIST")
+                
+                
+                # 获取现有的设备消息列表
+                existing_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=[], deserialize_json=True)
+                if not isinstance(existing_data, list):
+                    existing_data = []
+                
+                # 构造当前设备的数据
+                
+                # 查找是否已存在当前设备的数据
+                device_found = False
+                for i, item in enumerate(existing_data):
+                    if item.get("device_id") == self.device_id:
+                        existing_data[i] = result
+                        device_found = True
+                        break
+                
+                # 如果没有找到当前设备，则添加新的设备数据
+                if not device_found:
+                    existing_data.append(result)
+                
+                # 保存更新后的数据
+                Variable.set("XHS_DEVICES_MSG_LIST", existing_data, serialize_json=True, description=f"多设备未回复私信检查结果，最后更新时间: {result['check_time']}")
+                print(f"设备 {self.device_id} 的检查结果已存储到Airflow Variable: XHS_DEVICES_MSG_LIST")
             except Exception as e:
                 print(f"存储到Airflow Variable失败: {str(e)}")
             
@@ -2685,16 +2708,40 @@ if __name__ == "__main__":
         else:
             print("\n没有发现未回复的私信")
         
-        # 验证Airflow Variable存储结果
+        # 验证Airflow Variable存储结果（多设备格式）
         try:
-            from airflow.models import Variable
-            stored_result = Variable.get("XHS_DEVICES_MSG_LIST", default_var=None, deserialize_json=True)
-            if stored_result:
-                print("\nAirflow Variable存储验证:")
-                print(f"存储时间: {stored_result.get('check_time', 'N/A')}")
-                print(f"存储的未回复总数: {stored_result.get('total_unreplied', 0)}")
-                print(f"存储的涉及用户数: {len(stored_result.get('unreplied_users', []))}")
-                print("存储成功!")
+            
+            stored_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=None, deserialize_json=True)
+            if stored_data and isinstance(stored_data, list):
+                print("\nAirflow Variable存储验证（多设备格式）:")
+                print(f"总设备数: {len(stored_data)}")
+                
+                # 查找当前设备的数据
+                current_device_data = None
+                for device_item in stored_data:
+                    if device_item.get("device_id") == xhs.device_id:
+                        current_device_data = device_item.get("data", {})
+                        break
+                
+                if current_device_data:
+                    print(f"当前设备 {xhs.device_id} 的存储数据:")
+                    print(f"  存储时间: {current_device_data.get('check_time', 'N/A')}")
+                    print(f"  存储的未回复总数: {current_device_data.get('total_unreplied', 0)}")
+                    print(f"  存储的涉及用户数: {len(current_device_data.get('unreplied_users', []))}")
+                    print("存储成功!")
+                else:
+                    print(f"未找到设备 {xhs.device_id} 的存储数据")
+                    
+                # 显示所有设备的概览
+                print("\n所有设备概览:")
+                for i, device_item in enumerate(stored_data, 1):
+                    device_id = device_item.get("device_id", "未知")
+                    device_data = device_item.get("data", {})
+                    unreplied_count = device_data.get("total_unreplied", 0)
+                    check_time = device_data.get("check_time", "未知")
+                    print(f"  {i}. 设备 {device_id}: {unreplied_count} 条未回复, 检查时间: {check_time}")
+            else:
+                print("\n未找到有效的Airflow Variable存储数据")
         except Exception as e:
             print(f"\n注意: 无法验证Airflow Variable存储 (可能在非Airflow环境运行): {str(e)}")
             
