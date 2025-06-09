@@ -2476,7 +2476,7 @@ class XHSOperator:
                 
                 
                 # 获取现有的设备消息列表
-                existing_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=[], deserialize_json=False).json.loads()
+                existing_data = json.loads(Variable.get("XHS_DEVICES_MSG_LIST", default_var=[], deserialize_json=False))
                 if not isinstance(existing_data, list):
                     existing_data = []
                 
