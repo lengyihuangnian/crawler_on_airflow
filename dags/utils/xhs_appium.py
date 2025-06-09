@@ -2476,7 +2476,7 @@ class XHSOperator:
                 
                 
                 # 获取现有的设备消息列表
-                existing_data = json.loads(Variable.get("XHS_DEVICES_MSG_LIST", default_var=[], deserialize_json=False))
+                existing_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=[], deserialize_json=True)
                 if not isinstance(existing_data, list):
                     existing_data = []
                 
@@ -2493,7 +2493,7 @@ class XHSOperator:
                     existing_data.append(result)
                 
                 # 保存更新后的数据
-                Variable.set("XHS_DEVICES_MSG_LIST", existing_data, serialize_json=False,description=f"多设备未回复私信检查结果，最后更新时间: {result['check_time']}")
+                Variable.set("XHS_DEVICES_MSG_LIST", existing_data, serialize_json=True,description=f"多设备未回复私信检查结果，最后更新时间: {result['check_time']}")
                 print(f"设备 {device_id} 的检查结果已存储到Airflow Variable: XHS_DEVICES_MSG_LIST")
             except Exception as e:
                 print(f"存储到Airflow Variable失败: {str(e)}")
