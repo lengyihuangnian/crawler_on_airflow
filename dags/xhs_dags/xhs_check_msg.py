@@ -42,9 +42,9 @@ def xhs_msg_check(device_index,**context):
     xhs.check_unreplied_messages()
 
 with DAG(
-    dag_id='xhs_msg_reply',
+    dag_id='xhs_msg_check',
     default_args={'owner': 'yuchangongzhu', 'depends_on_past': False, 'start_date': datetime(2024, 1, 1)},
-    description='小红书私信回复任务',
+    description='小红书私信检查任务',
     schedule_interval=None,
     tags=['小红书'],
     catchup=False,
