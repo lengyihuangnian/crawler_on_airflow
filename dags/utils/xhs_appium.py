@@ -2313,7 +2313,8 @@ class XHSOperator:
                     EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.RelativeLayout[contains(@content-desc,'评论和@')]"))
                 )
                 recomment_text=reply_frame.get_attribute("content-desc")
-                recomment_cnt=re.findall(r'\d+', recomment_text)[0] 
+                recomment_cnt=''.join(filter(str.isdigit, recomment_text))
+
                 print(f"回评数量: {recomment_cnt}")
             except Exception as e:
                 print(f"没有回评: {e}")
@@ -2463,11 +2464,11 @@ class XHSOperator:
             
             # 返回结果
             result = {
-                'device_id': device_id,   
-                'total_unreplied': total_unreplied,
-                'unreplied_users': unreplied_msg_list,
-                'check_time': time.strftime("%Y-%m-%d %H:%M:%S"),
-                'recomment_cnt': recomment_cnt if recomment_cnt != '' else 0
+                "device_id": device_id,
+                "total_unreplied": total_unreplied,
+                "unreplied_users": unreplied_msg_list,
+                "check_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "recomment_cnt": recomment_cnt if recomment_cnt != '' else 0
             }
             
             # 将结果存储到Airflow Variable中（多设备合并存储）
