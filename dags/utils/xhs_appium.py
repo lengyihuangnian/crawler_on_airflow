@@ -2345,8 +2345,8 @@ class XHSOperator:
                                     
                                     # 添加到未回复列表
                                     unreplied_msg_list.append({
-                                        'username': msg_author.encode('utf-8').decode('utf-8') if isinstance(msg_author, str) else str(msg_author),
-                                        'message_type': '陌生人私信'.encode('utf-8').decode('utf-8') if isinstance(msg_author, str) else str(msg_author)
+                                        'username': msg_author,
+                                        'message_type': '陌生人私信'
                                     })
                                     total_unreplied += 1
                                     print(f"发现未回复陌生人私信: {msg_author}")
@@ -2416,8 +2416,8 @@ class XHSOperator:
                                         
                                         # 添加到未回复列表
                                         unreplied_msg_list.append({
-                                            'username': msg_author.encode('utf-8'),
-                                            'message_type': '正常私信'.encode('utf-8')
+                                            'username': msg_author,
+                                            'message_type': '正常私信'
                                         })
                                         total_unreplied += 1
                                         print(f"发现未回复私信: {msg_author}")
