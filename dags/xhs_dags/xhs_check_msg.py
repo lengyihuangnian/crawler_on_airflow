@@ -39,7 +39,7 @@ def xhs_msg_check(device_index,**context):
     print(f"选择设备 {device_id}, appium_server_url: {appium_server_url}")
     print(f"开始回复私信'")
     xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
-    xhs.check_unreplied_messages()
+    xhs.check_unreplied_messages(device_id)
 
 with DAG(
     dag_id='xhs_msg_check',

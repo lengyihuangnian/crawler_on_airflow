@@ -2286,7 +2286,7 @@ class XHSOperator:
         except Exception as e:
             print(f"回复评论失败: {str(e)}")
             return False
-    def check_unreplied_messages(self):
+    def check_unreplied_messages(self,device_id):
         """
         检查未回复的私信，返回私信的用户名称和未回复总数
         Returns:
@@ -2452,7 +2452,7 @@ class XHSOperator:
             
             # 返回结果
             result = {
-                'devices_id': self.device_id,   
+                'devices_id': device_id,   
                 'total_unreplied': total_unreplied,
                 'unreplied_users': unreplied_msg_list,
                 'check_time': time.strftime("%Y-%m-%d %H:%M:%S")
@@ -2472,7 +2472,7 @@ class XHSOperator:
                 # 查找是否已存在当前设备的数据
                 device_found = False
                 for i, item in enumerate(existing_data):
-                    if item.get("device_id") == self.device_id:
+                    if item.get("device_id") == device_id:
                         existing_data[i] = result
                         device_found = True
                         break
@@ -2483,7 +2483,7 @@ class XHSOperator:
                 
                 # 保存更新后的数据
                 Variable.set("XHS_DEVICES_MSG_LIST", existing_data, serialize_json=True, description=f"多设备未回复私信检查结果，最后更新时间: {result['check_time']}")
-                print(f"设备 {self.device_id} 的检查结果已存储到Airflow Variable: XHS_DEVICES_MSG_LIST")
+                print(f"设备 {device_id} 的检查结果已存储到Airflow Variable: XHS_DEVICES_MSG_LIST")
             except Exception as e:
                 print(f"存储到Airflow Variable失败: {str(e)}")
             
