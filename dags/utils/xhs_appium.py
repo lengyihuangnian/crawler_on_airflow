@@ -18,13 +18,14 @@ import subprocess
 import random
 import requests
 import re
-
+from airflow.models import Variable
 
 from appium.webdriver.webdriver import WebDriver as AppiumWebDriver
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from appium.options.android import UiAutomator2Options
+from airflow.models.variable import Variable
 from xml.etree import ElementTree
 
 
@@ -1254,6 +1255,9 @@ class XHSOperator:
                 if url_start != -1:
                     note_url = share_text[url_start:url_end] if url_end != -1 else share_text[url_start:]
                     print(f"提取到笔记URL: {note_url}")
+                    note_url = self.get_redirect_url(note_url)
+                    print(f"重定向后的笔记URL: {note_url}")
+                    
                 else:
                     note_url = "未知"
                     print(f"未能从分享链接中提取URL: {url_start}")
@@ -1796,7 +1800,7 @@ class XHSOperator:
                 redirect_url = response.headers['Location']  # 获取重定向链接
                 return redirect_url
             else:
-                return "无法获取重定向链接，状态码: {}".format(response.status_code)
+                return  "无法获取重定向链接，状态码: {}".format(response.status_code)
         except Exception as e:
             return "请求失败: {}".format(str(e))
 
@@ -1810,11 +1814,17 @@ class XHSOperator:
             list: 解析后的评论列表
         """
         try:
-            print(f"开始获取并解析评论，帖子 URL: {note_url}")
+            if len(note_url) == 34:  # 链接长度34则为短链接
+                full_url = self.get_redirect_url(note_url)
+                print(f"处理笔记URL: {full_url}")
+            else:
+                full_url = note_url  # 长链不需要处理直接使用
+
+            print(f"开始获取并解析评论，帖子 URL: {full_url}")
 
             # 打开帖子页面
-            self.driver.get(note_url)
-            
+            self.driver.get(full_url)
+
             # 等待评论区加载
             print("等待评论区加载...")
             self.scroll_down()
@@ -2108,9 +2118,13 @@ class XHSOperator:
         """
         try:
             # 获取完整URL（处理短链接）
-            full_url = self.get_redirect_url(note_url)
-            print(f"处理笔记URL: {full_url}")
-            
+            # 获取完整URL（处理短链接）
+            if len(note_url) == 34:  # 连接长度34则为短链接
+                full_url = self.get_redirect_url(note_url)
+                print(f"处理笔记URL: {full_url}")
+            else:
+                full_url = note_url #长连不需要处理直接使用
+
             # 打开笔记
             self.driver.get(full_url)
             time.sleep(1)  # 等待页面加载
@@ -2285,6 +2299,235 @@ class XHSOperator:
         except Exception as e:
             print(f"回复评论失败: {str(e)}")
             return False
+    def check_unreplied_messages(self,device_id):
+        """
+        检查未回复的私信，返回私信的用户名称和未回复总数
+        Returns:
+            dict: 包含未回复私信信息的字典
+                {
+                    'total_unreplied': int,  # 未回复总数（按用户计算）
+                    'unreplied_users': list  # 未回复用户列表，每个用户一条记录
+                }
+        """
+        unreplied_msg_list = []
+        total_unreplied = 0
+        
+        try:
+            # 点击"消息"，跳转到私信页面
+            msg_btn = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@resource-id,'com.xingin.xhs:id/-') and contains(@text, '消息')]"))
+            )
+            msg_btn.click()
+            time.sleep(1)  # 等待页面加载
+            
+            # 检查是否存在回评
+            try:
+                reply_frame = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.RelativeLayout[contains(@content-desc,'评论和@')]"))
+                )
+                recomment_text=reply_frame.get_attribute("content-desc")
+                recomment_cnt=''.join(filter(str.isdigit, recomment_text))
+
+                print(f"回评数量: {recomment_cnt}")
+            except Exception as e:
+                print(f"没有回评: {e}")
+                reply_frame = None
+            # 第一套逻辑----检查陌生人私信
+            try:
+                stranger_msg_frame = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.RelativeLayout[contains(@content-desc,'陌生人')]"))
+                )
+                stranger_msg_frame.click()
+                time.sleep(0.5)  # 等待页面加载
+                
+                # 在陌生人消息列表界面检查未回复消息
+                processed_users = set()  # 用于避免重复处理同一用户
+                
+                for i in range(10):
+                    try:
+                        # 获取当前页面所有陌生人私信
+                        msg_frames = self.driver.find_elements(
+                            by=AppiumBy.XPATH,
+                            value="//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-']"
+                        )
+                        
+                        if not msg_frames:
+                            print(f"第{i+1}次检查：当前页面没有陌生人私信")
+                            break
+                        
+                        current_page_found = False
+                        
+                        for msg_frame in msg_frames:
+                            try:
+                                msg_author = msg_frame.find_element(
+                                    by=AppiumBy.XPATH, 
+                                    value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/-']"
+                                ).text
+                                
+                                # 避免重复处理同一用户
+                                if msg_author not in processed_users:
+                                    processed_users.add(msg_author)
+                                    
+                                    # 添加到未回复列表
+                                    unreplied_msg_list.append({
+                                        'username': msg_author,
+                                        'message_type': '陌生人私信'
+                                    })
+                                    total_unreplied += 1
+                                    print(f"发现未回复陌生人私信: {msg_author}")
+                                    current_page_found = True
+                                    
+                            except Exception as e:
+                                print(f"解析陌生人私信失败: {str(e)}")
+                                continue
+                        
+                        # 获取滚动前的页面源码
+                        before_scroll_page_source = self.driver.page_source
+                        
+                        # 滚动查找更多
+                        print(f"第{i+1}次检查：滚动查找更多陌生人私信")
+                        self.scroll_down()
+                        time.sleep(0.5)
+                        
+                        # 获取滚动后的页面源码
+                        after_scroll_page_source = self.driver.page_source
+                        
+                        # 比较页面源码判断是否到达底部
+                        if before_scroll_page_source == after_scroll_page_source:
+                            print(f"第{i+1}次检查：页面未发生变化，已到达陌生人私信列表底部")
+                            break
+                        
+                    except Exception as e:
+                        print(f"陌生人私信检查完毕: {e}")
+                        break
+                
+                # 返回到私信列表
+                back_btn = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']"))
+                )
+                back_btn.click()
+                time.sleep(0.5)
+                
+            except Exception as e:
+                print(f"没有陌生人私信: {e}")
+            
+            # 第二套逻辑----检查正常私信
+            try:
+                processed_normal_users = set()  # 用于避免重复处理同一用户
+                
+                for index in range(10):
+                    try:
+                        # 定位未回复私信（包含"条未读"的消息）
+                        normal_msg_frames = self.driver.find_elements(
+                            by=AppiumBy.XPATH,
+                            value="//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-' and contains(@content-desc,'条未读')]"
+                        )
+                        
+                        current_page_found = False
+                        
+                        # 处理未读私信
+                        if normal_msg_frames:
+                            for msg_frame in normal_msg_frames:
+                                try:
+                                    # 获取用户名
+                                    msg_author = msg_frame.find_element(
+                                        by=AppiumBy.XPATH,
+                                        value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/-']"
+                                    ).text
+                                    
+                                    # 避免重复处理同一用户
+                                    if msg_author not in processed_normal_users:
+                                        processed_normal_users.add(msg_author)
+                                        
+                                        # 添加到未回复列表
+                                        unreplied_msg_list.append({
+                                            'username': msg_author,
+                                            'message_type': '正常私信'
+                                        })
+                                        total_unreplied += 1
+                                        print(f"发现未回复私信: {msg_author}")
+                                        current_page_found = True
+                                    
+                                except Exception as e:
+                                    print(f"解析私信信息失败: {str(e)}")
+                                    continue
+                        
+                        # 获取滚动前的页面源码
+                        before_scroll_page_source = self.driver.page_source
+                        
+                        # 滚动查找更多
+                        print(f"第{index+1}次检查：滚动查找更多正常私信")
+                        self.scroll_down()
+                        time.sleep(0.5)
+                        
+                        # 获取滚动后的页面源码
+                        after_scroll_page_source = self.driver.page_source
+                        
+                        # 比较页面源码判断是否到达底部
+                        if before_scroll_page_source == after_scroll_page_source:
+                            print(f"第{index+1}次检查：页面未发生变化，已到达正常私信列表底部")
+                            break
+                            
+                    except Exception as e:
+                        print(f"检查正常私信失败: {str(e)}")
+                        break
+                        
+            except Exception as e:
+                print(f"检查正常私信出错: {str(e)}")
+            
+            # 返回结果
+            result = {
+                "device_id": device_id,
+                "total_unreplied": total_unreplied,
+                "unreplied_users": unreplied_msg_list,
+                "check_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "recomment_cnt": int(recomment_cnt) if recomment_cnt != '' else 0
+            }
+            
+            # 将结果存储到Airflow Variable中（多设备合并存储）
+            try:
+                
+                
+                # 获取现有的设备消息列表
+                existing_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=[], deserialize_json=True)
+                if not isinstance(existing_data, list):
+                    existing_data = []
+                
+                # 查找是否已存在当前设备的数据
+                device_found = False
+                for i, item in enumerate(existing_data):
+                    if item.get("device_id") == device_id:
+                        existing_data[i] = result
+                        device_found = True
+                        break
+                
+                # 如果没有找到当前设备，则添加新的设备数据
+                if not device_found:
+                    existing_data.append(result)
+                
+                # 保存更新后的数据
+                Variable.set("XHS_DEVICES_MSG_LIST", existing_data, serialize_json=True,description=f"多设备未回复私信检查结果，最后更新时间: {result['check_time']}")
+                print(f"设备 {device_id} 的检查结果已存储到Airflow Variable: XHS_DEVICES_MSG_LIST")
+            except Exception as e:
+                print(f"存储到Airflow Variable失败: {str(e)}")
+            
+            print(f"未回复私信检查完成，共发现 {total_unreplied} 条未回复消息，涉及 {len(unreplied_msg_list)} 个用户")
+            return result
+            
+        except Exception as e:
+            print(f"检查未回复私信失败: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            
+            error_result = {
+                'total_unreplied': 0,
+                'unreplied_users': [],
+                'error': str(e),
+                'check_time': time.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            return error_result
+
     #私信回复
     def reply_to_msg(self):
         """
@@ -2292,6 +2535,8 @@ class XHSOperator:
         Args:
             msg: 回复的消息内容
         """
+
+        unreplyed_msg_list = []
         # 点击“消息”，跳转到私信页面
         replyed_msg_list = []
         msg_btn = WebDriverWait(self.driver, 10).until(
@@ -2317,8 +2562,9 @@ class XHSOperator:
                                         )
                                         msg_author=msg_frame.find_element(by=AppiumBy.XPATH,value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/-']").text
                                         #点击进入聊天界面
-                                        msg_frame.click()
-                                        time.sleep(0.5)  # 等待页面加载
+                                        unreplyed_msg_list.append({'msg_author':msg_author, 'msg_content':"未回复"})
+                                        # msg_frame.click()
+                                        # time.sleep(0.5)  # 等待页面加载
                                         print(f"正在回复: {msg_author}的私信")
                                 except Exception as e:
                                         print(f"陌生人私信已全部回复: {e}")
@@ -2330,26 +2576,26 @@ class XHSOperator:
                                         time.sleep(0.5)
                                         break
                                 #定位输入框
-                                chat_frame = WebDriverWait(self.driver, 10).until(
-                                        EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
-                                )
+                                # chat_frame = WebDriverWait(self.driver, 10).until(
+                                #         EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
+                                # )
                                 #输入消息
-                                msg_content="你好！这是自动回复的消息。"
-                                chat_frame.send_keys(msg_content)
-                                time.sleep(1)  # 等待输入完成
+                                # msg_content="你好！这是自动回复的消息。"
+                                # chat_frame.send_keys(msg_content)
+                                # time.sleep(1)  # 等待输入完成
                                 #点击发送按钮
-                                send_frame = WebDriverWait(self.driver, 10).until(
-                                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@resource-id='com.xingin.xhs:id/-' and @text='发送']"))
-                                )
-                                send_frame.click()
-                                print(f'{msg_author}的私信回复成功')
+                                # send_frame = WebDriverWait(self.driver, 10).until(
+                                #         EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@resource-id='com.xingin.xhs:id/-' and @text='发送']"))
+                                # )
+                                # send_frame.click()
+                                # print(f'{msg_author}的私信回复成功')
                                 #将回复的私信信息添加到返回列表
-                                replyed_msg_list.append({'msg_author':msg_author, 'msg_content':msg_content})
+                                # replyed_msg_list.append({'msg_author':msg_author, 'msg_content':msg_content})
                                 #返回到陌生人私信列表
-                                back_btn = WebDriverWait(self.driver, 10).until(
-                                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']"))
-                                )
-                                back_btn.click()
+                                # back_btn = WebDriverWait(self.driver, 10).until(
+                                #         EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']"))
+                                # )
+                                # back_btn.click()
                         except Exception as e:
                                 print(f"回复私信失败: {str(e)}")
         except Exception as e:
@@ -2464,23 +2710,82 @@ if __name__ == "__main__":
         #     print(f"时间: {comment['collect_time']}")
         #     print("-" * 50)
 
-        #3 测试根据评论者id和评论内容定位该条评论并回复
-        note_url = "http://xhslink.com/a/obpDqQ0omk7db"
-        author = "爱吃的jerry"  # 替换为实际的评论者ID
-        comment_content = "生日还是在那里过的"  # 替换为实际的评论内容
-        reply_content = "哈哈哈"  # 替换为要回复的内容
+        # 3 测试检查未回复私信功能
+        print("\n开始测试检查未回复私信功能...")
+        unreplied_result = xhs.check_unreplied_messages()
         
-        print("\n开始测试评论回复功能...")
-        success = xhs.reply_to_msg (
-           
-        )
+        print(f"\n未回复私信检查结果:")
+        print(f"检查时间: {unreplied_result.get('check_time', 'N/A')}")
+        print(f"未回复总数: {unreplied_result.get('total_unreplied', 0)}")
+        print(f"涉及用户数: {len(unreplied_result.get('unreplied_users', []))}")
         
-        if success:
-            print("评论回复成功！")
+        if unreplied_result.get('error'):
+            print(f"检查过程中出现错误: {unreplied_result['error']}")
+        
+        unreplied_users = unreplied_result.get('unreplied_users', [])
+        if unreplied_users:
+            print("\n未回复私信详情:")
+            for i, user_info in enumerate(unreplied_users, 1):
+                print(f"  {i}. 用户: {user_info.get('username', 'N/A')}")
+                print(f"     类型: {user_info.get('message_type', 'N/A')}")
+                print("-" * 30)
         else:
-            print("评论回复失败！")
+            print("\n没有发现未回复的私信")
+        
+        # 验证Airflow Variable存储结果（多设备格式）
+        try:
+            
+            stored_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=None, deserialize_json=True)
+            if stored_data and isinstance(stored_data, list):
+                print("\nAirflow Variable存储验证（多设备格式）:")
+                print(f"总设备数: {len(stored_data)}")
+                
+                # 查找当前设备的数据
+                current_device_data = None
+                for device_item in stored_data:
+                    if device_item.get("device_id") == xhs.device_id:
+                        current_device_data = device_item.get("data", {})
+                        break
+                
+                if current_device_data:
+                    print(f"当前设备 {xhs.device_id} 的存储数据:")
+                    print(f"  存储时间: {current_device_data.get('check_time', 'N/A')}")
+                    print(f"  存储的未回复总数: {current_device_data.get('total_unreplied', 0)}")
+                    print(f"  存储的涉及用户数: {len(current_device_data.get('unreplied_users', []))}")
+                    print("存储成功!")
+                else:
+                    print(f"未找到设备 {xhs.device_id} 的存储数据")
+                    
+                # 显示所有设备的概览
+                print("\n所有设备概览:")
+                for i, device_item in enumerate(stored_data, 1):
+                    device_id = device_item.get("device_id", "未知")
+                    device_data = device_item.get("data", {})
+                    unreplied_count = device_data.get("total_unreplied", 0)
+                    check_time = device_data.get("check_time", "未知")
+                    print(f"  {i}. 设备 {device_id}: {unreplied_count} 条未回复, 检查时间: {check_time}")
+            else:
+                print("\n未找到有效的Airflow Variable存储数据")
+        except Exception as e:
+            print(f"\n注意: 无法验证Airflow Variable存储 (可能在非Airflow环境运行): {str(e)}")
             
         print("-" * 50)
+
+        # 4 测试根据评论者id和评论内容定位该条评论并回复（已注释）
+        # note_url = "http://xhslink.com/a/obpDqQ0omk7db"
+        # author = "爱吃的jerry"  # 替换为实际的评论者ID
+        # comment_content = "生日还是在那里过的"  # 替换为实际的评论内容
+        # reply_content = "哈哈哈"  # 替换为要回复的内容
+        # 
+        # print("\n开始测试评论回复功能...")
+        # success = xhs.reply_to_msg()
+        # 
+        # if success:
+        #     print("评论回复成功！")
+        # else:
+        #     print("评论回复失败！")
+        #     
+        # print("-" * 50)
 
 
     except Exception as e:
