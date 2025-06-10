@@ -48,7 +48,6 @@ def get_adb_devices():
         print(f"获取adb设备列表失败: {str(e)}")
         return []
 
-
 class XHSOperator:
     def __init__(self, appium_server_url: str, force_app_launch: bool = False, device_id: str = None):
         """
@@ -198,6 +197,173 @@ class XHSOperator:
         except Exception as e:
             print(f"搜索或筛选失败: {str(e)}")
             raise
+
+    def search_keyword_of_video(self, keyword, max_videos=10):
+        """
+        搜索关键词视频并收集视频卡片信息
+        
+        参数:
+            keyword (str): 搜索关键词
+            max_videos (int): 最大收集视频数量，默认10个
+            
+        返回:
+            list: 收集到的视频数据列表
+        """
+        collected_videos = []
+        collected_titles = []
+        
+        try:
+            # 通过 content-desc="搜索" 定位搜索按钮
+            search_btn = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.Button[@content-desc='搜索']"))
+            )
+            search_btn.click()
+            
+            # 等待输入框出现并输入
+            search_input = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
+            )
+            search_input.send_keys(keyword)
+            
+            # 点击键盘上的搜索按钮
+            self.driver.press_keycode(66)  # 66 是 Enter 键的 keycode
+            print(f"已搜索关键词: {keyword}")
+            
+            # 等待搜索结果加载
+            time.sleep(1)
+
+            try:
+                # 先尝试点击筛选按钮
+                all_btn = WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '全部') or contains(@content-desc, '全部')]"))
+                    )
+                all_btn.click()
+                time.sleep(0.5)
+            except:
+                # 如果找不到筛选按钮，尝试点击全部按钮
+                try:
+                    filter_btn = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[contains(@text, '筛选') or contains(@content-desc, '筛选')]"))
+                )
+                    filter_btn.click()
+                    time.sleep(0.5)
+                except Exception as e:
+                    print(f"找不到筛选按钮和全部按钮: {str(e)}")
+                    return collected_videos
+            try:
+                sort_option = WebDriverWait(self.driver, 10).until(
+                            EC.presence_of_element_located((
+                                AppiumBy.XPATH, 
+                                f"//android.widget.TextView[@text='视频']"
+                            ))
+                        )
+                sort_option.click()
+                time.sleep(0.5)
+                collapse_btn = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@text='收起']"))
+                )
+                collapse_btn.click()
+                time.sleep(0.5)
+            except Exception as e:
+                print(f"找不到视频选项: {str(e)}")
+            
+            # 开始收集视频卡片
+            while len(collected_videos) < max_videos:
+                try:
+                    print("获取所有视频卡片元素")
+                    video_cards = []
+                    try:
+                        # 获取视频卡片元素
+                        video_cards = self.driver.find_elements(
+                            by=AppiumBy.XPATH,
+                            value="//android.widget.FrameLayout[@resource-id='com.xingin.xhs:id/-' and @clickable='true']"
+                        )
+                        print(f"获取视频卡片成功，共{len(video_cards)}个")
+                    except Exception as e:
+                        print(f"获取视频卡片失败: {e}")
+                    
+                    for video_card in video_cards:
+                        if len(collected_videos) >= max_videos:
+                            break
+                        try:
+                            title_element = video_card.find_element(
+                                by=AppiumBy.XPATH,
+                                value=".//android.widget.TextView[contains(@text, '')]"
+                            )
+                            video_title_and_text = title_element.text
+                            author_element = video_card.find_element(
+                                by=AppiumBy.XPATH,
+                                value=".//android.widget.LinearLayout/android.widget.TextView[1]"
+                            )
+                            author = author_element.text
+                            
+                            if video_title_and_text not in collected_titles:
+                                print(f"收集视频: {video_title_and_text}, 作者: {author}, 当前收集数量: {len(collected_videos)}")
+                                
+                                # 获取屏幕尺寸和元素位置
+                                try:
+                                    screen_size = self.driver.get_window_size()
+                                    element_location = title_element.location
+                                    screen_height = screen_size['height']
+                                    element_y = element_location['y']
+                                    
+                                    # 检查元素是否位于屏幕高度的3/4以上
+                                    if element_y > screen_height * 0.25:
+                                        # 点击标题元素而不是整个卡片
+                                        print(f"元素位置正常，位于屏幕{element_y/screen_height:.2%}处，执行点击")
+                                        title_element.click()
+                                        time.sleep(0.5)
+                                    else:
+                                        print(f"元素位置过高，位于屏幕{element_y/screen_height:.2%}处，跳过点击")
+                                        continue
+                                except Exception as e:
+                                    print(f"检测元素位置失败: {str(e)}，不执行点击")
+                                    time.sleep(0.5)
+                                
+                                # 获取视频数据
+                                video_data = self.get_video_note_data(video_title_and_text)
+                                if video_data:
+                                    video_data['keyword'] = keyword
+                                    video_data['content_type'] = 'video'  # 标记为视频类型
+                                    collected_titles.append(video_title_and_text)
+                                    collected_videos.append(video_data)
+                                
+                                # 返回上一页
+                                try:
+                                    back_btn = self.driver.find_element(
+                                        by=AppiumBy.XPATH,
+                                        value="//android.widget.ImageView[@content-desc='返回']"
+                                    )
+                                    back_btn.click()
+                                    time.sleep(0.5)
+                                except Exception as e:
+                                    print(f"返回失败: {str(e)}")
+                                    # 尝试使用返回键
+                                    self.driver.press_keycode(4)
+                                    time.sleep(0.5)
+                        except Exception as e:
+                            print(f"处理视频卡片失败: {str(e)}")
+                            continue
+                    
+                    # 如果还没收集够，向下滚动
+                    if len(collected_videos) < max_videos:
+                        self.scroll_down()
+                        time.sleep(0.5)
+                        
+                except Exception as e:
+                    print(f"收集视频失败: {str(e)}")
+                    import traceback
+                    print(traceback.format_exc())
+                    break
+            
+            print(f"视频收集完成，共收集到 {len(collected_videos)} 个视频")
+            return collected_videos
+            
+        except Exception as e:
+            print(f"搜索或筛选失败: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            return collected_videos
 
     def process_time_string(self, input_str):
         """
@@ -1134,7 +1300,7 @@ class XHSOperator:
                     likes = "0"
                 else:
                     # 尝试提取数字部分
-                    import re
+                    
                     digits = re.findall(r'\d+', likes_text)
                     likes = digits[0] if digits else "0"
                 print(f"最终点赞数: {likes}")
@@ -1173,7 +1339,7 @@ class XHSOperator:
                     collects = "0"
                 else:
                     # 尝试提取数字部分
-                    import re
+                    
                     digits = re.findall(r'\d+', collects_text)
                     collects = digits[0] if digits else "0"
                 print(f"最终收藏数: {collects}")
@@ -1212,7 +1378,7 @@ class XHSOperator:
                     comments = "0"
                 else:
                     # 尝试提取数字部分
-                    import re
+                    
                     digits = re.findall(r'\d+', comments_text)
                     comments = digits[0] if digits else "0"
                 print(f"最终评论数: {comments}")
@@ -1521,6 +1687,223 @@ class XHSOperator:
                 "collect_time": time.strftime("%Y-%m-%d %H:%M:%S")
             }
     
+    def get_video_note_data(self, video_title_and_text: str):
+        """
+        获取视频笔记内容和互动数据
+        Args:
+            video_title_and_text: 视频标题和内容
+        Returns:
+            dict: 视频数据
+        """
+        try:
+            print('---------------video--------------------')
+            self.print_all_elements()
+            print(f"正在获取视频内容: {video_title_and_text}")
+            
+            # 等待视频内容加载
+            time.sleep(0.5)
+            
+            # 获取视频标题 - 使用指定的XPath
+            video_title = ""
+            try:
+                title_element = self.driver.find_element(
+                    by=AppiumBy.ID,
+                    value="com.xingin.xhs:id/noteContentLayout"
+                )
+                video_title = title_element.get_attribute("content-desc")
+                print(f"找到视频标题: {video_title}")
+            except Exception as e:
+                print(f"获取视频标题失败: {str(e)}")
+                video_title = video_title_and_text  # 使用传入的标题作为备选
+            
+            # 获取视频作者
+            author = ""
+            
+            try:
+                author_element = WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.Button[contains(@content-desc, '作者')]"))
+                )
+                author = author_element.get_attribute("content-desc")
+                print(f"找到作者信息: {author}")
+            except Exception as e:
+                print(f"获取作者信息失败: {str(e)}")
+            
+            # 获取点赞数
+            likes = "0"
+            try:
+                try:
+                    likes_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '点赞')]"
+                    )
+                    likes_text = likes_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过content-desc找到点赞数: {likes_text}")
+                except:
+                    print("未找到点赞数")
+                
+                if likes_text == "点赞":
+                    likes = "0"
+                else:
+                    
+                    digits = re.findall(r'\d+', likes_text)
+                    likes = digits[0] if digits else "0"
+                print(f"最终点赞数: {likes}")
+            except Exception as e:
+                print(f"获取点赞数失败: {str(e)}")
+            
+            # 获取评论数
+            comments = "0"
+            try:
+                try:
+                    comments_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '评论')]"
+                    )
+                    comments_text = comments_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过resource-id和content-desc找到评论数: {comments_text}")
+                except:
+                    print("未找到评论数")
+                    
+                
+                if comments_text == "评论":
+                    comments = "0"
+                else:
+                   
+                    digits = re.findall(r'\d+', comments_text)
+                    comments = digits[0] if digits else "0"
+                print(f"最终评论数: {comments}")
+            except Exception as e:
+                print(f"获取评论数失败: {str(e)}")
+            
+            # 获取分享数（收藏数）
+            shares = "0"
+            try:
+                try:
+                    shares_btn = self.driver.find_element(
+                        by=AppiumBy.XPATH,
+                        value="//android.widget.Button[contains(@content-desc, '收藏')]"
+                    )
+                    shares_text = shares_btn.find_element(
+                        by=AppiumBy.XPATH,
+                        value=".//android.widget.TextView"
+                    ).text
+                    print(f"通过resource-id和content-desc找到收藏数: {shares_text}")
+                except:
+                    print("未找到收藏数")
+                   
+                if shares_text == "收藏":
+                    shares = "0"
+                else:
+                    
+                    digits = re.findall(r'\d+', shares_text)
+                    shares = digits[0] if digits else "0"
+                print(f"最终收藏数: {shares}")
+            except Exception as e:
+                print(f"获取收藏数失败: {str(e)}")
+            
+            # 获取分享链接
+            video_url = ""
+            try:
+                share_btn = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "//android.widget.Button[contains(@content-desc, '分享')]"
+                    ))
+                )
+                share_btn.click()
+                time.sleep(1)
+                
+                # 先定位到指定的LinearLayout元素
+                target_element = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "//android.widget.LinearLayout[@resource-id='com.xingin.xhs:id/-']/android.widget.LinearLayout"
+                    ))
+                )
+                
+                # 在target_element上向左滑动半个屏幕宽度
+                element_location = target_element.location
+                element_size = target_element.size
+                
+                # 计算元素中心点
+                element_center_x = element_location['x'] + element_size['width'] / 2
+                element_center_y = element_location['y'] + element_size['height'] / 2
+                
+                # 获取屏幕宽度用于计算滑动距离
+                screen_size = self.driver.get_window_size()
+                swipe_distance = screen_size['width'] * 0.5  # 半个屏幕宽度
+                
+                # 在元素上向左滑动
+                start_x = element_center_x + swipe_distance / 2
+                end_x = element_center_x - swipe_distance / 2
+                
+                self.driver.swipe(start_x, element_center_y, end_x, element_center_y, 500)
+                time.sleep(1)
+                
+                # 然后点击复制链接按钮
+                copy_link_btn = WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "//android.widget.Button[@content-desc='复制链接']"
+                    ))
+                )
+                copy_link_btn.click()
+                time.sleep(1)
+                
+                clipboard_data = self.driver.get_clipboard_text()
+                share_text = clipboard_data.strip()
+                
+                url_start = share_text.find('http://')
+                if url_start == -1:
+                    url_start = share_text.find('https://')
+                url_end = share_text.find('，', url_start) if url_start != -1 else -1
+                
+                if url_start != -1:
+                    video_url = share_text[url_start:url_end] if url_end != -1 else share_text[url_start:]
+                    print(f"提取到视频URL: {video_url}")
+                    video_url = self.get_redirect_url(video_url)
+                    print(f"重定向后的视频URL: {video_url}")
+                else:
+                    video_url = "未知"
+                    print(f"未能从分享链接中提取URL")
+            except Exception as e:
+                print(f"获取分享链接失败: {str(e)}")
+                video_url = "未知"
+            
+            video_data = {
+                "title": video_title,
+                "author": author.replace("作者", "").strip(),
+                "likes": int(likes),
+                "comments": int(comments),
+                "shares": int(shares),
+                "video_url": video_url,
+                "collect_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "content_type": "video"
+            }
+            
+            print(f"获取视频数据: {video_data}")
+            return video_data
+            
+        except Exception as e:
+            import traceback
+            print(f"获取视频内容失败: {str(e)}")
+            print("异常堆栈信息:")
+            print(traceback.format_exc())
+            self.print_all_elements()
+            return {
+                "title": video_title_and_text,
+                "error": str(e),
+                "url": "",
+                "collect_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "content_type": "video"
+            }
+
     
 #改动
     def scroll_down(self):
@@ -1537,6 +1920,8 @@ class XHSOperator:
             time.sleep(1)  # 等待内容加载
         except Exception as e:
             print(f"页面滑动失败: {str(e)}")
+            time.sleep(1)  # 等待一段时间后重试
+            self.scroll_down()  # 递归调用重试
             raise
     
            
@@ -2665,7 +3050,7 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="ZY22GS335P",
+        device_id="5b75daec",
         # system_port=8200
     )
 
@@ -2711,83 +3096,96 @@ if __name__ == "__main__":
         #     print("-" * 50)
 
         # 3 测试检查未回复私信功能
-        print("\n开始测试检查未回复私信功能...")
-        unreplied_result = xhs.check_unreplied_messages()
+        # print("\n开始测试检查未回复私信功能...")
+        # unreplied_result = xhs.check_unreplied_messages()
         
-        print(f"\n未回复私信检查结果:")
-        print(f"检查时间: {unreplied_result.get('check_time', 'N/A')}")
-        print(f"未回复总数: {unreplied_result.get('total_unreplied', 0)}")
-        print(f"涉及用户数: {len(unreplied_result.get('unreplied_users', []))}")
+        # print(f"\n未回复私信检查结果:")
+        # print(f"检查时间: {unreplied_result.get('check_time', 'N/A')}")
+        # print(f"未回复总数: {unreplied_result.get('total_unreplied', 0)}")
+        # print(f"涉及用户数: {len(unreplied_result.get('unreplied_users', []))}")
         
-        if unreplied_result.get('error'):
-            print(f"检查过程中出现错误: {unreplied_result['error']}")
+        # if unreplied_result.get('error'):
+        #     print(f"检查过程中出现错误: {unreplied_result['error']}")
         
-        unreplied_users = unreplied_result.get('unreplied_users', [])
-        if unreplied_users:
-            print("\n未回复私信详情:")
-            for i, user_info in enumerate(unreplied_users, 1):
-                print(f"  {i}. 用户: {user_info.get('username', 'N/A')}")
-                print(f"     类型: {user_info.get('message_type', 'N/A')}")
-                print("-" * 30)
-        else:
-            print("\n没有发现未回复的私信")
+        # unreplied_users = unreplied_result.get('unreplied_users', [])
+        # if unreplied_users:
+        #     print("\n未回复私信详情:")
+        #     for i, user_info in enumerate(unreplied_users, 1):
+        #         print(f"  {i}. 用户: {user_info.get('username', 'N/A')}")
+        #         print(f"     类型: {user_info.get('message_type', 'N/A')}")
+        #         print("-" * 30)
+        # else:
+        #     print("\n没有发现未回复的私信")
         
-        # 验证Airflow Variable存储结果（多设备格式）
-        try:
+        # # 验证Airflow Variable存储结果（多设备格式）
+        # try:
             
-            stored_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=None, deserialize_json=True)
-            if stored_data and isinstance(stored_data, list):
-                print("\nAirflow Variable存储验证（多设备格式）:")
-                print(f"总设备数: {len(stored_data)}")
+        #     stored_data = Variable.get("XHS_DEVICES_MSG_LIST", default_var=None, deserialize_json=True)
+        #     if stored_data and isinstance(stored_data, list):
+        #         print("\nAirflow Variable存储验证（多设备格式）:")
+        #         print(f"总设备数: {len(stored_data)}")
                 
-                # 查找当前设备的数据
-                current_device_data = None
-                for device_item in stored_data:
-                    if device_item.get("device_id") == xhs.device_id:
-                        current_device_data = device_item.get("data", {})
-                        break
+        #         # 查找当前设备的数据
+        #         current_device_data = None
+        #         for device_item in stored_data:
+        #             if device_item.get("device_id") == xhs.device_id:
+        #                 current_device_data = device_item.get("data", {})
+        #                 break
                 
-                if current_device_data:
-                    print(f"当前设备 {xhs.device_id} 的存储数据:")
-                    print(f"  存储时间: {current_device_data.get('check_time', 'N/A')}")
-                    print(f"  存储的未回复总数: {current_device_data.get('total_unreplied', 0)}")
-                    print(f"  存储的涉及用户数: {len(current_device_data.get('unreplied_users', []))}")
-                    print("存储成功!")
-                else:
-                    print(f"未找到设备 {xhs.device_id} 的存储数据")
+        #         if current_device_data:
+        #             print(f"当前设备 {xhs.device_id} 的存储数据:")
+        #             print(f"  存储时间: {current_device_data.get('check_time', 'N/A')}")
+        #             print(f"  存储的未回复总数: {current_device_data.get('total_unreplied', 0)}")
+        #             print(f"  存储的涉及用户数: {len(current_device_data.get('unreplied_users', []))}")
+        #             print("存储成功!")
+        #         else:
+        #             print(f"未找到设备 {xhs.device_id} 的存储数据")
                     
-                # 显示所有设备的概览
-                print("\n所有设备概览:")
-                for i, device_item in enumerate(stored_data, 1):
-                    device_id = device_item.get("device_id", "未知")
-                    device_data = device_item.get("data", {})
-                    unreplied_count = device_data.get("total_unreplied", 0)
-                    check_time = device_data.get("check_time", "未知")
-                    print(f"  {i}. 设备 {device_id}: {unreplied_count} 条未回复, 检查时间: {check_time}")
-            else:
-                print("\n未找到有效的Airflow Variable存储数据")
-        except Exception as e:
-            print(f"\n注意: 无法验证Airflow Variable存储 (可能在非Airflow环境运行): {str(e)}")
+        #         # 显示所有设备的概览
+        #         print("\n所有设备概览:")
+        #         for i, device_item in enumerate(stored_data, 1):
+        #             device_id = device_item.get("device_id", "未知")
+        #             device_data = device_item.get("data", {})
+        #             unreplied_count = device_data.get("total_unreplied", 0)
+        #             check_time = device_data.get("check_time", "未知")
+        #             print(f"  {i}. 设备 {device_id}: {unreplied_count} 条未回复, 检查时间: {check_time}")
+        #     else:
+        #         print("\n未找到有效的Airflow Variable存储数据")
+        # except Exception as e:
+        #     print(f"\n注意: 无法验证Airflow Variable存储 (可能在非Airflow环境运行): {str(e)}")
             
-        print("-" * 50)
+        # print("-" * 50)
 
         # 4 测试根据评论者id和评论内容定位该条评论并回复（已注释）
         # note_url = "http://xhslink.com/a/obpDqQ0omk7db"
         # author = "爱吃的jerry"  # 替换为实际的评论者ID
         # comment_content = "生日还是在那里过的"  # 替换为实际的评论内容
         # reply_content = "哈哈哈"  # 替换为要回复的内容
-        # 
-        # print("\n开始测试评论回复功能...")
-        # success = xhs.reply_to_msg()
-        # 
-        # if success:
-        #     print("评论回复成功！")
-        # else:
-        #     print("评论回复失败！")
-        #     
-        # print("-" * 50)
-
-
+        
+        # 测试搜集笔记信息
+        print("\n开始测试搜集笔记信息...")
+        
+        # 测试搜索关键词视频并收集信息
+        print("\n=== 测试视频搜索和收集 ===")
+        videos = xhs.search_keyword_of_video('小猫老师', max_videos=100)
+        
+        if videos:
+            print(f"\n共收集到 {len(videos)} 个视频:")
+            for i, video in enumerate(videos, 1):
+                print(f"\n视频 {i}:")
+                print(f"标题: {video.get('title', 'N/A')}")
+                print(f"作者: {video.get('author', 'N/A')}")
+                print(f"点赞数: {video.get('likes', 'N/A')}")
+                print(f"评论数: {video.get('comments', 'N/A')}")
+                print(f"收藏数: {video.get('shares', 'N/A')}")
+                print(f"视频URL: {video.get('video_url', 'N/A')}")
+                print(f"收集时间: {video.get('collect_time', 'N/A')}")
+                print(f"内容类型: {video.get('content_type', 'N/A')}")
+                print("-" * 50)
+        else:
+            print("未收集到视频信息")
+        
+    
     except Exception as e:
         print(f"运行出错: {str(e)}")
         import traceback
