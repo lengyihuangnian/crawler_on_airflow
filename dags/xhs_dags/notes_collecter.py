@@ -94,7 +94,7 @@ def save_notes_to_db(notes: list) -> None:
 def get_time_range():
     from datetime import datetime, timedelta
     
-    current_time = datetime.utcnow() - timedelta(seconds=10)
+    current_time = datetime.utcnow() - timedelta(seconds=30)
     twelve_hours_ago = current_time - timedelta(hours=12)
     
     current_time_iso = current_time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
@@ -159,9 +159,10 @@ def clear_dag_run_status(dag_id,dag_run_id):
 
     url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/{dag_id}/dagRuns/{dag_run_id}"
     data = {"state": "failed"}
+    print(f'已清除{dag_run_id}的运行状态',response.text)
     response = requests.patch(url, headers=headers,  json=data)
 
-    print(f'已清除{dag_run_id}的运行状态',response.text)
+    
     print(response)
 
 def deal_with_conflict(email):
