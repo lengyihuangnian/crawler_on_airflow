@@ -213,7 +213,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
     max_notes = int(context['dag_run'].conf.get('max_notes'))
     email = context['dag_run'].conf.get('email')
     # 处理冲突
-    deal_with_conflict(email)
+    # deal_with_conflict(email)
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     
