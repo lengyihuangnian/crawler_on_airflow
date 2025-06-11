@@ -36,8 +36,10 @@ def btoa(string_to_encode):
     return encoded_bytes.decode('utf-8')
 
 
-def get_dag_info(dag_id,email):
+def get_dag_info(**context):
     """获取DAG运行信息"""
+    email = context['dag_run'].conf.get('email')
+    
     time_range = get_time_range()
     headers = {
         'Authorization': f'Basic {btoa(f"claude89757:claude@airflow")}',
@@ -53,7 +55,7 @@ def get_dag_info(dag_id,email):
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": "\"Windows\""
     }
-    url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/{dag_id}/dagRuns"
+    url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/notes_collector/dagRuns"
     params = {
         "limit": "100",
         "start_date_gte": time_range['twelve_hours_ago'],
