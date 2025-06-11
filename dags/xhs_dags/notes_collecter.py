@@ -193,7 +193,7 @@ def deal_with_conflict(email):
         print(i['conf']['email'], i['dag_run_id'], i['state'])
         if i['state'] == 'running' and i['conf']['email'] == email:
             # 清除任务状态，解决appium冲突
-            clear_task_status(i['dag_id'], i['dag_run_id'])
+            # clear_task_status(i['dag_id'], i['dag_run_id'])
             clear_dag_run_status(i['dag_id'], i['dag_run_id'])
             time.sleep(15)  # 等待1秒，确保状态清除完成
 
