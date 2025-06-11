@@ -159,9 +159,9 @@ def clear_dag_run_status(dag_id,dag_run_id):
 
     url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/{dag_id}/dagRuns/{dag_run_id}"
     data = {"state": "failed"}
-    print(f'已清除{dag_run_id}的运行状态',response.text)
+    print(f'已清除{dag_run_id}的运行状态')
     response = requests.patch(url, headers=headers,  json=data)
-
+    print(response.text)
     
     print(response)
 
