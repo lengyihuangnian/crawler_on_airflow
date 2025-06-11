@@ -35,11 +35,59 @@ def btoa(string_to_encode):
     # 转换回字符串
     return encoded_bytes.decode('utf-8')
 
+#清除task状态
+def clear_task_status(dag_id,dag_run_id):
+    headers = {
+    'Authorization': f'Basic {btoa(f"claude89757:claude@airflow")}',
+    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+    "Connection": "keep-alive",
+    "Content-Type": "application/json",
+    "Origin": "https://marketing.lucyai.sale",
+    "Referer": "https://marketing.lucyai.sale/airflow/api/v1/ui/",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0",
+    "accept": "application/json",
+    "sec-ch-ua": "\"Microsoft Edge\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\""
+    }
 
-def get_dag_info(**context):
+    url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/{dag_id}/dagRuns/{dag_run_id}/clear"
+    data = {"dry_run": False}
+    response = requests.post(url, headers=headers,  json=data)
+
+    print(response.text)
+    print(response)
+#清除run'dag状态
+def clear_dag_run_status(dag_id,dag_run_id):
+    headers = {
+        'Authorization': f'Basic {btoa(f"claude89757:claude@airflow")}',
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+        "Connection": "keep-alive",
+        "Content-Type": "application/json",
+        "Origin": "https://marketing.lucyai.sale",
+        "Referer": "https://marketing.lucyai.sale/airflow/api/v1/ui/",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0",
+        "accept": "application/json",
+        "sec-ch-ua": "\"Microsoft Edge\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\""
+    }
+
+    url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/{dag_id}/dagRuns/{dag_run_id}"
+    data = {"state": "failed"}
+    response = requests.patch(url, headers=headers,  json=data)
+
+    print(response.text)
+    print(response)
+
+def deal_with_conflict(email):
     """获取DAG运行信息"""
-    email = context['dag_run'].conf.get('email')
-    
     time_range = get_time_range()
     headers = {
         'Authorization': f'Basic {btoa(f"claude89757:claude@airflow")}',
@@ -65,7 +113,10 @@ def get_dag_info(**context):
 
     for i in response['dag_runs']:
         print(i['conf']['email'], i['dag_run_id'], i['state'])
-        
+        if i['state'] == 'running' and i['conf']['email'] == email:
+            # 清除任务状态，解决appium冲突
+            clear_task_status(i['dag_id'], i['dag_run_id'])
+            clear_dag_run_status(i['dag_id'], i['dag_run_id'])
 
 with DAG(
     dag_id='test_dag',
@@ -80,7 +131,7 @@ with DAG(
     for index in range(10):
         PythonOperator(
             task_id=f'test_dag{index}',
-            python_callable=get_dag_info,
+            python_callable=deal_with_conflict,
             op_kwargs={
                 'device_index': index,
             },
