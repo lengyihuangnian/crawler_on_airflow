@@ -16,50 +16,6 @@ import requests
 from utils.xhs_appium import XHSOperator
 
 
-class XHSPythonOperator(PythonOperator):
-    """
-    自定义的PythonOperator，支持在任务被取消或失败时自动关闭Appium驱动器
-    """
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.xhs_operator = None
-    
-    def execute(self, context):
-        """执行任务，并保存XHS操作器实例的引用"""
-        # 在context中添加一个回调函数，用于设置xhs_operator引用
-        def set_xhs_operator(xhs_op):
-            self.xhs_operator = xhs_op
-        
-        context['set_xhs_operator'] = set_xhs_operator
-        
-        try:
-            return super().execute(context)
-        except Exception as e:
-            # 如果执行过程中出现异常，也要确保关闭驱动器
-            self._cleanup_xhs_operator()
-            raise
-    
-    def on_kill(self) -> None:
-        """
-        当任务被取消、清除或标记为失败时执行清理操作
-        """
-        self.log.info("任务被取消或失败，正在执行Appium驱动器清理操作...")
-        self._cleanup_xhs_operator()
-        super().on_kill()
-    
-    def _cleanup_xhs_operator(self):
-        """
-        清理XHS操作器资源
-        """
-        if self.xhs_operator:
-            try:
-                self.xhs_operator.close()
-                self.log.info("Appium驱动器已成功关闭")
-            except Exception as e:
-                self.log.error(f"关闭Appium驱动器时发生错误: {str(e)}")
-            finally:
-                self.xhs_operator = None
 
 def save_notes_to_db(notes: list) -> None:
     """
@@ -470,11 +426,12 @@ with DAG(
 ) as dag:
 
     for index in range(10):
-        XHSPythonOperator(
+        PythonOperator(
             task_id=f'collect_xhs_notes_{index}',
             python_callable=collect_xhs_notes,
             op_kwargs={
                 'device_index': index,
             },
             provide_context=True,
+           
         )
