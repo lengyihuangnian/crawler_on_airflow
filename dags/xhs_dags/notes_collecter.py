@@ -138,7 +138,7 @@ def save_notes_to_db(notes: list) -> None:
 def get_time_range():
     from datetime import datetime, timedelta
     
-    current_time = datetime.utcnow()
+    current_time = datetime.utcnow() - timedelta(seconds=30)
     twelve_hours_ago = current_time - timedelta(hours=12)
     
     current_time_iso = current_time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
