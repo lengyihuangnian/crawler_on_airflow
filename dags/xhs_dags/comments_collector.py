@@ -274,5 +274,5 @@ with DAG(
             },
             provide_context=True,
             retries=3,
-            retry_delay=timedelta(minutes=5),
+            retry_delay=timedelta(minutes=5)
         )

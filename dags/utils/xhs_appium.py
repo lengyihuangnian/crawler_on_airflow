@@ -196,10 +196,8 @@ class XHSOperator:
             
         except Exception as e:
             print(f"搜索或筛选失败: {str(e)}")
-            time.sleep(5)
-            self.search_keyword(keyword)
             raise
-
+        
 
     def search_keyword_of_video(self, keyword, max_videos=10):
         """
