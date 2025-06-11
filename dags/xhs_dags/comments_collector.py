@@ -272,6 +272,5 @@ with DAG(
             op_kwargs={
                 'device_index': index,
             },
-            provide_context=True,
-    
+            provide_context=True
         )
