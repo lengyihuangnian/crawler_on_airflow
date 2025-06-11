@@ -1,7 +1,7 @@
 from datetime import datetime
 import time
 import random
-
+from datetime import timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models.variable import Variable
@@ -381,4 +381,6 @@ with DAG(
                 'device_index': index,
             },
             provide_context=True,
+            retries=3,
+            retry_delay=timedelta(seconds=5)
         )
