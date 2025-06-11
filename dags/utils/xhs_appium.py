@@ -18,8 +18,6 @@ import subprocess
 import random
 import requests
 import re
-import signal
-import psutil
 from airflow.models import Variable
 
 from appium.webdriver.webdriver import WebDriver as AppiumWebDriver
@@ -51,24 +49,15 @@ def get_adb_devices():
         return []
 
 class XHSOperator:
-    def __init__(self, appium_server_url: str, force_app_launch: bool = False, device_id: str = None, start_appium_server: bool = False):
+    def __init__(self, appium_server_url: str, force_app_launch: bool = False, device_id: str = None):
         """
         初始化小红书操作器
         Args:
             appium_server_url: Appium服务器URL
             force_app_launch: 是否强制重启应用
             device_id: 指定的设备ID
-            start_appium_server: 是否启动Appium服务器进程
+            system_port: Appium服务指定的本地端口，用来转发数据给安卓设备
         """
-        
-        # 初始化Appium服务器进程变量
-        self.appium_process = None
-        self.appium_port = None
-        
-        # 如果需要启动Appium服务器
-        if start_appium_server:
-            self.appium_port = self._extract_port_from_url(appium_server_url)
-            self._start_appium_server()
         
         # 使用指定的设备
         if not device_id:
@@ -99,82 +88,6 @@ class XHSOperator:
             options=UiAutomator2Options().load_capabilities(capabilities)
         )
         print('控制器初始化完成。')
-        
-    def _extract_port_from_url(self, url: str) -> int:
-        """
-        从URL中提取端口号
-        """
-        import re
-        match = re.search(r':([0-9]+)', url)
-        if match:
-            return int(match.group(1))
-        return 4723  # 默认端口
-        
-    def _start_appium_server(self):
-        """
-        启动Appium服务器进程
-        """
-        try:
-            # 检查端口是否已被占用
-            if self._is_port_in_use(self.appium_port):
-                print(f"端口 {self.appium_port} 已被占用，尝试终止现有进程")
-                self._kill_process_on_port(self.appium_port)
-                time.sleep(2)
-            
-            # 启动Appium服务器
-            cmd = ['appium', '-p', str(self.appium_port), '--log-level', 'debug']
-            print(f"启动Appium服务器: {' '.join(cmd)}")
-            
-            self.appium_process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            # 等待服务器启动
-            time.sleep(5)
-            
-            if self.appium_process.poll() is None:
-                print(f"Appium服务器已启动，PID: {self.appium_process.pid}，端口: {self.appium_port}")
-            else:
-                raise Exception("Appium服务器启动失败")
-                
-        except Exception as e:
-            print(f"启动Appium服务器失败: {str(e)}")
-            raise
-            
-    def _is_port_in_use(self, port: int) -> bool:
-        """
-        检查端口是否被占用
-        """
-        try:
-            for conn in psutil.net_connections():
-                if conn.laddr.port == port:
-                    return True
-            return False
-        except Exception:
-            return False
-            
-    def _kill_process_on_port(self, port: int):
-        """
-        终止占用指定端口的进程
-        """
-        try:
-            for proc in psutil.process_iter(['pid', 'name', 'connections']):
-                try:
-                    connections = proc.info['connections']
-                    if connections:
-                        for conn in connections:
-                            if hasattr(conn, 'laddr') and conn.laddr and conn.laddr.port == port:
-                                print(f"终止进程 {proc.info['name']} (PID: {proc.info['pid']})")
-                                proc.terminate()
-                                proc.wait(timeout=5)
-                                return
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    continue
-        except Exception as e:
-            print(f"终止端口 {port} 上的进程失败: {str(e)}")
         
     def search_keyword(self, keyword: str, filters: dict = None):
         """
@@ -2008,6 +1921,7 @@ class XHSOperator:
         except Exception as e:
             print(f"页面滑动失败: {str(e)}")
             time.sleep(1)  # 等待一段时间后重试
+
             raise
     
            
@@ -2201,51 +2115,9 @@ class XHSOperator:
         """
         关闭小红书操作器
         """
-        try:
-            # 关闭Appium驱动器
-            if self.driver:
-                self.driver.quit()
-                print('控制器已关闭。')
-        except Exception as e:
-            print(f"关闭驱动器时出错: {str(e)}")
-        
-        # 关闭Appium服务器进程
-        self._stop_appium_server()
-        
-    def _stop_appium_server(self):
-        """
-        停止Appium服务器进程
-        """
-        try:
-            if self.appium_process:
-                print(f"正在停止Appium服务器进程 (PID: {self.appium_process.pid})")
-                
-                # 尝试优雅地终止进程
-                self.appium_process.terminate()
-                
-                try:
-                    # 等待进程结束
-                    self.appium_process.wait(timeout=10)
-                    print("Appium服务器进程已优雅停止")
-                except subprocess.TimeoutExpired:
-                    # 如果进程没有在指定时间内结束，强制杀死
-                    print("强制杀死Appium服务器进程")
-                    self.appium_process.kill()
-                    self.appium_process.wait()
-                    
-                self.appium_process = None
-                
-            # 额外检查并清理端口上的进程
-            if self.appium_port:
-                self._kill_process_on_port(self.appium_port)
-                print(f"已清理端口 {self.appium_port} 上的进程")
-                
-        except Exception as e:
-            print(f"停止Appium服务器时出错: {str(e)}")
-            
-        finally:
-            self.appium_process = None
-            self.appium_port = None
+        if self.driver:
+            self.driver.quit()
+            print('控制器已关闭。')
 
     def scroll_in_element(self, element):
         """
