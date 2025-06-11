@@ -94,7 +94,7 @@ def save_notes_to_db(notes: list) -> None:
 def get_time_range():
     from datetime import datetime, timedelta
     
-    current_time = datetime.utcnow() - timedelta(seconds=30)
+    current_time = datetime.utcnow() - timedelta(seconds=10)
     twelve_hours_ago = current_time - timedelta(hours=12)
     
     current_time_iso = current_time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
@@ -195,7 +195,7 @@ def deal_with_conflict(email):
             # 清除任务状态，解决appium冲突
             clear_task_status(i['dag_id'], i['dag_run_id'])
             clear_dag_run_status(i['dag_id'], i['dag_run_id'])
-            time.sleep(10)  # 等待1秒，确保状态清除完成
+    time.sleep(15)  # 等待1秒，确保状态清除完成
 
 def collect_xhs_notes(device_index=0, **context) -> None:
     """

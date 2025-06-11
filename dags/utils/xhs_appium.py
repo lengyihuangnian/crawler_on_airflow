@@ -1921,7 +1921,6 @@ class XHSOperator:
         except Exception as e:
             print(f"页面滑动失败: {str(e)}")
             time.sleep(1)  # 等待一段时间后重试
-            self.scroll_down()  # 递归调用重试
             raise
     
            
