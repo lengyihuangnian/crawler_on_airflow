@@ -161,7 +161,7 @@ def clear_dag_run_status(dag_id,dag_run_id):
     data = {"state": "failed"}
     response = requests.patch(url, headers=headers,  json=data)
 
-    print(response.text)
+    print(f'已清除{dag_run_id}的运行状态',response.text)
     print(response)
 
 def deal_with_conflict(email):
