@@ -49,15 +49,14 @@ def get_adb_devices():
         return []
 
 class XHSOperator:
-    def __init__(self, appium_server_url: str, force_app_launch: bool = False, device_id: str = None, max_retries: int = 3, retry_delay: int = 5):
+    def __init__(self, appium_server_url: str, force_app_launch: bool = False, device_id: str = None):
         """
         初始化小红书操作器
         Args:
             appium_server_url: Appium服务器URL
             force_app_launch: 是否强制重启应用
             device_id: 指定的设备ID
-            max_retries: 最大重试次数，默认3次
-            retry_delay: 重试间隔时间（秒），默认5秒
+            system_port: Appium服务指定的本地端口，用来转发数据给安卓设备
         """
         
         # 使用指定的设备
@@ -74,7 +73,7 @@ class XHSOperator:
             appPackage='com.xingin.xhs',
             appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
             noReset=True,  # 保留应用数据
-            fullReset=False,  # 不完全重置
+            fullReset=False,  # 完全重置
             forceAppLaunch=force_app_launch,  # 是否强制重启应用
             autoGrantPermissions=True,  # 自动授予权限
             newCommandTimeout=60,  # 命令超时时间
@@ -83,28 +82,12 @@ class XHSOperator:
         )
 
         print('当前capabilities配置:', json.dumps(capabilities, ensure_ascii=False, indent=2))
-        
-        # 添加重试机制
-        last_exception = None
-        for attempt in range(max_retries + 1):
-            try:
-                print(f'正在初始化小红书控制器... (尝试 {attempt + 1}/{max_retries + 1})', appium_server_url)
-                self.driver: AppiumWebDriver = AppiumWebDriver(
-                    command_executor=appium_server_url,
-                    options=UiAutomator2Options().load_capabilities(capabilities)
-                )
-                print('控制器初始化完成。')
-                return  # 成功初始化，退出重试循环
-            except Exception as e:
-                last_exception = e
-                print(f'初始化失败 (尝试 {attempt + 1}/{max_retries + 1}): {str(e)}')
-                
-                if attempt < max_retries:  # 如果还有重试机会
-                    print(f'等待 {retry_delay} 秒后重试...')
-                    time.sleep(retry_delay)
-                else:
-                    print('已达到最大重试次数，初始化失败')
-                    raise Exception(f'Appium连接失败，已重试{max_retries}次: {str(last_exception)}')
+        print('正在初始化小红书控制器...',appium_server_url)
+        self.driver: AppiumWebDriver = AppiumWebDriver(
+            command_executor=appium_server_url,
+            options=UiAutomator2Options().load_capabilities(capabilities)
+        )
+        print('控制器初始化完成。')
         
     def search_keyword(self, keyword: str, filters: dict = None):
         """
@@ -335,68 +318,8 @@ class XHSOperator:
                                         print(f"元素位置过高，位于屏幕{element_y/screen_height:.2%}处，跳过点击")
                                         continue
                                 except Exception as e:
-                                    error_msg = str(e)
-                                    print(f"检测元素位置失败: {error_msg}")
-                                    # 检查是否是UiAutomator2服务器崩溃的错误
-                                    if "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                                        print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
-                                        try:
-                                            # 首先尝试重新启动应用
-                                            self.driver.activate_app('com.xingin.xhs')
-                                            time.sleep(3)
-                                            print("应用重启完成")
-                                        except Exception as restart_error:
-                                            print(f"重新启动应用失败: {str(restart_error)}")
-                                            # 如果重启应用失败，尝试重新创建driver连接
-                                            try:
-                                                print("尝试重新创建driver连接...")
-                                                # 保存当前的capabilities
-                                                current_capabilities = self.driver.capabilities
-                                                # 关闭当前连接
-                                                try:
-                                                    self.driver.quit()
-                                                except:
-                                                    pass
-                                                time.sleep(2)
-                                                
-                                                # 重新创建连接
-                                                from appium import webdriver as AppiumWebDriver
-                                                from appium.options.android import UiAutomator2Options
-                                                
-                                                capabilities = dict(
-                                                    platformName='Android',
-                                                    automationName='uiautomator2',
-                                                    deviceName=current_capabilities.get('deviceName'),
-                                                    udid=current_capabilities.get('udid'),
-                                                    appPackage='com.xingin.xhs',
-                                                    appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
-                                                    noReset=True,
-                                                    fullReset=False,
-                                                    forceAppLaunch=True,  # 强制重启应用
-                                                    autoGrantPermissions=True,
-                                                    newCommandTimeout=60,
-                                                    unicodeKeyboard=False,
-                                                    resetKeyboard=False,
-                                                )
-                                                
-                                                # 获取当前的appium服务器URL
-                                                command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
-                                                
-                                                self.driver = AppiumWebDriver(
-                                                    command_executor=command_executor,
-                                                    options=UiAutomator2Options().load_capabilities(capabilities)
-                                                )
-                                                print("driver连接重新创建成功")
-                                                time.sleep(3)
-                                            except Exception as recreate_error:
-                                                print(f"重新创建driver连接失败: {str(recreate_error)}")
-                                    # 直接点击元素，不检查位置
-                                    try:
-                                        title_element.click()
-                                        time.sleep(0.5)
-                                    except:
-                                        print("点击元素也失败，跳过")
-                                        time.sleep(0.5)
+                                    print(f"检测元素位置失败: {str(e)}，不执行点击")
+                                    time.sleep(0.5)
                                 
                                 # 获取视频数据
                                 video_data = self.get_video_note_data(video_title_and_text)
@@ -1914,37 +1837,15 @@ class XHSOperator:
                 element_center_y = element_location['y'] + element_size['height'] / 2
                 
                 # 获取屏幕宽度用于计算滑动距离
-                try:
-                    screen_size = self.driver.get_window_size()
-                    swipe_distance = screen_size['width'] * 0.5  # 半个屏幕宽度
-                    
-                    # 在元素上向左滑动
-                    start_x = element_center_x + swipe_distance / 2
-                    end_x = element_center_x - swipe_distance / 2
-                    
-                    self.driver.swipe(start_x, element_center_y, end_x, element_center_y, 500)
-                    time.sleep(1)
-                except Exception as e:
-                    error_msg = str(e)
-                    print(f"获取屏幕尺寸或滑动失败: {error_msg}")
-                    # 检查是否是UiAutomator2服务器崩溃的错误
-                    if "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                        print("检测到UiAutomator2服务器崩溃，尝试重新启动应用...")
-                        try:
-                            self.driver.activate_app('com.xingin.xhs')
-                            time.sleep(2)
-                        except:
-                            print("重新启动应用失败")
-                    # 使用默认滑动距离
-                    try:
-                        swipe_distance = 200  # 默认滑动距离
-                        start_x = element_center_x + swipe_distance / 2
-                        end_x = element_center_x - swipe_distance / 2
-                        self.driver.swipe(start_x, element_center_y, end_x, element_center_y, 500)
-                        time.sleep(1)
-                    except:
-                        print("使用默认滑动距离也失败，跳过滑动操作")
-                        time.sleep(1)
+                screen_size = self.driver.get_window_size()
+                swipe_distance = screen_size['width'] * 0.5  # 半个屏幕宽度
+                
+                # 在元素上向左滑动
+                start_x = element_center_x + swipe_distance / 2
+                end_x = element_center_x - swipe_distance / 2
+                
+                self.driver.swipe(start_x, element_center_y, end_x, element_center_y, 500)
+                time.sleep(1)
                 
                 # 然后点击复制链接按钮
                 copy_link_btn = WebDriverWait(self.driver, 5).until(
@@ -2006,97 +1907,23 @@ class XHSOperator:
 
     
 #改动
-    def scroll_down(self, max_retries=3):
+    def scroll_down(self):
         """
         向下滑动页面
-        Args:
-            max_retries: 最大重试次数，默认3次
         """
-        for attempt in range(max_retries + 1):
-            try:
-                screen_size = self.driver.get_window_size()
-                start_x = screen_size['width'] * 0.5
-                start_y = screen_size['height'] * 0.8
-                end_y = screen_size['height'] * 0.35
-                
-                self.driver.swipe(start_x, start_y, start_x, end_y, 800)
-                time.sleep(1)  # 等待内容加载
-                return  # 成功执行，退出重试循环
-            except Exception as e:
-                error_msg = str(e)
-                print(f"页面滑动失败 (尝试 {attempt + 1}/{max_retries + 1}): {error_msg}")
-                
-                # 检查是否是UiAutomator2服务器崩溃的错误
-                if "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                    print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
-                    try:
-                        # 首先尝试重新启动应用
-                        self.driver.activate_app('com.xingin.xhs')
-                        time.sleep(3)
-                        print("应用重启完成")
-                    except Exception as restart_error:
-                        print(f"重新启动应用失败: {str(restart_error)}")
-                        # 如果重启应用失败，尝试重新创建driver连接
-                        try:
-                            print("尝试重新创建driver连接...")
-                            # 保存当前的capabilities
-                            current_capabilities = self.driver.capabilities
-                            # 关闭当前连接
-                            try:
-                                self.driver.quit()
-                            except:
-                                pass
-                            time.sleep(2)
-                            
-                            # 重新创建连接
-                            from appium import webdriver as AppiumWebDriver
-                            from appium.options.android import UiAutomator2Options
-                            
-                            capabilities = dict(
-                                platformName='Android',
-                                automationName='uiautomator2',
-                                deviceName=current_capabilities.get('deviceName'),
-                                udid=current_capabilities.get('udid'),
-                                appPackage='com.xingin.xhs',
-                                appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
-                                noReset=True,
-                                fullReset=False,
-                                forceAppLaunch=True,  # 强制重启应用
-                                autoGrantPermissions=True,
-                                newCommandTimeout=60,
-                                unicodeKeyboard=False,
-                                resetKeyboard=False,
-                            )
-                            
-                            # 获取当前的appium服务器URL
-                            command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
-                            
-                            self.driver = AppiumWebDriver(
-                                command_executor=command_executor,
-                                options=UiAutomator2Options().load_capabilities(capabilities)
-                            )
-                            print("driver连接重新创建成功")
-                            time.sleep(3)
-                        except Exception as recreate_error:
-                            print(f"重新创建driver连接失败: {str(recreate_error)}")
-                
-                if attempt < max_retries:
-                    print(f"等待2秒后重试...")
-                    time.sleep(2)
-                else:
-                    print("已达到最大重试次数，尝试使用默认参数进行滑动")
-                    try:
-                        # 使用默认屏幕尺寸进行滑动（假设1080x1920分辨率）
-                        default_start_x = 540  # 屏幕中央
-                        default_start_y = 1536  # 屏幕高度的80%
-                        default_end_y = 672    # 屏幕高度的35%
-                        
-                        self.driver.swipe(default_start_x, default_start_y, default_start_x, default_end_y, 800)
-                        print("使用默认参数滑动成功")
-                        time.sleep(1)
-                    except Exception as fallback_error:
-                        print(f"默认参数滑动也失败: {str(fallback_error)}")
-                    return
+        try:
+            screen_size = self.driver.get_window_size()
+            start_x = screen_size['width'] * 0.5
+            start_y = screen_size['height'] * 0.8
+            end_y = screen_size['height'] * 0.35
+            
+            self.driver.swipe(start_x, start_y, start_x, end_y, 800)
+            time.sleep(1)  # 等待内容加载
+        except Exception as e:
+            print(f"页面滑动失败: {str(e)}")
+            time.sleep(1)  # 等待一段时间后重试
+
+            raise
     
            
     def return_to_home_page(self):
