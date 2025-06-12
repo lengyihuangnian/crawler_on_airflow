@@ -74,7 +74,7 @@ class XHSOperator:
             appPackage='com.xingin.xhs',
             appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
             noReset=True,  # 保留应用数据
-            fullReset=False,  # 不完全重置
+            fullReset=False,  # 完全重置
             forceAppLaunch=force_app_launch,  # 是否强制重启应用
             autoGrantPermissions=True,  # 自动授予权限
             newCommandTimeout=60,  # 命令超时时间
@@ -2632,7 +2632,135 @@ class XHSOperator:
                             print(f"解析单个评论失败: {str(e)}")
                             continue
                 except Exception as e:
-                    print(f"解析页面评论失败: {str(e)}")
+                    error_msg = str(e)
+                    print(f"解析页面评论失败: {error_msg}")
+                    
+                    # 检查是否是网络连接错误
+                    if "socket hang up" in error_msg or "Could not proxy command" in error_msg:
+                        print("检测到网络连接中断，尝试重新初始化连接...")
+                        try:
+                            # 首先尝试重新启动应用
+                            self.driver.activate_app('com.xingin.xhs')
+                            time.sleep(3)
+                            print("应用重启完成")
+                            # 重新打开帖子页面
+                            self.driver.get(full_url)
+                            time.sleep(2)
+                        except Exception as restart_error:
+                            print(f"重新启动应用失败: {str(restart_error)}")
+                            # 如果重启应用失败，尝试重新创建driver连接
+                            try:
+                                print("尝试重新创建driver连接...")
+                                # 保存当前的capabilities
+                                current_capabilities = self.driver.capabilities
+                                # 关闭当前连接
+                                try:
+                                    self.driver.quit()
+                                except:
+                                    pass
+                                time.sleep(2)
+                                
+                                # 重新创建连接
+                                from appium import webdriver as AppiumWebDriver
+                                from appium.options.android import UiAutomator2Options
+                                
+                                capabilities = dict(
+                                    platformName='Android',
+                                    automationName='uiautomator2',
+                                    deviceName=current_capabilities.get('deviceName'),
+                                    udid=current_capabilities.get('udid'),
+                                    appPackage='com.xingin.xhs',
+                                    appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
+                                    noReset=True,
+                                    fullReset=False,
+                                    forceAppLaunch=True,  # 强制重启应用
+                                    autoGrantPermissions=True,
+                                    newCommandTimeout=60,
+                                    unicodeKeyboard=False,
+                                    resetKeyboard=False,
+                                )
+                                
+                                # 获取当前的appium服务器URL
+                                command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
+                                
+                                self.driver = AppiumWebDriver(
+                                    command_executor=command_executor,
+                                    options=UiAutomator2Options().load_capabilities(capabilities)
+                                )
+                                print("driver连接重新创建成功")
+                                time.sleep(3)
+                                # 重新打开帖子页面
+                                self.driver.get(full_url)
+                                time.sleep(2)
+                            except Exception as recreate_error:
+                                print(f"重新创建driver连接失败: {str(recreate_error)}")
+                                # 如果所有恢复尝试都失败，返回已收集的评论
+                                print(f"网络连接恢复失败，返回已收集的 {len(all_comments)} 条评论")
+                                return all_comments
+                    
+                    # 检查是否是UiAutomator2服务器崩溃的错误
+                    elif "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
+                        print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
+                        try:
+                            # 首先尝试重新启动应用
+                            self.driver.activate_app('com.xingin.xhs')
+                            time.sleep(3)
+                            print("应用重启完成")
+                            # 重新打开帖子页面
+                            self.driver.get(full_url)
+                            time.sleep(2)
+                        except Exception as restart_error:
+                            print(f"重新启动应用失败: {str(restart_error)}")
+                            # 如果重启应用失败，尝试重新创建driver连接
+                            try:
+                                print("尝试重新创建driver连接...")
+                                # 保存当前的capabilities
+                                current_capabilities = self.driver.capabilities
+                                # 关闭当前连接
+                                try:
+                                    self.driver.quit()
+                                except:
+                                    pass
+                                time.sleep(2)
+                                
+                                # 重新创建连接
+                                from appium import webdriver as AppiumWebDriver
+                                from appium.options.android import UiAutomator2Options
+                                
+                                capabilities = dict(
+                                    platformName='Android',
+                                    automationName='uiautomator2',
+                                    deviceName=current_capabilities.get('deviceName'),
+                                    udid=current_capabilities.get('udid'),
+                                    appPackage='com.xingin.xhs',
+                                    appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
+                                    noReset=True,
+                                    fullReset=False,
+                                    forceAppLaunch=True,  # 强制重启应用
+                                    autoGrantPermissions=True,
+                                    newCommandTimeout=60,
+                                    unicodeKeyboard=False,
+                                    resetKeyboard=False,
+                                )
+                                
+                                # 获取当前的appium服务器URL
+                                command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
+                                
+                                self.driver = AppiumWebDriver(
+                                    command_executor=command_executor,
+                                    options=UiAutomator2Options().load_capabilities(capabilities)
+                                )
+                                print("driver连接重新创建成功")
+                                time.sleep(3)
+                                # 重新打开帖子页面
+                                self.driver.get(full_url)
+                                time.sleep(2)
+                            except Exception as recreate_error:
+                                print(f"重新创建driver连接失败: {str(recreate_error)}")
+                                # 如果所有恢复尝试都失败，返回已收集的评论
+                                print(f"UiAutomator2恢复失败，返回已收集的 {len(all_comments)} 条评论")
+                                return all_comments
+                    
                     continue
 
                 # 更新最后的页面源码
