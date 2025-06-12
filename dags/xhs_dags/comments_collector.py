@@ -7,6 +7,7 @@ from airflow.exceptions import AirflowSkipException
 import requests
 import base64
 from utils.xhs_appium import XHSOperator
+import time
 
 def get_time_range():
     from datetime import datetime, timedelta
@@ -97,7 +98,7 @@ def deal_with_conflict(email):
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": "\"Windows\""
     }
-    url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/comments_collector/dagRuns"
+    url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/notes_collector/dagRuns"
     params = {
         "limit": "100",
         "start_date_gte": time_range['twelve_hours_ago'],
@@ -111,6 +112,7 @@ def deal_with_conflict(email):
             # 清除任务状态，解决appium冲突
             # clear_task_status(i['dag_id'], i['dag_run_id'])
             clear_dag_run_status(i['dag_id'], i['dag_run_id'])
+    time.sleep(10)  # 等待1秒，确保状态更新
 def get_note_url(keyword: str = None, **context):
     """从数据库获取笔记URL和关键词
     Args:
