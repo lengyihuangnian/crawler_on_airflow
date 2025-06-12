@@ -201,8 +201,8 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
     # 使用email参数获取用户的回复模板
     reply_templates = get_reply_templates_from_db(email=email)
     try:
-        # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
+        # 初始化小红书操作器（带重试机制）
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id, max_retries=3, retry_delay=5)
         
         # 处理每条分配的评论
         for i, comment in enumerate(comments_to_process):

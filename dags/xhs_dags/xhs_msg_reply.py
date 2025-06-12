@@ -38,7 +38,7 @@ def xhs_msg_reply(device_index,**context):
     
     print(f"选择设备 {device_id}, appium_server_url: {appium_server_url}")
     print(f"开始回复私信'")
-    xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
+    xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id, max_retries=3, retry_delay=5)
     xhs.reply_to_msg()
 
 with DAG(

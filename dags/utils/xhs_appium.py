@@ -49,14 +49,15 @@ def get_adb_devices():
         return []
 
 class XHSOperator:
-    def __init__(self, appium_server_url: str, force_app_launch: bool = False, device_id: str = None):
+    def __init__(self, appium_server_url: str, force_app_launch: bool = False, device_id: str = None, max_retries: int = 3, retry_delay: int = 5):
         """
         初始化小红书操作器
         Args:
             appium_server_url: Appium服务器URL
             force_app_launch: 是否强制重启应用
             device_id: 指定的设备ID
-            system_port: Appium服务指定的本地端口，用来转发数据给安卓设备
+            max_retries: 最大重试次数，默认3次
+            retry_delay: 重试间隔时间（秒），默认5秒
         """
         
         # 使用指定的设备
@@ -82,12 +83,28 @@ class XHSOperator:
         )
 
         print('当前capabilities配置:', json.dumps(capabilities, ensure_ascii=False, indent=2))
-        print('正在初始化小红书控制器...',appium_server_url)
-        self.driver: AppiumWebDriver = AppiumWebDriver(
-            command_executor=appium_server_url,
-            options=UiAutomator2Options().load_capabilities(capabilities)
-        )
-        print('控制器初始化完成。')
+        
+        # 添加重试机制
+        last_exception = None
+        for attempt in range(max_retries + 1):
+            try:
+                print(f'正在初始化小红书控制器... (尝试 {attempt + 1}/{max_retries + 1})', appium_server_url)
+                self.driver: AppiumWebDriver = AppiumWebDriver(
+                    command_executor=appium_server_url,
+                    options=UiAutomator2Options().load_capabilities(capabilities)
+                )
+                print('控制器初始化完成。')
+                return  # 成功初始化，退出重试循环
+            except Exception as e:
+                last_exception = e
+                print(f'初始化失败 (尝试 {attempt + 1}/{max_retries + 1}): {str(e)}')
+                
+                if attempt < max_retries:  # 如果还有重试机会
+                    print(f'等待 {retry_delay} 秒后重试...')
+                    time.sleep(retry_delay)
+                else:
+                    print('已达到最大重试次数，初始化失败')
+                    raise Exception(f'Appium连接失败，已重试{max_retries}次: {str(last_exception)}')
         
     def search_keyword(self, keyword: str, filters: dict = None):
         """

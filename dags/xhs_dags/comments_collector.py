@@ -129,18 +129,21 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: in
         device_ip = device_info.get('device_ip')
         device_port = device_info.get('available_appium_ports')[device_index]
         device_id = device_info.get('phone_device_list')[device_index]
-        appium_server_url = f"http://{device_ip}:{device_port}"
+        
     except Exception as e:
         print(f"获取设备信息失败: {e}")
         print(f"跳过当前任务，因为获取设备信息失败")
         raise AirflowSkipException("设备信息获取失败")
+    
+    appium_server_url = f"http://{device_ip}:{device_port}"
     print(f"开始收集{len(note_urls)}条笔记的评论...")
     print(f"使用Appium服务器: {appium_server_url}")
     print(f"使用设备ID: {device_id}")
-    
+    xhs = None
+
     try:
-        # 初始化小红书操作器
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
+        # 初始化小红书操作器（带重试机制）
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id, max_retries=3, retry_delay=5)
         
         all_comments = []
         total_comments = 0
@@ -169,9 +172,11 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: in
         print(f"运行出错: {str(e)}")
         raise e
     finally:
-        # 确保关闭小红书操作器
-        if 'xhs' in locals():
-            xhs.close()
+        if 'xhs' in locals() and xhs is not None:
+            try:
+                xhs.close()
+            except Exception as e:
+                print(f"关闭XHSOperator时出错: {e}")
 
 def collect_xhs_comments(device_index: int = 0, **context):
     """收集小红书评论
