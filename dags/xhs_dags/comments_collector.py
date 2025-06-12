@@ -8,7 +8,7 @@ import requests
 import base64
 from utils.xhs_appium import XHSOperator
 import time
-
+xhs = None
 def get_time_range():
     from datetime import datetime, timedelta
     
@@ -127,6 +127,7 @@ def deal_with_conflict(email):
             # clear_task_status(i['dag_id'], i['dag_run_id'])
             clear_dag_run_status(i['dag_id'], i['dag_run_id'])
             time.sleep(40)  # 等待25秒，确保状态更新
+    
 def get_note_url(keyword: str = None, **context):
     """从数据库获取笔记URL和关键词
     Args:
@@ -258,12 +259,13 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: in
     print(f"开始收集{len(note_urls)}条笔记的评论...")
     print(f"使用Appium服务器: {appium_server_url}")
     print(f"使用设备ID: {device_id}")
-    xhs = None
+    
 
     try:
         # 初始化小红书操作器（带重试机制）
+        global xhs
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
-        
+
         all_comments = []
         total_comments = 0
         for note_url in note_urls:
@@ -373,6 +375,14 @@ def distribute_urls(urls: list, device_index: int, total_devices: int) -> list:
     # 返回分配给当前设备的URL
     return urls[start_index:end_index]
 
+def on_success_callback(**context):
+    """任务成功完成后的回调函数
+    在任务成功完成后执行清理操作，确保小红书控制器被正确关闭
+    """
+    print("任务成功完成后执行")
+    xhs.close()  # 确保XHSOperator被正确关闭
+    print("XHSOperator已关闭")
+   
 # DAG 定义
 with DAG(
     dag_id='comments_collector',
@@ -396,5 +406,6 @@ with DAG(
             op_kwargs={
                 'device_index': index,
             },
-            provide_context=True
+            provide_context=True,
+            on_success_callback=on_success_callback
         )
