@@ -257,9 +257,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
         # 初始化小红书操作器（带重试机制）
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
-        # 将xhs操作器实例传递给自定义Operator，以便在任务被取消时能够关闭
-        if 'set_xhs_operator' in context:
-            context['set_xhs_operator'](xhs)
+    
         
         # 用于每收集三条笔记保存一次的工具函数
         batch_size = 3  # 每批次保存的笔记数量
@@ -452,6 +450,5 @@ with DAG(
                 'device_index': index,
             },
             provide_context=True,
-            retries=3,
-            retry_delay=timedelta(seconds=10)
+        
         )
