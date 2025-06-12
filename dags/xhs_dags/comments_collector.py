@@ -246,7 +246,7 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: in
 
     try:
         # 初始化小红书操作器（带重试机制）
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=False, device_id=device_id, max_retries=3, retry_delay=5)
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=False, device_id=device_id)
         
         all_comments = []
         total_comments = 0
