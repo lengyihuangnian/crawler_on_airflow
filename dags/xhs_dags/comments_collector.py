@@ -75,7 +75,7 @@ def clear_dag_run_status(dag_id,dag_run_id):
     }
 
     url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/{dag_id}/dagRuns/{dag_run_id}"
-    data = {"state": "failed"}
+    data = {"state": "success"}
     response = requests.patch(url, headers=headers,  json=data)
 
     print(response.text)
@@ -98,6 +98,20 @@ def deal_with_conflict(email):
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": "\"Windows\""
     }
+    url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/comments_collector/dagRuns"
+    params = {
+        "limit": "100",
+        "start_date_gte": time_range['twelve_hours_ago'],
+        "start_date_lte": time_range['current_time']        
+    }
+    response = requests.get(url, headers=headers, params=params).json()
+    for i in response['dag_runs']:
+        print(i['conf']['email'], i['dag_run_id'], i['state'])
+        if i['state'] == 'running' and i['conf']['email'] == email:
+            # 清除任务状态，解决appium冲突
+            # clear_task_status(i['dag_id'], i['dag_run_id'])
+            clear_dag_run_status(i['dag_id'], i['dag_run_id'])
+    
     url = f"https://marketing.lucyai.sale/airflow/api/v1/dags/notes_collector/dagRuns"
     params = {
         "limit": "100",
@@ -112,7 +126,7 @@ def deal_with_conflict(email):
             # 清除任务状态，解决appium冲突
             # clear_task_status(i['dag_id'], i['dag_run_id'])
             clear_dag_run_status(i['dag_id'], i['dag_run_id'])
-    time.sleep(10)  # 等待1秒，确保状态更新
+    time.sleep(15)  # 等待1秒，确保状态更新
 def get_note_url(keyword: str = None, **context):
     """从数据库获取笔记URL和关键词
     Args:
