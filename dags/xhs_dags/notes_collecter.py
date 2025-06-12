@@ -281,7 +281,16 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                                 print(f"元素位置过高，位于屏幕{element_y/screen_height:.2%}处，跳过点击")
                                 continue
                         except Exception as e:
-                            print(f"检测元素位置失败: {str(e)}，不执行点击")
+                            error_msg = str(e)
+                            print(f"检测元素位置失败: {error_msg}")
+                            # 检查是否是UiAutomator2服务器崩溃的错误
+                            if "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
+                                print("检测到UiAutomator2服务器崩溃，尝试重新启动应用...")
+                                try:
+                                    xhs.driver.activate_app('com.xingin.xhs')
+                                    time.sleep(2)
+                                except:
+                                    print("重新启动应用失败")
                             # 默认点击标题元素
                             # title_element.click()
                             time.sleep(0.5)
