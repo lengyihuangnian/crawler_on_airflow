@@ -73,7 +73,7 @@ class XHSOperator:
             appPackage='com.xingin.xhs',
             appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
             noReset=True,  # 保留应用数据
-            fullReset=False,  # 不完全重置
+            fullReset=True,  # 完全重置
             forceAppLaunch=force_app_launch,  # 是否强制重启应用
             autoGrantPermissions=True,  # 自动授予权限
             newCommandTimeout=60,  # 命令超时时间
