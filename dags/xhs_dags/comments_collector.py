@@ -11,7 +11,7 @@ from utils.xhs_appium import XHSOperator
 def get_time_range():
     from datetime import datetime, timedelta
     
-    current_time = datetime.utcnow()-timedelta(seconds=20)
+    current_time = datetime.utcnow()-timedelta(seconds=30)
     twelve_hours_ago = current_time - timedelta(hours=12)
     
     current_time_iso = current_time.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
@@ -246,7 +246,7 @@ def get_notes_by_url_list(note_urls: list, keyword: str = None, device_index: in
 
     try:
         # 初始化小红书操作器（带重试机制）
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id, max_retries=3, retry_delay=5)
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=False, device_id=device_id, max_retries=3, retry_delay=5)
         
         all_comments = []
         total_comments = 0

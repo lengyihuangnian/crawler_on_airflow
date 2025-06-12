@@ -138,7 +138,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
     xhs = None
     try:
         # 初始化小红书操作器（带重试机制）
-        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id, max_retries=3, retry_delay=5)
+        xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id, max_retries=0, retry_delay=0)
         
         # 将xhs操作器实例传递给自定义Operator，以便在任务被取消时能够关闭
         if 'set_xhs_operator' in context:
