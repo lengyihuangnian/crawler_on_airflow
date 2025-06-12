@@ -126,7 +126,7 @@ def deal_with_conflict(email):
             # 清除任务状态，解决appium冲突
             # clear_task_status(i['dag_id'], i['dag_run_id'])
             clear_dag_run_status(i['dag_id'], i['dag_run_id'])
-            time.sleep(25)  # 等待25秒，确保状态更新
+            time.sleep(40)  # 等待25秒，确保状态更新
 def get_note_url(keyword: str = None, **context):
     """从数据库获取笔记URL和关键词
     Args:

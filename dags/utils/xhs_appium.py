@@ -1990,8 +1990,8 @@ class XHSOperator:
                         time.sleep(2)
                         
                         # 重新创建连接
-                        from appium import webdriver as AppiumWebDriver
-                        from appium.options.android import UiAutomator2Options
+                        
+                        
                         
                         capabilities = dict(
                             platformName='Android',
@@ -2008,12 +2008,9 @@ class XHSOperator:
                             unicodeKeyboard=False,
                             resetKeyboard=False,
                         )
-                        
-                        # 获取当前的appium服务器URL
-                        command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
-                        
+                                                
                         self.driver = AppiumWebDriver(
-                            command_executor=command_executor,
+                            command_executor=appium_server_url,
                             options=UiAutomator2Options().load_capabilities(capabilities)
                         )
                         print("driver连接重新创建成功")
@@ -2046,8 +2043,6 @@ class XHSOperator:
                         time.sleep(2)
                         
                         # 重新创建连接
-                        from appium import webdriver as AppiumWebDriver
-                        from appium.options.android import UiAutomator2Options
                         
                         capabilities = dict(
                             platformName='Android',
@@ -2065,11 +2060,9 @@ class XHSOperator:
                             resetKeyboard=False,
                         )
                         
-                        # 获取当前的appium服务器URL
-                        command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
-                        
+                      
                         self.driver = AppiumWebDriver(
-                            command_executor=command_executor,
+                            command_executor=appium_server_url,
                             options=UiAutomator2Options().load_capabilities(capabilities)
                         )
                         print("driver连接重新创建成功")
@@ -2142,8 +2135,7 @@ class XHSOperator:
                             time.sleep(2)
                             
                             # 重新创建连接
-                            from appium import webdriver as AppiumWebDriver
-                            from appium.options.android import UiAutomator2Options
+                           
                             
                             capabilities = dict(
                                 platformName='Android',
@@ -2161,11 +2153,8 @@ class XHSOperator:
                                 resetKeyboard=False,
                             )
                             
-                            # 获取当前的appium服务器URL
-                            command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
-                            
                             self.driver = AppiumWebDriver(
-                                command_executor=command_executor,
+                                command_executor=appium_server_url,
                                 options=UiAutomator2Options().load_capabilities(capabilities)
                             )
                             print("driver连接重新创建成功")
@@ -2214,8 +2203,7 @@ class XHSOperator:
                             time.sleep(2)
                             
                             # 重新创建连接
-                            from appium import webdriver as AppiumWebDriver
-                            from appium.options.android import UiAutomator2Options
+                            
                             
                             capabilities = dict(
                                 platformName='Android',
@@ -2232,12 +2220,9 @@ class XHSOperator:
                                 unicodeKeyboard=False,
                                 resetKeyboard=False,
                             )
-                            
-                            # 获取当前的appium服务器URL
-                            command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
-                            
+
                             self.driver = AppiumWebDriver(
-                                command_executor=command_executor,
+                                command_executor=appium_server_url,
                                 options=UiAutomator2Options().load_capabilities(capabilities)
                             )
                             print("driver连接重新创建成功")
@@ -2350,9 +2335,7 @@ class XHSOperator:
                                 pass
                             time.sleep(2)
                             
-                            # 重新创建连接
-                            from appium import webdriver as AppiumWebDriver
-                            from appium.options.android import UiAutomator2Options
+                           
                             
                             capabilities = dict(
                                 platformName='Android',
@@ -2370,11 +2353,9 @@ class XHSOperator:
                                 resetKeyboard=False,
                             )
                             
-                            # 获取当前的appium服务器URL
-                            command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
-                            
+                          
                             self.driver = AppiumWebDriver(
-                                command_executor=command_executor,
+                                command_executor=appium_server_url,
                                 options=UiAutomator2Options().load_capabilities(capabilities)
                             )
                             print("driver连接重新创建成功")
@@ -2411,8 +2392,7 @@ class XHSOperator:
                             time.sleep(2)
                             
                             # 重新创建连接
-                            from appium import webdriver as AppiumWebDriver
-                            from appium.options.android import UiAutomator2Options
+                        
                             
                             capabilities = dict(
                                 platformName='Android',
@@ -2430,11 +2410,10 @@ class XHSOperator:
                                 resetKeyboard=False,
                             )
                             
-                            # 获取当前的appium服务器URL
-                            command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
+                          
                             
                             self.driver = AppiumWebDriver(
-                                command_executor=command_executor,
+                                command_executor=appium_server_url,
                                 options=UiAutomator2Options().load_capabilities(capabilities)
                             )
                             print("driver连接重新创建成功")
