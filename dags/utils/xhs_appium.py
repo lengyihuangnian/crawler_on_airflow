@@ -197,7 +197,7 @@ class XHSOperator:
         except Exception as e:
             print(f"搜索或筛选失败: {str(e)}")
             time.sleep(5)
-            self.search_keyword(keyword)
+            
             raise
 
 
