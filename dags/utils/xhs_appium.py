@@ -339,12 +339,57 @@ class XHSOperator:
                                     print(f"检测元素位置失败: {error_msg}")
                                     # 检查是否是UiAutomator2服务器崩溃的错误
                                     if "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                                        print("检测到UiAutomator2服务器崩溃，尝试重新启动应用...")
+                                        print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
                                         try:
+                                            # 首先尝试重新启动应用
                                             self.driver.activate_app('com.xingin.xhs')
-                                            time.sleep(2)
-                                        except:
-                                            print("重新启动应用失败")
+                                            time.sleep(3)
+                                            print("应用重启完成")
+                                        except Exception as restart_error:
+                                            print(f"重新启动应用失败: {str(restart_error)}")
+                                            # 如果重启应用失败，尝试重新创建driver连接
+                                            try:
+                                                print("尝试重新创建driver连接...")
+                                                # 保存当前的capabilities
+                                                current_capabilities = self.driver.capabilities
+                                                # 关闭当前连接
+                                                try:
+                                                    self.driver.quit()
+                                                except:
+                                                    pass
+                                                time.sleep(2)
+                                                
+                                                # 重新创建连接
+                                                from appium import webdriver as AppiumWebDriver
+                                                from appium.options.android import UiAutomator2Options
+                                                
+                                                capabilities = dict(
+                                                    platformName='Android',
+                                                    automationName='uiautomator2',
+                                                    deviceName=current_capabilities.get('deviceName'),
+                                                    udid=current_capabilities.get('udid'),
+                                                    appPackage='com.xingin.xhs',
+                                                    appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
+                                                    noReset=True,
+                                                    fullReset=False,
+                                                    forceAppLaunch=True,  # 强制重启应用
+                                                    autoGrantPermissions=True,
+                                                    newCommandTimeout=60,
+                                                    unicodeKeyboard=False,
+                                                    resetKeyboard=False,
+                                                )
+                                                
+                                                # 获取当前的appium服务器URL
+                                                command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
+                                                
+                                                self.driver = AppiumWebDriver(
+                                                    command_executor=command_executor,
+                                                    options=UiAutomator2Options().load_capabilities(capabilities)
+                                                )
+                                                print("driver连接重新创建成功")
+                                                time.sleep(3)
+                                            except Exception as recreate_error:
+                                                print(f"重新创建driver连接失败: {str(recreate_error)}")
                                     # 直接点击元素，不检查位置
                                     try:
                                         title_element.click()
@@ -1985,18 +2030,72 @@ class XHSOperator:
                 if "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
                     print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
                     try:
-                        # 尝试重新启动应用
+                        # 首先尝试重新启动应用
                         self.driver.activate_app('com.xingin.xhs')
-                        time.sleep(2)
-                    except:
-                        print("重新启动应用失败")
+                        time.sleep(3)
+                        print("应用重启完成")
+                    except Exception as restart_error:
+                        print(f"重新启动应用失败: {str(restart_error)}")
+                        # 如果重启应用失败，尝试重新创建driver连接
+                        try:
+                            print("尝试重新创建driver连接...")
+                            # 保存当前的capabilities
+                            current_capabilities = self.driver.capabilities
+                            # 关闭当前连接
+                            try:
+                                self.driver.quit()
+                            except:
+                                pass
+                            time.sleep(2)
+                            
+                            # 重新创建连接
+                            from appium import webdriver as AppiumWebDriver
+                            from appium.options.android import UiAutomator2Options
+                            
+                            capabilities = dict(
+                                platformName='Android',
+                                automationName='uiautomator2',
+                                deviceName=current_capabilities.get('deviceName'),
+                                udid=current_capabilities.get('udid'),
+                                appPackage='com.xingin.xhs',
+                                appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
+                                noReset=True,
+                                fullReset=False,
+                                forceAppLaunch=True,  # 强制重启应用
+                                autoGrantPermissions=True,
+                                newCommandTimeout=60,
+                                unicodeKeyboard=False,
+                                resetKeyboard=False,
+                            )
+                            
+                            # 获取当前的appium服务器URL
+                            command_executor = self.driver.command_executor._url if hasattr(self.driver, 'command_executor') else 'http://localhost:4723'
+                            
+                            self.driver = AppiumWebDriver(
+                                command_executor=command_executor,
+                                options=UiAutomator2Options().load_capabilities(capabilities)
+                            )
+                            print("driver连接重新创建成功")
+                            time.sleep(3)
+                        except Exception as recreate_error:
+                            print(f"重新创建driver连接失败: {str(recreate_error)}")
                 
                 if attempt < max_retries:
                     print(f"等待2秒后重试...")
                     time.sleep(2)
                 else:
-                    print("已达到最大重试次数，滑动操作失败")
-                    # 不抛出异常，允许程序继续执行
+                    print("已达到最大重试次数，尝试使用默认参数进行滑动")
+                    try:
+                        # 使用默认屏幕尺寸进行滑动（假设1080x1920分辨率）
+                        default_start_x = 540  # 屏幕中央
+                        default_start_y = 1536  # 屏幕高度的80%
+                        default_end_y = 672    # 屏幕高度的35%
+                        
+                        self.driver.swipe(default_start_x, default_start_y, default_start_x, default_end_y, 800)
+                        print("使用默认参数滑动成功")
+                        time.sleep(1)
+                    except Exception as fallback_error:
+                        print(f"默认参数滑动也失败: {str(fallback_error)}")
                     return
     
            

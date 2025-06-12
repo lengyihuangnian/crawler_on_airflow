@@ -285,12 +285,57 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                             print(f"检测元素位置失败: {error_msg}")
                             # 检查是否是UiAutomator2服务器崩溃的错误
                             if "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                                print("检测到UiAutomator2服务器崩溃，尝试重新启动应用...")
+                                print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
                                 try:
+                                    # 首先尝试重新启动应用
                                     xhs.driver.activate_app('com.xingin.xhs')
-                                    time.sleep(2)
-                                except:
-                                    print("重新启动应用失败")
+                                    time.sleep(3)
+                                    print("应用重启完成")
+                                except Exception as restart_error:
+                                    print(f"重新启动应用失败: {str(restart_error)}")
+                                    # 如果重启应用失败，尝试重新创建driver连接
+                                    try:
+                                        print("尝试重新创建driver连接...")
+                                        # 保存当前的capabilities
+                                        current_capabilities = xhs.driver.capabilities
+                                        # 关闭当前连接
+                                        try:
+                                            xhs.driver.quit()
+                                        except:
+                                            pass
+                                        time.sleep(2)
+                                        
+                                        # 重新创建连接
+                                        from appium import webdriver as AppiumWebDriver
+                                        from appium.options.android import UiAutomator2Options
+                                        
+                                        capabilities = dict(
+                                            platformName='Android',
+                                            automationName='uiautomator2',
+                                            deviceName=current_capabilities.get('deviceName'),
+                                            udid=current_capabilities.get('udid'),
+                                            appPackage='com.xingin.xhs',
+                                            appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
+                                            noReset=True,
+                                            fullReset=False,
+                                            forceAppLaunch=True,  # 强制重启应用
+                                            autoGrantPermissions=True,
+                                            newCommandTimeout=60,
+                                            unicodeKeyboard=False,
+                                            resetKeyboard=False,
+                                        )
+                                        
+                                        # 获取当前的appium服务器URL
+                                        command_executor = xhs.driver.command_executor._url if hasattr(xhs.driver, 'command_executor') else 'http://localhost:4723'
+                                        
+                                        xhs.driver = AppiumWebDriver(
+                                            command_executor=command_executor,
+                                            options=UiAutomator2Options().load_capabilities(capabilities)
+                                        )
+                                        print("driver连接重新创建成功")
+                                        time.sleep(3)
+                                    except Exception as recreate_error:
+                                        print(f"重新创建driver连接失败: {str(recreate_error)}")
                             # 默认点击标题元素
                             # title_element.click()
                             time.sleep(0.5)
