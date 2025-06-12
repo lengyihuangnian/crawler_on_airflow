@@ -185,6 +185,22 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             "note_type": "图文"
         })
         
+        # 根据device_id滑动不同次数，减少重复概率
+        # 提取device_id的数字部分作为滑动次数的基数
+        try:
+            # 从device_id中提取数字，例如从"emulator-5554"中提取5554
+            # 计算滑动次数：device_index * 3
+            scroll_times = device_index * 3
+            print(f"设备 {device_id} (索引: {device_index}) 将滑动 {scroll_times} 次以减少重复")
+        
+            for i in range(scroll_times):
+                print(f"执行第 {i+1}/{scroll_times} 次滑动")
+                xhs.scroll_down()
+                time.sleep(0.5)  # 每次滑动后稍作等待
+            
+        except Exception as e:
+            print(f"执行设备特定滑动时出错: {e}，继续正常收集")
+        
         print(f"开始收集笔记,计划收集{max_notes}条...")
         collected_titles = []
 
@@ -280,14 +296,7 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
                         except Exception as e:
                             error_msg = str(e)
                             print(f"检测元素位置失败: {error_msg}")
-                            # 检查是否是UiAutomator2服务器崩溃的错误
-                            if "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                                print("检测到UiAutomator2服务器崩溃，尝试重新启动应用...")
-                                try:
-                                    xhs.driver.activate_app('com.xingin.xhs')
-                                    time.sleep(2)
-                                except:
-                                    print("重新启动应用失败")
+
                             # 默认点击标题元素
                             # title_element.click()
                             time.sleep(0.5)
