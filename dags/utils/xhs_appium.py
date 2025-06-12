@@ -83,58 +83,11 @@ class XHSOperator:
 
         print('当前capabilities配置:', json.dumps(capabilities, ensure_ascii=False, indent=2))
         print('正在初始化小红书控制器...',appium_server_url)
-        
-        # 添加重试机制确保连接稳定性
-        max_retries = 3
-        retry_delay = 5
-        
-        for attempt in range(max_retries):
-            try:
-                self.driver: AppiumWebDriver = AppiumWebDriver(
-                    command_executor=appium_server_url,
-                    options=UiAutomator2Options().load_capabilities(capabilities)
-                )
-                print('控制器初始化完成。')
-                
-                # 验证连接是否正常
-                try:
-                    # 尝试获取设备信息来验证连接
-                    device_info = self.driver.get_device_time()
-                    print(f"设备连接验证成功，设备时间: {device_info}")
-                    break
-                except Exception as verify_error:
-                    print(f"连接验证失败: {str(verify_error)}")
-                    if attempt < max_retries - 1:
-                        print(f"第 {attempt + 1} 次连接验证失败，准备重试...")
-                        try:
-                            self.driver.quit()
-                        except:
-                            pass
-                        time.sleep(retry_delay)
-                        continue
-                    else:
-                        raise verify_error
-                        
-            except Exception as e:
-                error_msg = str(e)
-                print(f"第 {attempt + 1} 次初始化失败: {error_msg}")
-                
-                if attempt < max_retries - 1:
-                    print(f"等待 {retry_delay} 秒后重试...")
-                    time.sleep(retry_delay)
-                    
-                    # 检查是否是端口占用或服务器连接问题
-                    if "Connection refused" in error_msg or "Connection aborted" in error_msg:
-                        print("检测到连接被拒绝，可能是Appium服务器未启动")
-                    elif "socket hang up" in error_msg:
-                        print("检测到网络连接中断")
-                    elif "timeout" in error_msg.lower():
-                        print("检测到连接超时")
-                        # 增加超时重试的延迟
-                        retry_delay += 5
-                else:
-                    print(f"所有重试尝试都失败，无法初始化小红书控制器")
-                    raise Exception(f"初始化失败: {error_msg}")
+        self.driver: AppiumWebDriver = AppiumWebDriver(
+            command_executor=appium_server_url,
+            options=UiAutomator2Options().load_capabilities(capabilities)
+        )
+        print('控制器初始化完成。')
         
     def search_keyword(self, keyword: str, filters: dict = None):
         """
@@ -243,8 +196,10 @@ class XHSOperator:
             
         except Exception as e:
             print(f"搜索或筛选失败: {str(e)}")
+            time.sleep(5)
+            self.search_keyword(keyword)
             raise
-        
+
 
     def search_keyword_of_video(self, keyword, max_videos=10):
         """
@@ -1954,483 +1909,73 @@ class XHSOperator:
 
     
 #改动
-    def activate_app(self, app_package='com.xingin.xhs'):
-        """
-        激活应用，包含重试机制和错误恢复
-        Args:
-            app_package: 应用包名，默认为小红书
-        """
-        max_retries = 3
-        retry_delay = 2
-        
-        for attempt in range(max_retries):
-            try:
-                self.driver.activate_app(app_package)
-                print(f"应用 {app_package} 激活成功")
-                time.sleep(2)  # 等待应用启动
-                return True
-                
-            except Exception as e:
-                error_msg = str(e)
-                print(f"第 {attempt + 1} 次应用激活失败: {error_msg}")
-                
-                # 检查是否是网络连接错误
-                if "socket hang up" in error_msg or "Could not proxy command" in error_msg:
-                    print("检测到网络连接中断，尝试重新初始化连接...")
-                    try:
-                        # 尝试重新创建driver连接
-                        print("尝试重新创建driver连接...")
-                        # 保存当前的capabilities
-                        current_capabilities = self.driver.capabilities
-                        # 关闭当前连接
-                        try:
-                            self.driver.quit()
-                        except:
-                            pass
-                        time.sleep(2)
-                        
-                        # 重新创建连接
-                        
-                        
-                        
-                        capabilities = dict(
-                            platformName='Android',
-                            automationName='uiautomator2',
-                            deviceName=current_capabilities.get('deviceName'),
-                            udid=current_capabilities.get('udid'),
-                            appPackage='com.xingin.xhs',
-                            appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
-                            noReset=True,
-                            fullReset=False,
-                            forceAppLaunch=True,  # 强制重启应用
-                            autoGrantPermissions=True,
-                            newCommandTimeout=60,
-                            unicodeKeyboard=False,
-                            resetKeyboard=False,
-                        )
-                                                
-                        self.driver = AppiumWebDriver(
-                            command_executor=appium_server_url,
-                            options=UiAutomator2Options().load_capabilities(capabilities)
-                        )
-                        print("driver连接重新创建成功")
-                        time.sleep(3)
-                        
-                        # 重新尝试激活应用
-                        self.driver.activate_app(app_package)
-                        print(f"重新连接后应用 {app_package} 激活成功")
-                        return True
-                        
-                    except Exception as recreate_error:
-                        print(f"重新创建driver连接失败: {str(recreate_error)}")
-                        if attempt == max_retries - 1:
-                            print("所有重试失败，应用激活失败")
-                            return False
-                
-                # 检查是否是UiAutomator2服务器崩溃的错误
-                elif "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                    print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
-                    try:
-                        # 尝试重新创建driver连接
-                        print("尝试重新创建driver连接...")
-                        # 保存当前的capabilities
-                        current_capabilities = self.driver.capabilities
-                        # 关闭当前连接
-                        try:
-                            self.driver.quit()
-                        except:
-                            pass
-                        time.sleep(2)
-                        
-                        # 重新创建连接
-                        
-                        capabilities = dict(
-                            platformName='Android',
-                            automationName='uiautomator2',
-                            deviceName=current_capabilities.get('deviceName'),
-                            udid=current_capabilities.get('udid'),
-                            appPackage='com.xingin.xhs',
-                            appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
-                            noReset=True,
-                            fullReset=False,
-                            forceAppLaunch=True,  # 强制重启应用
-                            autoGrantPermissions=True,
-                            newCommandTimeout=60,
-                            unicodeKeyboard=False,
-                            resetKeyboard=False,
-                        )
-                        
-                      
-                        self.driver = AppiumWebDriver(
-                            command_executor=appium_server_url,
-                            options=UiAutomator2Options().load_capabilities(capabilities)
-                        )
-                        print("driver连接重新创建成功")
-                        time.sleep(3)
-                        
-                        # 重新尝试激活应用
-                        self.driver.activate_app(app_package)
-                        print(f"重新连接后应用 {app_package} 激活成功")
-                        return True
-                        
-                    except Exception as recreate_error:
-                        print(f"重新创建driver连接失败: {str(recreate_error)}")
-                        if attempt == max_retries - 1:
-                            print("所有重试失败，应用激活失败")
-                            return False
-                
-                if attempt < max_retries - 1:
-                    print(f"等待 {retry_delay} 秒后重试...")
-                    time.sleep(retry_delay)
-                else:
-                    print(f"所有激活重试都失败")
-                    return False
-        
-        return False
-
     def scroll_down(self):
         """
-        向下滑动页面，包含重试机制和错误恢复
+        向下滑动页面
         """
-        max_retries = 3
-        retry_delay = 2
-        
-        for attempt in range(max_retries):
-            try:
-                screen_size = self.driver.get_window_size()
-                start_x = screen_size['width'] * 0.5
-                start_y = screen_size['height'] * 0.8
-                end_y = screen_size['height'] * 0.35
-                
-                self.driver.swipe(start_x, start_y, start_x, end_y, 800)
-                time.sleep(1)  # 等待内容加载
-                print(f"页面滑动成功")
-                return  # 成功则退出
-                
-            except Exception as e:
-                error_msg = str(e)
-                print(f"第 {attempt + 1} 次页面滑动失败: {error_msg}")
-                
-                # 检查是否是网络连接错误
-                if "socket hang up" in error_msg or "Could not proxy command" in error_msg:
-                    print("检测到网络连接中断，尝试重新初始化连接...")
-                    try:
-                        # 首先尝试重新启动应用
-                        if self.activate_app('com.xingin.xhs'):
-                            print("应用重启完成")
-                        else:
-                            raise Exception("应用重启失败")
-                    except Exception as restart_error:
-                        print(f"重新启动应用失败: {str(restart_error)}")
-                        # 如果重启应用失败，尝试重新创建driver连接
-                        try:
-                            print("尝试重新创建driver连接...")
-                            # 保存当前的capabilities
-                            current_capabilities = self.driver.capabilities
-                            # 关闭当前连接
-                            try:
-                                self.driver.quit()
-                            except:
-                                pass
-                            time.sleep(2)
-                            
-                            # 重新创建连接
-                           
-                            
-                            capabilities = dict(
-                                platformName='Android',
-                                automationName='uiautomator2',
-                                deviceName=current_capabilities.get('deviceName'),
-                                udid=current_capabilities.get('udid'),
-                                appPackage='com.xingin.xhs',
-                                appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
-                                noReset=True,
-                                fullReset=False,
-                                forceAppLaunch=True,  # 强制重启应用
-                                autoGrantPermissions=True,
-                                newCommandTimeout=60,
-                                unicodeKeyboard=False,
-                                resetKeyboard=False,
-                            )
-                            
-                            self.driver = AppiumWebDriver(
-                                command_executor=appium_server_url,
-                                options=UiAutomator2Options().load_capabilities(capabilities)
-                            )
-                            print("driver连接重新创建成功")
-                            time.sleep(3)
-                        except Exception as recreate_error:
-                            print(f"重新创建driver连接失败: {str(recreate_error)}")
-                            if attempt == max_retries - 1:
-                                # 最后一次尝试失败，使用默认屏幕尺寸进行降级处理
-                                print("所有重试失败，尝试使用默认屏幕尺寸进行滑动...")
-                                try:
-                                    # 使用预设的默认屏幕尺寸
-                                    default_width = 1080
-                                    default_height = 2340
-                                    start_x = default_width * 0.5
-                                    start_y = default_height * 0.8
-                                    end_y = default_height * 0.35
-                                    
-                                    self.driver.swipe(start_x, start_y, start_x, end_y, 800)
-                                    time.sleep(1)
-                                    print("使用默认尺寸滑动成功")
-                                    return
-                                except Exception as fallback_error:
-                                    print(f"默认尺寸滑动也失败: {str(fallback_error)}")
-                
-                # 检查是否是UiAutomator2服务器崩溃的错误
-                elif "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                    print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
-                    try:
-                        # 首先尝试重新启动应用
-                        if self.activate_app('com.xingin.xhs'):
-                            print("应用重启完成")
-                        else:
-                            raise Exception("应用重启失败")
-                    except Exception as restart_error:
-                        print(f"重新启动应用失败: {str(restart_error)}")
-                        # 如果重启应用失败，尝试重新创建driver连接
-                        try:
-                            print("尝试重新创建driver连接...")
-                            # 保存当前的capabilities
-                            current_capabilities = self.driver.capabilities
-                            # 关闭当前连接
-                            try:
-                                self.driver.quit()
-                            except:
-                                pass
-                            time.sleep(2)
-                            
-                            # 重新创建连接
-                            
-                            
-                            capabilities = dict(
-                                platformName='Android',
-                                automationName='uiautomator2',
-                                deviceName=current_capabilities.get('deviceName'),
-                                udid=current_capabilities.get('udid'),
-                                appPackage='com.xingin.xhs',
-                                appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
-                                noReset=True,
-                                fullReset=False,
-                                forceAppLaunch=True,  # 强制重启应用
-                                autoGrantPermissions=True,
-                                newCommandTimeout=60,
-                                unicodeKeyboard=False,
-                                resetKeyboard=False,
-                            )
+        try:
+            screen_size = self.driver.get_window_size()
+            start_x = screen_size['width'] * 0.5
+            start_y = screen_size['height'] * 0.8
+            end_y = screen_size['height'] * 0.35
+            
+            self.driver.swipe(start_x, start_y, start_x, end_y, 800)
+            time.sleep(1)  # 等待内容加载
+        except Exception as e:
+            print(f"页面滑动失败: {str(e)}")
+            time.sleep(1)  # 等待一段时间后重试
 
-                            self.driver = AppiumWebDriver(
-                                command_executor=appium_server_url,
-                                options=UiAutomator2Options().load_capabilities(capabilities)
-                            )
-                            print("driver连接重新创建成功")
-                            time.sleep(3)
-                        except Exception as recreate_error:
-                            print(f"重新创建driver连接失败: {str(recreate_error)}")
-                            if attempt == max_retries - 1:
-                                # 最后一次尝试失败，使用默认屏幕尺寸进行降级处理
-                                print("所有重试失败，尝试使用默认屏幕尺寸进行滑动...")
-                                try:
-                                    # 使用预设的默认屏幕尺寸
-                                    default_width = 1080
-                                    default_height = 2340
-                                    start_x = default_width * 0.5
-                                    start_y = default_height * 0.8
-                                    end_y = default_height * 0.35
-                                    
-                                    self.driver.swipe(start_x, start_y, start_x, end_y, 800)
-                                    time.sleep(1)
-                                    print("使用默认尺寸滑动成功")
-                                    return
-                                except Exception as fallback_error:
-                                    print(f"默认尺寸滑动也失败: {str(fallback_error)}")
-                
-                if attempt < max_retries - 1:
-                    print(f"等待 {retry_delay} 秒后重试...")
-                    time.sleep(retry_delay)
-                else:
-                    print(f"所有滑动重试都失败，但程序将继续执行")
-                    # 不抛出异常，允许程序继续执行
+            raise
     
            
     def return_to_home_page(self):
         """
-        返回小红书首页，包含重试机制和错误恢复
+        返回小红书首页
         """
-        max_retries = 3
-        retry_delay = 2
-        
-        for attempt in range(max_retries):
-            try:
-                # 尝试点击返回按钮直到回到首页
-                max_attempts = 6
-                for _ in range(max_attempts):
-                    try:
-                        # 使用更通用的定位方式
-                        back_btn = self.driver.find_element(
-                            by=AppiumBy.XPATH,
-                            value="//android.widget.ImageView[@content-desc='返回']"
-                        )
-                        back_btn.click()
-                        time.sleep(0.5)
-                        
-                        # 检查是否已经回到首页
-                        if self.is_at_xhs_home_page():
-                            print("已返回首页")
-                            return
-                    except:
-                        break
-                
-                # 通过点击首页按钮返回首页
+        try:
+            # 尝试点击返回按钮直到回到首页
+            max_attempts = 6
+            for _ in range(max_attempts):
                 try:
-                    home_btn =self.driver.find_element(
+                    # 使用更通用的定位方式
+                    back_btn = self.driver.find_element(
                         by=AppiumBy.XPATH,
-                        value="//android.widget.TextView[contains(@text, '首页')]"
+                        value="//android.widget.ImageView[@content-desc='返回']"
                     )
-                    home_btn.click()
+                    back_btn.click()
                     time.sleep(0.5)
+                    
+                    # 检查是否已经回到首页
                     if self.is_at_xhs_home_page():
                         print("已返回首页")
                         return
                 except:
-                    pass
-                    
-                # 如果还没回到首页，使用Android返回键
-                self.driver.press_keycode(4)
+                    break
+            
+            # 通过点击首页按钮返回首页
+            try:
+                home_btn =self.driver.find_element(
+                    by=AppiumBy.XPATH,
+                    value="//android.widget.TextView[contains(@text, '首页')]"
+                )
+                home_btn.click()
                 time.sleep(0.5)
+                if self.is_at_xhs_home_page():
+                    print("已返回首页")
+                    return
+            except:
+                pass
                 
-                if not self.is_at_xhs_home_page():
-                    raise Exception("无法返回首页")
-                
-                print("成功返回首页")
-                return
-                
-            except Exception as e:
-                error_msg = str(e)
-                print(f"第 {attempt + 1} 次返回首页失败: {error_msg}")
-                
-                # 检查是否是网络连接错误
-                if "socket hang up" in error_msg or "Could not proxy command" in error_msg:
-                    print("检测到网络连接中断，尝试重新初始化连接...")
-                    try:
-                        # 首先尝试重新启动应用
-                        if self.activate_app('com.xingin.xhs'):
-                            print("应用重启完成，重新尝试返回首页")
-                            continue
-                        else:
-                            raise Exception("应用重启失败")
-                    except Exception as restart_error:
-                        print(f"重新启动应用失败: {str(restart_error)}")
-                        # 如果重启应用失败，尝试重新创建driver连接
-                        try:
-                            print("尝试重新创建driver连接...")
-                            # 保存当前的capabilities
-                            current_capabilities = self.driver.capabilities
-                            # 关闭当前连接
-                            try:
-                                self.driver.quit()
-                            except:
-                                pass
-                            time.sleep(2)
-                            
-                           
-                            
-                            capabilities = dict(
-                                platformName='Android',
-                                automationName='uiautomator2',
-                                deviceName=current_capabilities.get('deviceName'),
-                                udid=current_capabilities.get('udid'),
-                                appPackage='com.xingin.xhs',
-                                appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
-                                noReset=True,
-                                fullReset=False,
-                                forceAppLaunch=True,  # 强制重启应用
-                                autoGrantPermissions=True,
-                                newCommandTimeout=60,
-                                unicodeKeyboard=False,
-                                resetKeyboard=False,
-                            )
-                            
-                          
-                            self.driver = AppiumWebDriver(
-                                command_executor=appium_server_url,
-                                options=UiAutomator2Options().load_capabilities(capabilities)
-                            )
-                            print("driver连接重新创建成功")
-                            time.sleep(3)
-                            continue
-                        except Exception as recreate_error:
-                            print(f"重新创建driver连接失败: {str(recreate_error)}")
-                            if attempt == max_retries - 1:
-                                print("所有重试失败，无法返回首页")
-                                raise Exception(f"返回首页失败: {error_msg}")
-                
-                # 检查是否是UiAutomator2服务器崩溃的错误
-                elif "instrumentation process is not running" in error_msg or "probably crashed" in error_msg:
-                    print("检测到UiAutomator2服务器崩溃，尝试重新初始化连接...")
-                    try:
-                        # 首先尝试重新启动应用
-                        if self.activate_app('com.xingin.xhs'):
-                            print("应用重启完成，重新尝试返回首页")
-                            continue
-                        else:
-                            raise Exception("应用重启失败")
-                    except Exception as restart_error:
-                        print(f"重新启动应用失败: {str(restart_error)}")
-                        # 如果重启应用失败，尝试重新创建driver连接
-                        try:
-                            print("尝试重新创建driver连接...")
-                            # 保存当前的capabilities
-                            current_capabilities = self.driver.capabilities
-                            # 关闭当前连接
-                            try:
-                                self.driver.quit()
-                            except:
-                                pass
-                            time.sleep(2)
-                            
-                            # 重新创建连接
-                        
-                            
-                            capabilities = dict(
-                                platformName='Android',
-                                automationName='uiautomator2',
-                                deviceName=current_capabilities.get('deviceName'),
-                                udid=current_capabilities.get('udid'),
-                                appPackage='com.xingin.xhs',
-                                appActivity='com.xingin.xhs.index.v2.IndexActivityV2',
-                                noReset=True,
-                                fullReset=False,
-                                forceAppLaunch=True,  # 强制重启应用
-                                autoGrantPermissions=True,
-                                newCommandTimeout=60,
-                                unicodeKeyboard=False,
-                                resetKeyboard=False,
-                            )
-                            
-                          
-                            
-                            self.driver = AppiumWebDriver(
-                                command_executor=appium_server_url,
-                                options=UiAutomator2Options().load_capabilities(capabilities)
-                            )
-                            print("driver连接重新创建成功")
-                            time.sleep(3)
-                            continue
-                        except Exception as recreate_error:
-                            print(f"重新创建driver连接失败: {str(recreate_error)}")
-                            if attempt == max_retries - 1:
-                                print("所有重试失败，无法返回首页")
-                                raise Exception(f"返回首页失败: {error_msg}")
-                
-                if attempt < max_retries - 1:
-                    print(f"等待 {retry_delay} 秒后重试...")
-                    time.sleep(retry_delay)
-                else:
-                    print(f"所有返回首页重试都失败")
-                    raise Exception(f"返回首页失败: {error_msg}")
+            # 如果还没回到首页，使用Android返回键
+            self.driver.press_keycode(4)
+            time.sleep(0.5)
+            
+            if not self.is_at_xhs_home_page():
+                raise Exception("无法返回首页")
+            
+        except Exception as e:
+            print(f"返回首页失败: {str(e)}")
+            raise
             
     def is_at_xhs_home_page(self):
         """
