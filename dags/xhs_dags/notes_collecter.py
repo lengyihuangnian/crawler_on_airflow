@@ -57,6 +57,9 @@ def save_notes_to_db(notes: list) -> None:
         # 批量插入笔记数据
         insert_data = []
         for note in notes:
+            # 获取URL - 优先使用note_url，如果不存在则尝试使用video_url
+            note_url = note.get('note_url', note.get('video_url', ''))
+            
             insert_data.append((
                 note.get('keyword', ''),
                 note.get('title', ''),
@@ -66,7 +69,7 @@ def save_notes_to_db(notes: list) -> None:
                 note.get('likes', 0),
                 note.get('collects', 0),
                 note.get('comments', 0),
-                note.get('note_url', ''),
+                note_url,  # 使用统一处理后的URL
                 note.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 note.get('note_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 note.get('note_location', ''),
@@ -158,8 +161,14 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             # 添加email信息到userInfo字段
             note['userInfo'] = email
             
-            # 检查笔记URL是否已存在
-            note_url = note.get('note_url', '')
+            # 检查笔记URL是否已存在（处理不同类型笔记的URL字段）
+            # 图文笔记使用note_url，视频笔记使用video_url
+            note_url = note.get('note_url', note.get('video_url', ''))
+            
+            # 如果是视频笔记，将video_url复制到note_url字段以便统一处理
+            if 'video_url' in note and not 'note_url' in note:
+                note['note_url'] = note['video_url']
+            
             if note_url:
                 # 直接查询数据库
                 db_conn = db_hook.get_conn()
@@ -170,11 +179,11 @@ def collect_xhs_notes(device_index=0, **context) -> None:
                         print(f"笔记已存在，跳过: {note.get('title', '')}")
                         return
                     else:
-                        print(f"笔记不存在，添加: {note.get('title', '')},{note.get('keyword', '')},{note.get('note_url', '')}, email: {email}")
+                        print(f"笔记不存在，添加: {note.get('title', '')},{note.get('keyword', '')},{note_url}, email: {email}")
                 finally:
                     cursor.close()
                     db_conn.close()
-                
+            
             collected_notes.append(note)
             current_batch.append(note)
             
