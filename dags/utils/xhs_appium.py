@@ -3053,7 +3053,7 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="5b75daec",
+        device_id="ZY22GVV5Z2",
         # system_port=8200
     )
 
@@ -3170,7 +3170,7 @@ if __name__ == "__main__":
         
         # 测试搜索关键词视频并收集信息
         print("\n=== 测试视频搜索和收集 ===")
-        videos = xhs.search_keyword_of_video('小猫老师', max_videos=100)
+        videos = xhs.search_keyword_of_video('小猫老师', max_videos=50)
         
         if videos:
             print(f"\n共收集到 {len(videos)} 个视频:")
@@ -3187,7 +3187,6 @@ if __name__ == "__main__":
                 print("-" * 50)
         else:
             print("未收集到视频信息")
-        
     
     except Exception as e:
         print(f"运行出错: {str(e)}")
