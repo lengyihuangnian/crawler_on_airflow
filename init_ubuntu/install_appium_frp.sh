@@ -77,9 +77,6 @@ show_progress 5 14
 log_info "安装Node.js..."
 sudo apt-get install nodejs -y
 check_status "Node.js安装"
-log_info "安装npm..."
-sudo apt-get install npm -y
-check_status "npm安装"
 sudo apt install -y python3-pip
 check_status "pip3安装"
 
