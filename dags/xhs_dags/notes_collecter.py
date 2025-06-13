@@ -221,7 +221,11 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             xhs.search_keyword(keyword, filters={
                 "note_type": note_type
             })
-            
+            #根据设备索引，不同设备开始收集笔记前滚动几次，减少重复笔记的情况
+            if device_index > 0:
+                print(f"设备索引为 {device_index}，开始滚动屏幕以加载更多笔记")
+                for i in range(device_index*3):
+                    xhs.scroll_down()
             print(f"开始收集图文笔记,计划收集{max_notes}条...")
             print("---------------card----------------")
             xhs.print_all_elements()
