@@ -56,6 +56,9 @@ def save_notes_to_db(notes: list) -> None:
         # 批量插入笔记数据
         insert_data = []
         for note in notes:
+            # 获取URL - 优先使用note_url，如果不存在则尝试使用video_url
+            note_url = note.get('note_url', note.get('video_url', ''))
+            
             insert_data.append((
                 note.get('keyword', ''),
                 note.get('title', ''),
@@ -65,7 +68,7 @@ def save_notes_to_db(notes: list) -> None:
                 note.get('likes', 0),
                 note.get('collects', 0),
                 note.get('comments', 0),
-                note.get('note_url', ''),
+                note_url,  # 使用统一处理后的URL
                 note.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 note.get('note_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 note.get('note_location', ''),
@@ -96,6 +99,10 @@ def collect_xhs_notes(device_index=0, **context) -> None:
     Args:
         device_index: 设备索引
         **context: Airflow上下文参数字典
+            - keyword: 搜索关键词
+            - max_notes: 最大收集笔记数量
+            - email: 用户邮箱
+            - note_type: 笔记类型，可选值为 '图文' 或 '视频'，默认为 '图文'
     
     Returns:
         None
@@ -104,6 +111,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
     keyword = context['dag_run'].conf.get('keyword') 
     max_notes = int(context['dag_run'].conf.get('max_notes'))
     email = context['dag_run'].conf.get('email')
+    note_type = context['dag_run'].conf.get('note_type', '图文')  # 默认为图文类型
     
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
@@ -153,8 +161,14 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             # 添加email信息到userInfo字段
             note['userInfo'] = email
             
-            # 检查笔记URL是否已存在
-            note_url = note.get('note_url', '')
+            # 检查笔记URL是否已存在（处理不同类型笔记的URL字段）
+            # 图文笔记使用note_url，视频笔记使用video_url
+            note_url = note.get('note_url', note.get('video_url', ''))
+            
+            # 如果是视频笔记，将video_url复制到note_url字段以便统一处理
+            if 'video_url' in note and not 'note_url' in note:
+                note['note_url'] = note['video_url']
+            
             if note_url:
                 # 直接查询数据库
                 db_conn = db_hook.get_conn()
@@ -165,11 +179,11 @@ def collect_xhs_notes(device_index=0, **context) -> None:
                         print(f"笔记已存在，跳过: {note.get('title', '')}")
                         return
                     else:
-                        print(f"笔记不存在，添加: {note.get('title', '')},{note.get('keyword', '')},{note.get('note_url', '')}, email: {email}")
+                        print(f"笔记不存在，添加: {note.get('title', '')},{note.get('keyword', '')},{note_url}, email: {email}")
                 finally:
                     cursor.close()
                     db_conn.close()
-                
+            
             collected_notes.append(note)
             current_batch.append(note)
             
@@ -180,35 +194,40 @@ def collect_xhs_notes(device_index=0, **context) -> None:
                 current_batch = []  # 清空当前批次
         
         # 搜索关键词，并且开始收集
-        print(f"搜索关键词: {keyword}")
-        xhs.search_keyword(keyword, filters={
-            "note_type": "图文"
-        })
-        
-        # 根据device_id滑动不同次数，减少重复概率
-        # 提取device_id的数字部分作为滑动次数的基数
-        try:
-            # 从device_id中提取数字，例如从"emulator-5554"中提取5554
-            # 计算滑动次数：device_index * 3
-            scroll_times = device_index * 3
-            print(f"设备 {device_id} (索引: {device_index}) 将滑动 {scroll_times} 次以减少重复")
-        
-            for i in range(scroll_times):
-                print(f"执行第 {i+1}/{scroll_times} 次滑动")
-                xhs.scroll_down()
-                time.sleep(0.5)  # 每次滑动后稍作等待
-            
-        except Exception as e:
-            print(f"执行设备特定滑动时出错: {e}，继续正常收集")
-        
-        print(f"开始收集笔记,计划收集{max_notes}条...")
+        print(f"搜索关键词: {keyword}, 笔记类型: {note_type}")
         collected_titles = []
-
-        print("---------------card----------------")
-        xhs.print_all_elements()
         
-        # 封装为函数 get_note_card
-        get_note_card_init(xhs, collected_notes, collected_titles, max_notes, process_note, keyword)
+        if note_type == '视频':
+            # 使用视频搜索方法
+            print(f"使用视频搜索方法搜索关键词: {keyword}")
+            # search_keyword_of_video 方法内部已经处理了视频的收集和处理
+            # 该方法会返回收集到的视频列表
+            print(f"开始收集视频笔记,计划收集{max_notes}条...")
+            collected_videos = xhs.search_keyword_of_video(keyword, max_videos=max_notes)
+            
+            # 处理收集到的视频数据
+            if collected_videos:
+                for video in collected_videos:
+                    # 添加关键词信息
+                    video['keyword'] = keyword
+                    # 使用相同的处理函数处理视频数据
+                    process_note(video)
+            else:
+                print(f"未找到关于 '{keyword}' 的视频笔记")
+                
+        else:
+            # 使用默认搜索方法（图文）
+            print(f"使用图文搜索方法搜索关键词: {keyword}")
+            xhs.search_keyword(keyword, filters={
+                "note_type": note_type
+            })
+            
+            print(f"开始收集图文笔记,计划收集{max_notes}条...")
+            print("---------------card----------------")
+            xhs.print_all_elements()
+            
+            # 对于图文笔记，使用 get_note_card_init 函数收集
+            get_note_card_init(xhs, collected_notes, collected_titles, max_notes, process_note, keyword)
 
         
         # 如果还有未保存的笔记，保存剩余的笔记
@@ -326,7 +345,7 @@ def get_note_card_init(xhs, collected_notes, collected_titles, max_notes, proces
 with DAG(
     dag_id='notes_collector',
     default_args={'owner': 'yuchangongzhu', 'depends_on_past': False, 'start_date': datetime(2024, 1, 1)},
-    description='定时收集小红书笔记',
+    description='定时收集小红书笔记 (支持图文和视频)',
     schedule_interval=None,
     tags=['小红书'],
     catchup=False,
