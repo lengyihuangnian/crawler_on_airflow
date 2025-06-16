@@ -41,7 +41,7 @@ def save_notes_to_db(notes: list) -> None:
             note_url VARCHAR(512) DEFAULT NULL,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             note_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            note_location TEXT 
+            note_location TEXT,
             note_type TEXT
         )
         """)
