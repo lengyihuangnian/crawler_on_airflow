@@ -2691,7 +2691,7 @@ class XHSOperator:
         except Exception as e:
             print(f"回复评论失败: {str(e)}")
             return False
-    def check_unreplied_messages(self,device_id):
+    def check_unreplied_messages(self,device_id,email):
         """
         检查未回复的私信，返回私信的用户名称和未回复总数
         Returns:
@@ -2763,7 +2763,8 @@ class XHSOperator:
                                     # 添加到未回复列表
                                     unreplied_msg_list.append({
                                         'username': msg_author,
-                                        'message_type': '陌生人私信'
+                                        'message_type': '陌生人私信',
+                                        'reply_status': 0  # 0表示未回复
                                     })
                                     total_unreplied += 1
                                     print(f"发现未回复陌生人私信: {msg_author}")
@@ -2834,7 +2835,8 @@ class XHSOperator:
                                         # 添加到未回复列表
                                         unreplied_msg_list.append({
                                             'username': msg_author,
-                                            'message_type': '正常私信'
+                                            'message_type': '正常私信',
+                                            'reply_status': 0  # 0表示未回复
                                         })
                                         total_unreplied += 1
                                         print(f"发现未回复私信: {msg_author}")
@@ -2869,6 +2871,7 @@ class XHSOperator:
             
             # 返回结果
             result = {
+                "userinfo": email,
                 "device_id": device_id,
                 "total_unreplied": total_unreplied,
                 "unreplied_users": unreplied_msg_list,
@@ -2912,10 +2915,13 @@ class XHSOperator:
             print(traceback.format_exc())
             
             error_result = {
+                'userInfo': email,
+                'device_id': device_id,
                 'total_unreplied': 0,
                 'unreplied_users': [],
-                'error': str(e),
-                'check_time': time.strftime("%Y-%m-%d %H:%M:%S")
+                'check_time': time.strftime("%Y-%m-%d %H:%M:%S"),
+                "recomment_cnt": int(recomment_cnt) if recomment_cnt != '' else 0,
+                'error': str(e)
             }
             
             return error_result
