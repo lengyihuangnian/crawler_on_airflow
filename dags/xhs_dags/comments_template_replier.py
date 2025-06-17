@@ -205,6 +205,7 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
         xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
         
         # 处理每条分配的评论
+        previous_url = None  # 跟踪上一个处理的URL
         for i, comment in enumerate(comments_to_process):
             try:
                 note_url = comment['note_url']
@@ -218,13 +219,24 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                 reply_content = random.choice(reply_templates)
                 print(f"选择的回复模板: {reply_content}")
                 
+                # 判断是否需要跳过URL打开（如果与上一个URL相同）
+                skip_url_open = (previous_url == note_url)
+                if skip_url_open:
+                    print(f"检测到相同URL，跳过重新打开: {note_url}")
+                else:
+                    print(f"新的URL，需要重新打开: {note_url}")
+                
                 # 调用评论回复功能
                 success = xhs.comments_reply(
                     note_url=note_url,
                     author=author,
                     comment_content=comment_content,
-                    reply_content=reply_content
+                    reply_content=reply_content,
+                    skip_url_open=skip_url_open
                 )
+                
+                # 更新上一个URL
+                previous_url = note_url
                 
                 if success:
                     print(f"设备 {device_id} 成功回复评论: {comment_content}")
