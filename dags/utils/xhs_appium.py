@@ -2813,7 +2813,7 @@ class XHSOperator:
                         # 定位未回复私信（包含"条未读"的消息）
                         normal_msg_frames = self.driver.find_elements(
                             by=AppiumBy.XPATH,
-                            value="//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-' and contains(@content-desc,'条未读')]"
+                            value="//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-' and contains(@content-desc,'条未读')and not contains(@content-desc,'赞和收藏')and not contains(@content-desc,'评论和')]"
                         )
                         
                         current_page_found = False

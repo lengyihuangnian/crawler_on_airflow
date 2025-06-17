@@ -44,21 +44,36 @@ def save_msg_to_db(msg_list:list):
         VALUES (%s, %s, %s, %s, %s)
         """
         
-        # 批量插入私信数据
+        # 批量插入私信数据，添加去重功能
         insert_data = []
+        skipped_count = 0
+        
         for msg in msg_list['unreplied_users']:
+            username = msg.get('username', '')
+            
+            # 检查user_name是否已存在
+            cursor.execute("SELECT 1 FROM xhs_msg_list WHERE user_name = %s LIMIT 1", (username,))
+            if cursor.fetchone():
+                print(f"用户 {username} 已存在，跳过插入")
+                skipped_count += 1
+                continue
+            
+            # 如果不存在，添加到插入列表
             insert_data.append((
                 msg_list.get('userInfo', ''),
-                msg.get('username', ''),
+                username,
                 msg.get('message_type', ''),
                 msg_list.get('check_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 msg.get('reply_status', 0)
             ))
 
-        cursor.executemany(insert_sql, insert_data)
-
-        db_conn.commit()
-        print(f"成功保存 {len(msg_list['unreplied_users'])} 条私信到数据库，并更新笔记私信收集时间")
+        # 只有当有新数据时才执行插入
+        if insert_data:
+            cursor.executemany(insert_sql, insert_data)
+            db_conn.commit()
+            print(f"成功保存 {len(insert_data)} 条新私信到数据库，跳过 {skipped_count} 条重复用户")
+        else:
+            print(f"所有 {skipped_count} 条私信都是重复用户，未插入新数据")
     except Exception as e:
         db_conn.rollback()
         print(f"保存私信到数据库失败: {str(e)}")
