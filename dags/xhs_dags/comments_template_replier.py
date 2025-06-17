@@ -222,7 +222,7 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                 # 判断是否需要跳过URL打开（如果与上一个URL相同）
                 skip_url_open = (previous_url == note_url)
                 if skip_url_open:
-                    print(f"检测到相同URL，跳过重新打开: {note_url}")
+                    print(f"检测到相同URL，跳过重新打开: {note_url}在当前笔记继续搜索待回复评论")
                 else:
                     print(f"新的URL，需要重新打开: {note_url}")
                 
