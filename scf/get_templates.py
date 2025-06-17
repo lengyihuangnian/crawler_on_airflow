@@ -67,11 +67,11 @@ def get_reply_templates(email=None):
         # 查询用户的回复模板
         if email:
             # 如果指定了email，只查询特定用户的模板
-            query = "SELECT id, userInfo, content, created_at FROM reply_template WHERE userInfo = %s ORDER BY created_at DESC"
+            query = "SELECT id, userInfo, content, image_urls, created_at FROM reply_template WHERE userInfo = %s ORDER BY created_at DESC"
             cursor.execute(query, (email,))
         else:
             # 如果没有指定email，返回所有模板
-            query = "SELECT id, userInfo, content, created_at FROM reply_template ORDER BY created_at DESC"
+            query = "SELECT id, userInfo, content, image_urls, created_at FROM reply_template ORDER BY created_at DESC"
             cursor.execute(query)
         templates = cursor.fetchall()
         
@@ -106,7 +106,7 @@ def get_template_by_id(template_id):
         cursor = conn.cursor()
         
         # 查询指定ID的回复模板
-        query = "SELECT id, userInfo, content, created_at FROM reply_template WHERE id = %s"
+        query = "SELECT id, userInfo, content, image_urls, created_at FROM reply_template WHERE id = %s"
         cursor.execute(query, (template_id,))
         template = cursor.fetchone()
         
