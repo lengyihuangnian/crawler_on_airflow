@@ -41,8 +41,7 @@ def save_notes_to_db(notes: list) -> None:
             note_url VARCHAR(512) DEFAULT NULL,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             note_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            note_location TEXT,
-            note_type TEXT
+            note_location TEXT 
         )
         """)
         db_conn.commit()
@@ -50,8 +49,8 @@ def save_notes_to_db(notes: list) -> None:
         # 准备插入数据的SQL语句 - 使用INSERT IGNORE避免重复插入
         insert_sql = """
         INSERT IGNORE INTO xhs_notes
-        (keyword, title, author, userInfo, content, likes, collects, comments, note_url, collect_time, note_time, note_location, note_type)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        (keyword, title, author, userInfo, content, likes, collects, comments, note_url, collect_time, note_time, note_location)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # 批量插入笔记数据
@@ -73,7 +72,6 @@ def save_notes_to_db(notes: list) -> None:
                 note.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 note.get('note_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 note.get('note_location', ''),
-                note.get('note_type', '')
             ))
 
         # 执行插入操作
@@ -162,7 +160,6 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             
             # 添加email信息到userInfo字段
             note['userInfo'] = email
-            note['note_type']=note_type
             
             # 检查笔记URL是否已存在（处理不同类型笔记的URL字段）
             # 图文笔记使用note_url，视频笔记使用video_url
@@ -224,11 +221,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             xhs.search_keyword(keyword, filters={
                 "note_type": note_type
             })
-            #根据设备索引，不同设备开始收集笔记前滚动几次，减少重复笔记的情况
-            if device_index > 0:
-                print(f"设备索引为 {device_index}，开始滚动屏幕以加载更多笔记")
-                for i in range(device_index*3):
-                    xhs.scroll_down()
+            
             print(f"开始收集图文笔记,计划收集{max_notes}条...")
             print("---------------card----------------")
             xhs.print_all_elements()

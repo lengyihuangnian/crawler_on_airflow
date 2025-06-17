@@ -17,7 +17,7 @@ from utils.xhs_appium import XHSOperator
 
 def xhs_msg_reply(device_index,**context):
     email = context['dag_run'].conf.get('email')
-    
+    msg= context['dag_run'].conf.get('msg')
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
     device_info = next((device for device in device_info_list if device.get('email') == email), None)
@@ -39,7 +39,7 @@ def xhs_msg_reply(device_index,**context):
     print(f"选择设备 {device_id}, appium_server_url: {appium_server_url}")
     print(f"开始回复私信'")
     xhs = XHSOperator(appium_server_url=appium_server_url, force_app_launch=True, device_id=device_id)
-    xhs.reply_to_msg()
+    xhs.reply_to_msg(msg)
 
 with DAG(
     dag_id='xhs_msg_reply',

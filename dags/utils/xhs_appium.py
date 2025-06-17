@@ -2829,7 +2829,7 @@ class XHSOperator:
                                     ).text
                                     
                                     # 避免重复处理同一用户
-                                    if msg_author not in processed_normal_users:
+                                    if msg_author not in processed_normal_users and msg_author!= "陌生人消息":
                                         processed_normal_users.add(msg_author)
                                         
                                         # 添加到未回复列表
@@ -2927,7 +2927,7 @@ class XHSOperator:
             return error_result
 
     #私信回复
-    def reply_to_msg(self):
+    def reply_to_msg(self,msg):
         """
         回复消息
         Args:
@@ -2974,26 +2974,25 @@ class XHSOperator:
                                         time.sleep(0.5)
                                         break
                                 #定位输入框
-                                # chat_frame = WebDriverWait(self.driver, 10).until(
-                                #         EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
-                                # )
+                                chat_frame = WebDriverWait(self.driver, 10).until(
+                                        EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
+                                )
                                 #输入消息
-                                # msg_content="你好！这是自动回复的消息。"
-                                # chat_frame.send_keys(msg_content)
-                                # time.sleep(1)  # 等待输入完成
-                                #点击发送按钮
-                                # send_frame = WebDriverWait(self.driver, 10).until(
-                                #         EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@resource-id='com.xingin.xhs:id/-' and @text='发送']"))
-                                # )
-                                # send_frame.click()
-                                # print(f'{msg_author}的私信回复成功')
+                                chat_frame.send_keys(msg)
+                                time.sleep(1)  # 等待输入完成
+                                # 点击发送按钮
+                                send_frame = WebDriverWait(self.driver, 10).until(
+                                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@resource-id='com.xingin.xhs:id/-' and @text='发送']"))
+                                )
+                                send_frame.click()
+                                print(f'{msg_author}的私信回复成功')
                                 #将回复的私信信息添加到返回列表
-                                # replyed_msg_list.append({'msg_author':msg_author, 'msg_content':msg_content})
+                                replyed_msg_list.append({'msg_author':msg_author, 'msg_content':msg})
                                 #返回到陌生人私信列表
-                                # back_btn = WebDriverWait(self.driver, 10).until(
-                                #         EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']"))
-                                # )
-                                # back_btn.click()
+                                back_btn = WebDriverWait(self.driver, 10).until(
+                                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']"))
+                                )
+                                back_btn.click()
                         except Exception as e:
                                 print(f"回复私信失败: {str(e)}")
         except Exception as e:
@@ -3001,7 +3000,6 @@ class XHSOperator:
         #第二套逻辑----正常私信
         try:    
                 for index,i in enumerate(range(5)):
-                
                         try:    #定位未回复私信
                                 normal_msg_frame = WebDriverWait(self.driver, 10).until(
                                         EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-' and contains(@content-desc,'条未读')]"))
@@ -3018,8 +3016,7 @@ class XHSOperator:
                                                 EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
                                         )
                                         #输入消息
-                                        msg_content="你好！这是自动回复的消息。"
-                                        chat_frame.send_keys(msg_content)
+                                        chat_frame.send_keys(msg)
                                         time.sleep(1)  # 等待输入完成
                                         #点击发送按钮
                                         send_frame = WebDriverWait(self.driver, 10).until(
@@ -3027,13 +3024,12 @@ class XHSOperator:
                                         )
                                         send_frame.click()
                                         print(f'{msg_author}的私信回复成功')
-                                        replyed_msg_list.append({'msg_author':msg_author, 'msg_content':msg_content})
+                                        replyed_msg_list.append({'msg_author':msg_author, 'msg_content':msg})
                                         #返回到正常私信列表
                                         msg_frame = WebDriverWait(self.driver, 10).until(
                                                 EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']"))
                                         )
                                         msg_frame.click()
-
                                 except Exception as e:
                                         print(f"回复私信失败: {str(e)}")
                         except Exception as e:

@@ -28,11 +28,9 @@ def save_msg_to_db(msg_list:list):
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS xhs_msg_list (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            total_unreplied INT DEFAULT NULL,
             userInfo TEXT,
             user_name TEXT,
-            message_type TEXT,
-            recomment_cnt INT ,
+            message_type TEXT,    
             check_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             reply_status int DEFAULT NULL   
         )
@@ -42,21 +40,19 @@ def save_msg_to_db(msg_list:list):
         # 准备插入数据的SQL语句
         insert_sql = """
         INSERT INTO xhs_msg_list 
-        (total_unreplied, userInfo, user_name, message_type, check_time, reply_status,recomment_cnt) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s )
+        (userInfo, user_name, message_type, check_time, reply_status) 
+        VALUES (%s, %s, %s, %s, %s)
         """
         
         # 批量插入私信数据
         insert_data = []
         for msg in msg_list['unreplied_users']:
             insert_data.append((
-                msg_list.get('total_unreplied', 0),
                 msg_list.get('userInfo', ''),
                 msg.get('username', ''),
                 msg.get('message_type', ''),
                 msg_list.get('check_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                msg.get('reply_status', 0),
-                msg_list.get('recomment_cnt', 0)
+                msg.get('reply_status', 0)
             ))
 
         cursor.executemany(insert_sql, insert_data)
