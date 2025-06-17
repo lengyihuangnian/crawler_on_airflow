@@ -3001,9 +3001,10 @@ class XHSOperator:
         try:    
                 for index,i in enumerate(range(5)):
                         try:    #定位未回复私信
-                                normal_msg_frame = WebDriverWait(self.driver, 10).until(
-                                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-' and contains(@content-desc,'条未读')]"))
-                                )
+                                normal_msg_frame = self.driver.find_elements(
+                            by=AppiumBy.XPATH,
+                            value="//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-' and contains(@content-desc,'条未读')and not(contains(@content-desc,'赞和收藏'))and not(contains(@content-desc,'评论和'))]"
+                        )
                                 
                                 msg_author=normal_msg_frame.find_element(by=AppiumBy.XPATH,value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/-']").text
                                 print(f"正在回复: {msg_author}的私信")
