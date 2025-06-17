@@ -2961,8 +2961,8 @@ class XHSOperator:
                                         msg_author=msg_frame.find_element(by=AppiumBy.XPATH,value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/-']").text
                                         #点击进入聊天界面
                                         unreplyed_msg_list.append({'msg_author':msg_author, 'msg_content':"未回复"})
-                                        # msg_frame.click()
-                                        # time.sleep(0.5)  # 等待页面加载
+                                        msg_frame.click()
+                                        time.sleep(0.5)  # 等待页面加载
                                         print(f"正在回复: {msg_author}的私信")
                                 except Exception as e:
                                         print(f"陌生人私信已全部回复: {e}")
