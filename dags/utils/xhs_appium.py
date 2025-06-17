@@ -3062,34 +3062,36 @@ if __name__ == "__main__":
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
         force_app_launch=True,
-        device_id="ZY22GVV5Z2",
+        device_id="ZY22FX4H65",
         # system_port=8200
     )
 
     try:
         # 1 测试收集文章
-        # print("\n开始测试收集文章...")
-        # notes = xhs.collect_notes_by_keyword(
-        #     keyword="龙图",
+        print("\n开始测试收集文章...")
+        notes = xhs.collect_notes_by_keyword(
+            keyword="龙图",
             
-        #     filters={
-        #         "note_type": "图文",  # 只收集图文笔记
-        #         "sort_by": "最新"  # 按最新排序
-        #     }
-        # )
+            filters={
+                "note_type": "图文",  # 只收集图文笔记
+                "sort_by": "最新" , # 按最新排序
+                "search_scope":"未看过",
+                "time_range":"半年内"
+            }
+        )
         
-        # print(f"\n共收集到 {len(notes)} 条笔记:")
-        # for i, note in enumerate(notes, 1):
-        #     print(f"\n笔记 {i}:")
-        #     print(f"标题: {note.get('title', 'N/A')}")
-        #     print(f"作者: {note.get('author', 'N/A')}")
-        #     print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
-        #     print(f"URL: {note.get('note_url', 'N/A')}")
-        #     print(f"点赞: {note.get('likes', 'N/A')}")
-        #     print(f"收藏: {note.get('collects', 'N/A')}")
-        #     print(f"评论: {note.get('comments', 'N/A')}")
-        #     print(f"收集时间: {note.get('collect_time', 'N/A')}")
-        #     print("-" * 50) 
+        print(f"\n共收集到 {len(notes)} 条笔记:")
+        for i, note in enumerate(notes, 1):
+            print(f"\n笔记 {i}:")
+            print(f"标题: {note.get('title', 'N/A')}")
+            print(f"作者: {note.get('author', 'N/A')}")
+            print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
+            print(f"URL: {note.get('note_url', 'N/A')}")
+            print(f"点赞: {note.get('likes', 'N/A')}")
+            print(f"收藏: {note.get('collects', 'N/A')}")
+            print(f"评论: {note.get('comments', 'N/A')}")
+            print(f"收集时间: {note.get('collect_time', 'N/A')}")
+            print("-" * 50) 
 
         # 2 测试收集评论
         # print("\n开始测试收集评论...")
@@ -3175,27 +3177,27 @@ if __name__ == "__main__":
         # reply_content = "哈哈哈"  # 替换为要回复的内容
         
         # 测试搜集笔记信息
-        print("\n开始测试搜集笔记信息...")
+        # print("\n开始测试搜集笔记信息...")
         
-        # 测试搜索关键词视频并收集信息
-        print("\n=== 测试视频搜索和收集 ===")
-        videos = xhs.search_keyword_of_video('小猫老师', max_videos=50)
+        # # 测试搜索关键词视频并收集信息
+        # print("\n=== 测试视频搜索和收集 ===")
+        # videos = xhs.search_keyword_of_video('小猫老师', max_videos=50)
         
-        if videos:
-            print(f"\n共收集到 {len(videos)} 个视频:")
-            for i, video in enumerate(videos, 1):
-                print(f"\n视频 {i}:")
-                print(f"标题: {video.get('title', 'N/A')}")
-                print(f"作者: {video.get('author', 'N/A')}")
-                print(f"点赞数: {video.get('likes', 'N/A')}")
-                print(f"评论数: {video.get('comments', 'N/A')}")
-                print(f"收藏数: {video.get('shares', 'N/A')}")
-                print(f"视频URL: {video.get('video_url', 'N/A')}")
-                print(f"收集时间: {video.get('collect_time', 'N/A')}")
-                print(f"内容类型: {video.get('content_type', 'N/A')}")
-                print("-" * 50)
-        else:
-            print("未收集到视频信息")
+        # if videos:
+        #     print(f"\n共收集到 {len(videos)} 个视频:")
+        #     for i, video in enumerate(videos, 1):
+        #         print(f"\n视频 {i}:")
+        #         print(f"标题: {video.get('title', 'N/A')}")
+        #         print(f"作者: {video.get('author', 'N/A')}")
+        #         print(f"点赞数: {video.get('likes', 'N/A')}")
+        #         print(f"评论数: {video.get('comments', 'N/A')}")
+        #         print(f"收藏数: {video.get('shares', 'N/A')}")
+        #         print(f"视频URL: {video.get('video_url', 'N/A')}")
+        #         print(f"收集时间: {video.get('collect_time', 'N/A')}")
+        #         print(f"内容类型: {video.get('content_type', 'N/A')}")
+        #         print("-" * 50)
+        # else:
+        #     print("未收集到视频信息")
     
     except Exception as e:
         print(f"运行出错: {str(e)}")

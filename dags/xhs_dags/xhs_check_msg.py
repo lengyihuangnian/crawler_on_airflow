@@ -31,6 +31,7 @@ def save_msg_to_db(msg_list:list):
             userInfo TEXT,
             user_name TEXT,
             message_type TEXT,    
+            device_id TEXT,
             check_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             reply_status int DEFAULT NULL   
         )
@@ -40,8 +41,8 @@ def save_msg_to_db(msg_list:list):
         # 准备插入数据的SQL语句
         insert_sql = """
         INSERT INTO xhs_msg_list 
-        (userInfo, user_name, message_type, check_time, reply_status) 
-        VALUES (%s, %s, %s, %s, %s)
+        (userInfo, user_name, message_type,device_id, check_time, reply_status) 
+        VALUES (%s, %s, %s, %s, %s,%s)
         """
         
         # 批量插入私信数据，添加去重功能
@@ -63,6 +64,7 @@ def save_msg_to_db(msg_list:list):
                 msg_list.get('userInfo', ''),
                 username,
                 msg.get('message_type', ''),
+                msg_list.get('device_id',''),
                 msg_list.get('check_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 msg.get('reply_status', 0)
             ))
