@@ -34,8 +34,7 @@ def save_msg_to_db(msg_list:list):
             message_type TEXT,
             recomment_cnt INT ,
             check_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            reply_status int DEFAULT NULL COMMENT
-            
+            reply_status int DEFAULT NULL   
         )
         """)
         db_conn.commit()
