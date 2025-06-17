@@ -2871,7 +2871,7 @@ class XHSOperator:
             
             # 返回结果
             result = {
-                "userinfo": email,
+                "userInfo": email,
                 "device_id": device_id,
                 "total_unreplied": total_unreplied,
                 "unreplied_users": unreplied_msg_list,

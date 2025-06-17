@@ -52,7 +52,7 @@ def save_msg_to_db(msg_list:list):
             insert_data.append((
                 msg_list.get('total_unreplied', 0),
                 msg_list.get('userInfo', ''),
-                msg.get('user_name', ''),
+                msg.get('username', ''),
                 msg.get('message_type', ''),
                 msg_list.get('check_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 msg.get('reply_status', 0),
