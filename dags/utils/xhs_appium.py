@@ -2999,44 +2999,40 @@ class XHSOperator:
                 print(f"没有陌生人私信，执行回复正常私信逻辑")
         #第二套逻辑----正常私信
         try:    
-                for index,i in enumerate(range(5)):
-                        try:    #定位未回复私信
-                                normal_msg_frame = self.driver.find_elements(
-                            by=AppiumBy.XPATH,
-                            value="//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-' and contains(@content-desc,'条未读')and not(contains(@content-desc,'赞和收藏'))and not(contains(@content-desc,'评论和'))]"
-                        )
-                                
-                                msg_author=normal_msg_frame.find_element(by=AppiumBy.XPATH,value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/-']").text
-                                print(f"正在回复: {msg_author}的私信")
-                                #打开聊天页面
-                                normal_msg_frame.click()
-                                try:
-                                        
-                                        #定位输入框
-                                        chat_frame = WebDriverWait(self.driver, 10).until(
-                                                EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
-                                        )
-                                        #输入消息
-                                        chat_frame.send_keys(msg)
-                                        time.sleep(1)  # 等待输入完成
-                                        #点击发送按钮
-                                        send_frame = WebDriverWait(self.driver, 10).until(
-                                                EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@resource-id='com.xingin.xhs:id/-' and @text='发送']"))
-                                        )
-                                        send_frame.click()
-                                        print(f'{msg_author}的私信回复成功')
-                                        replyed_msg_list.append({'msg_author':msg_author, 'msg_content':msg})
-                                        #返回到正常私信列表
-                                        msg_frame = WebDriverWait(self.driver, 10).until(
-                                                EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']"))
-                                        )
-                                        msg_frame.click()
-                                except Exception as e:
-                                        print(f"回复私信失败: {str(e)}")
-                        except Exception as e:
-                                print(f"当前页面没有待回复的私信,执行第{index+1}次滚动")
-                                self.scroll_down()
-                                
+            for index,i in enumerate(range(5)):
+                try:    #定位未回复私信
+                    normal_msg_frames = self.driver.find_elements(by=AppiumBy.XPATH,value="//android.widget.RelativeLayout[@resource-id='com.xingin.xhs:id/-' and contains(@content-desc,'条未读')and not(contains(@content-desc,'赞和收藏'))and not(contains(@content-desc,'评论和'))]")
+                    if normal_msg_frames:
+                        for msg_frame in normal_msg_frames:
+                            msg_author=msg_frame.find_element(by=AppiumBy.XPATH,value=".//android.widget.TextView[@resource-id='com.xingin.xhs:id/-']").text
+                            print(f"正在回复: {msg_author}的私信")
+                            #打开聊天页面
+                            msg_frame.click()
+                            try:
+                                #定位输入框
+                                chat_frame = WebDriverWait(self.driver, 10).until(
+                                        EC.presence_of_element_located((AppiumBy.CLASS_NAME, "android.widget.EditText"))
+                                )
+                                #输入消息
+                                chat_frame.send_keys(msg)
+                                time.sleep(1)  # 等待输入完成
+                                #点击发送按钮
+                                send_frame = WebDriverWait(self.driver, 10).until(
+                                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.TextView[@resource-id='com.xingin.xhs:id/-' and @text='发送']"))
+                                )
+                                send_frame.click()
+                                print(f'{msg_author}的私信回复成功')
+                                replyed_msg_list.append({'msg_author':msg_author, 'msg_content':msg})
+                                #返回到正常私信列表
+                                msg_frame = WebDriverWait(self.driver, 10).until(
+                                        EC.presence_of_element_located((AppiumBy.XPATH, "//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-']"))
+                                )
+                                msg_frame.click()
+                            except Exception as e:
+                                    print(f"回复私信失败: {str(e)}")
+                except Exception as e:
+                        print(f"当前页面没有待回复的私信,执行第{index+1}次滚动")
+                        self.scroll_down()
         except Exception as e:
                 print(f"{str(e)}")
 
