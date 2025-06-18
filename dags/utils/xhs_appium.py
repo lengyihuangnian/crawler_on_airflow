@@ -2505,7 +2505,7 @@ class XHSOperator:
                         "(//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-'])[3]"
                     ))
                 ).click()
-        #点击屏幕中间、高度为屏幕1/5的位置
+        
         try:
             # 执行点击操作
             self.driver.tap([(674, 258)])
@@ -2513,12 +2513,14 @@ class XHSOperator:
         except Exception as e:
             print(f"点击屏幕失败: {str(e)}")
         try:
-            WebDriverWait(self.driver, 2).until(
+            choice_btn=WebDriverWait(self.driver, 2).until(
                     EC.presence_of_element_located((
                         AppiumBy.XPATH,
                         "//android.widget.TextView[@resource-id='com.xingin.xhs:id/-' and  contains(@text,'完成')]"
                     ))
-                ).click()
+                )
+            if choice_btn:
+                choice_btn.click()
             print('图片选择完成')
         except Exception as e:
             print('图片选择失败')
