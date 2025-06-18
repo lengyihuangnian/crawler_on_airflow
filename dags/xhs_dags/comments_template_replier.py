@@ -184,6 +184,7 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
     # 获取设备信息
     try:
         device_ip = device_info.get('device_ip')
+        host_port=device_info.get('port')
         device_port = device_info.get('available_appium_ports')[device_index]
         device_id = device_info.get('phone_device_list')[device_index]
         username = device_info.get('username')
@@ -236,7 +237,7 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                 
                 if has_image:
                     print('图片url:',image_urls)
-                    cos_to_device_via_host(cos_url=image_urls,host_address=device_ip,host_username=username,device_id=device_id,host_password=password,host_port=device_port)
+                    cos_to_device_via_host(cos_url=image_urls,host_address=device_ip,host_username=username,device_id=device_id,host_password=password,host_port=host_port)
                 
                 # 调用评论回复功能
                 success = xhs.comments_reply(
