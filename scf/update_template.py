@@ -104,7 +104,7 @@ def insert_many(query, data):
         return 0
 
 
-def add_reply_template(content, email="zacks@example.com"):
+def add_reply_template(content, email):
     """
     添加回复模板
     
@@ -120,7 +120,7 @@ def add_reply_template(content, email="zacks@example.com"):
     return execute_update(query, params)
 
 
-def add_reply_templates(templates, email="zacks@example.com"):
+def add_reply_templates(templates, email):
     """
     批量添加回复模板
     
@@ -138,13 +138,13 @@ def add_reply_templates(templates, email="zacks@example.com"):
     return insert_many(query, data)
 
 
-def delete_reply_template(template_id, email="zacks@example.com"):
+def delete_reply_template(template_id, email):
     """
     删除指定ID的回复模板
     
     Args:
         template_id: 模板ID
-        email: 用户邮箱，默认为zacks@example.com
+        email: 用户邮箱
         
     Returns:
         int: 受影响的行数
@@ -154,12 +154,12 @@ def delete_reply_template(template_id, email="zacks@example.com"):
     return execute_update(query, params)
 
 
-def delete_all_reply_templates(email="zacks@example.com"):
+def delete_all_reply_templates(email):
     """
     删除用户的所有回复模板
     
     Args:
-        email: 用户邮箱，默认为zacks@example.com
+        email: 用户邮箱
         
     Returns:
         int: 受影响的行数
@@ -169,20 +169,25 @@ def delete_all_reply_templates(email="zacks@example.com"):
     return execute_update(query, params)
 
 
-def update_reply_template(template_id, content, email="zacks@example.com"):
+def update_reply_template(template_id, content, email, image_urls=None):
     """
     更新指定ID的回复模板内容
     
     Args:
         template_id: 模板ID
         content: 新的模板内容
-        email: 用户邮箱，默认为zacks@example.com
+        email: 用户邮箱
+        image_urls: 图片URL列表，可选参数
         
     Returns:
         int: 受影响的行数
     """
-    query = "UPDATE reply_template SET content = %s WHERE id = %s AND userInfo = %s"
-    params = (content, template_id, email)
+    if image_urls is not None:
+        query = "UPDATE reply_template SET content = %s, image_urls = %s WHERE id = %s AND userInfo = %s"
+        params = (content, image_urls, template_id, email)
+    else:
+        query = "UPDATE reply_template SET content = %s WHERE id = %s AND userInfo = %s"
+        params = (content, template_id, email)
     return execute_update(query, params)
 
 
@@ -233,7 +238,7 @@ def main_handler(event, context):
     
     # 获取参数
     action = params.get('action', '')
-    email = params.get('email', 'zacks@example.com')
+    email = params.get('email', 'zacks@example.com')  
     
     try:
         # 根据操作类型执行相应操作
@@ -309,6 +314,7 @@ def main_handler(event, context):
             # 更新模板内容
             template_id = params.get('template_id')
             content = params.get('content', '')
+            image_urls = params.get('image_urls')
             
             if not template_id:
                 return {
@@ -324,7 +330,7 @@ def main_handler(event, context):
                     "data": None
                 }
             
-            affected_rows = update_reply_template(template_id, content, email)
+            affected_rows = update_reply_template(template_id, content, email, image_urls)
             return {
                 "code": 0 if affected_rows > 0 else 1,
                 "message": "success" if affected_rows > 0 else "更新失败",

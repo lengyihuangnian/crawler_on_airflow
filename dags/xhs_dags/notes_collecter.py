@@ -41,6 +41,7 @@ def save_notes_to_db(notes: list) -> None:
             note_url VARCHAR(512) DEFAULT NULL,
             collect_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             note_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            note_type TEXT,
             note_location TEXT 
         )
         """)
@@ -49,8 +50,8 @@ def save_notes_to_db(notes: list) -> None:
         # 准备插入数据的SQL语句 - 使用INSERT IGNORE避免重复插入
         insert_sql = """
         INSERT IGNORE INTO xhs_notes
-        (keyword, title, author, userInfo, content, likes, collects, comments, note_url, collect_time, note_time, note_location)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        (keyword, title, author, userInfo, content, likes, collects, comments, note_url, collect_time, note_time, note_type, note_location)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # 批量插入笔记数据
@@ -71,6 +72,7 @@ def save_notes_to_db(notes: list) -> None:
                 note_url,  # 使用统一处理后的URL
                 note.get('collect_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                 note.get('note_time', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                note.get('note_type', ''),
                 note.get('note_location', ''),
             ))
 
@@ -111,9 +113,10 @@ def collect_xhs_notes(device_index=0, **context) -> None:
     keyword = context['dag_run'].conf.get('keyword') 
     max_notes = int(context['dag_run'].conf.get('max_notes'))
     email = context['dag_run'].conf.get('email')
-    note_type = context['dag_run'].conf.get('note_type', '图文')  # 默认为图文类型
+    note_type = context['dag_run'].conf.get('note_type')  # 默认为图文类型
     time_range = context['dag_run'].conf.get('time_range')
     search_scope=context['dag_run'].conf.get('search_scope')
+    sort_by=context['dag_run'].conf.get('sort_by')
 
     # 获取设备列表
     device_info_list = Variable.get("XHS_DEVICE_INFO_LIST", default_var=[], deserialize_json=True)
@@ -162,6 +165,7 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             
             # 添加email信息到userInfo字段
             note['userInfo'] = email
+            note['note_type'] = note_type
             
             # 检查笔记URL是否已存在（处理不同类型笔记的URL字段）
             # 图文笔记使用note_url，视频笔记使用video_url
@@ -223,7 +227,8 @@ def collect_xhs_notes(device_index=0, **context) -> None:
             xhs.search_keyword(keyword, filters={
                 "note_type": note_type,
                 "time_range":time_range,
-                "search_scope":search_scope
+                "search_scope":search_scope,
+                "sort_by":sort_by
             })
             
             print(f"开始收集图文笔记,计划收集{max_notes}条...")
