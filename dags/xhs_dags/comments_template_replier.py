@@ -8,6 +8,8 @@ from airflow.models.variable import Variable
 from airflow.hooks.base import BaseHook
 from airflow.exceptions import AirflowSkipException
 
+from utils.xhs_utils import cos_to_device_via_host
+
 from utils.xhs_appium import XHSOperator
 
 def get_reply_templates_from_db(email=None):
@@ -17,7 +19,7 @@ def get_reply_templates_from_db(email=None):
         email: 用户邮箱，如果指定则只获取该用户的模板，否则获取所有模板
         
     Returns:
-        回复模板内容列表
+        包含模板内容和图片URL的字典列表，每个字典包含content和image_urls字段
     """
     # 使用get_hook函数获取数据库连接
     db_hook = BaseHook.get_connection("xhs_db").get_hook()
@@ -27,14 +29,14 @@ def get_reply_templates_from_db(email=None):
     # 查询回复模板
     if email:
         print(f"根据用户邮箱 {email} 查询模板")
-        cursor.execute("SELECT userInfo, content FROM reply_template WHERE userInfo = %s", (email,))
+        cursor.execute("SELECT userInfo, content, image_urls FROM reply_template WHERE userInfo = %s", (email,))
         templates_data = cursor.fetchall()
-        templates = [row[1] for row in templates_data]  # 只取content字段
+        templates = [{"content": row[1], "image_urls": row[2]} for row in templates_data]
     else:
         print("查询所有模板")
-        cursor.execute("SELECT userInfo, content FROM reply_template")
+        cursor.execute("SELECT userInfo, content, image_urls FROM reply_template")
         templates_data = cursor.fetchall()
-        templates = [row[1] for row in templates_data]  # 只取content字段
+        templates = [{"content": row[1], "image_urls": row[2]} for row in templates_data]
 
     cursor.close()
     db_conn.close()
@@ -42,7 +44,7 @@ def get_reply_templates_from_db(email=None):
     if not templates:
         print("警告：未找到回复模板，请确保reply_template表中有数据")
         # 返回一个默认模板，避免程序崩溃
-        return ["谢谢您的评论，我们会继续努力！"]
+        return [{"content": "谢谢您的评论，我们会继续努力！", "image_urls": None}]
     
     print(f"成功获取 {len(templates)} 条回复模板")
     return templates
@@ -184,6 +186,8 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
         device_ip = device_info.get('device_ip')
         device_port = device_info.get('available_appium_ports')[device_index]
         device_id = device_info.get('phone_device_list')[device_index]
+        username = device_info.get('username')
+        password = device_info.get('password')
         appium_server_url = f"http://{device_ip}:{device_port}"
     except Exception as e:
         print(f"获取设备信息失败: {e}")
@@ -216,8 +220,12 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                 print(f"设备 {device_id} 正在处理第 {i+1}/{len(comments_to_process)} 条评论 - 作者: {author}")
                 
                 # 随机选择一条回复模板
-                reply_content = random.choice(reply_templates)
-                print(f"选择的回复模板: {reply_content}")
+                reply_template = random.choice(reply_templates)
+                reply_content = reply_template['content']
+                image_urls = reply_template['image_urls']
+                has_image=image_urls is not None and image_urls != "null"
+                print(f"选择的回复模板: {reply_content}, has_image: {has_image}, image_urls: {image_urls}")
+                
                 
                 # 判断是否需要跳过URL打开（如果与上一个URL相同）
                 skip_url_open = (previous_url == note_url)
@@ -226,12 +234,16 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                 else:
                     print(f"新的URL，需要重新打开: {note_url}")
                 
+                if has_image:
+                    cos_to_device_via_host(cos_url=cos_url,host_address=device_ip,host_username=username,device_id=device_id,host_password=password,host_port=device_port)
+                
                 # 调用评论回复功能
                 success = xhs.comments_reply(
                     note_url=note_url,
                     author=author,
                     comment_content=comment_content,
                     reply_content=reply_content,
+                    has_image=has_image,
                     skip_url_open=skip_url_open
                 )
                 
