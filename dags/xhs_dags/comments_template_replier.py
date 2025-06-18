@@ -235,6 +235,7 @@ def reply_with_template(comments_to_process:list, device_index: int = 0,email: s
                     print(f"新的URL，需要重新打开: {note_url}")
                 
                 if has_image:
+                    print('图片url:',image_urls)
                     cos_to_device_via_host(cos_url=image_urls,host_address=device_ip,host_username=username,device_id=device_id,host_password=password,host_port=device_port)
                 
                 # 调用评论回复功能
