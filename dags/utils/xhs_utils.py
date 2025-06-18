@@ -211,7 +211,7 @@ def cos_to_device_via_host(
         str: 手机上的文件路径，失败则返回None
     """
     try:
-        print(f"从COS下载到主机: {cos_url}")
+        print(f"从COS下载到主机: {cos_url}",host_address,host_username,host_password,host_key_path,host_port,host_save_path)
         # 步骤1：从COS下载到主机
         host_file_path = download_cos_to_host(
             cos_url=cos_url,
