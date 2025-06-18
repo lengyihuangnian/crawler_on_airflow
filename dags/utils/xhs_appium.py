@@ -2496,7 +2496,40 @@ class XHSOperator:
             import traceback
             print(traceback.format_exc())
             return []
-
+    #回评时候回复图片的操作
+    def comments_reply_image(self):
+        #定位到选择回复图片的元素
+        WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "(//android.widget.ImageView[@resource-id='com.xingin.xhs:id/-'])[3]"
+                    ))
+                ).click()
+        #点击屏幕中间、高度为屏幕1/5的位置
+        try:
+            # 执行点击操作
+            self.driver.tap([(674, 258)])
+            print('选择第一张照片成功')
+        except Exception as e:
+            print(f"点击屏幕失败: {str(e)}")
+        try:
+            WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "//android.widget.TextView[@resource-id='com.xingin.xhs:id/-' and  contains(@text,'完成')]"
+                    ))
+                ).click()
+            print('图片选择完成')
+        except Exception as e:
+            print('图片选择失败')
+            #返回评论界面
+            WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((
+                        AppiumBy.XPATH,
+                        "//android.widget.ImageView[@content-desc='关闭']"
+                    ))
+                ).click()
+            
     def comments_reply(self, note_url: str, author: str, comment_content: str, reply_content: str, skip_url_open: bool = False):
         """
         回复评论
@@ -2668,7 +2701,7 @@ class XHSOperator:
             # 等待输入框出现并输入内容
             try:
                 # 等待输入框出现
-                reply_input = WebDriverWait(self.driver, 1).until(
+                reply_input = WebDriverWait(self.driver, 2).until(
                     EC.presence_of_element_located((
                         AppiumBy.CLASS_NAME,
                         "android.widget.EditText"
@@ -3061,7 +3094,7 @@ if __name__ == "__main__":
     # 初始化小红书操作器
     xhs = XHSOperator(
         appium_server_url=appium_server_url,
-        force_app_launch=True,
+        force_app_launch=False,
         device_id="ZY22FX4H65",
         # system_port=8200
     )
@@ -3069,29 +3102,20 @@ if __name__ == "__main__":
     try:
         # 1 测试收集文章
         print("\n开始测试收集文章...")
-        notes = xhs.collect_notes_by_keyword(
-            keyword="龙图",
-            
-            filters={
-                "note_type": "图文",  # 只收集图文笔记
-                "sort_by": "最新" , # 按最新排序
-                "search_scope":"未看过",
-                "time_range":"半年内"
-            }
-        )
+        notes = xhs.comments_reply_image()
         
-        print(f"\n共收集到 {len(notes)} 条笔记:")
-        for i, note in enumerate(notes, 1):
-            print(f"\n笔记 {i}:")
-            print(f"标题: {note.get('title', 'N/A')}")
-            print(f"作者: {note.get('author', 'N/A')}")
-            print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
-            print(f"URL: {note.get('note_url', 'N/A')}")
-            print(f"点赞: {note.get('likes', 'N/A')}")
-            print(f"收藏: {note.get('collects', 'N/A')}")
-            print(f"评论: {note.get('comments', 'N/A')}")
-            print(f"收集时间: {note.get('collect_time', 'N/A')}")
-            print("-" * 50) 
+        # print(f"\n共收集到 {len(notes)} 条笔记:")
+        # for i, note in enumerate(notes, 1):
+        #     print(f"\n笔记 {i}:")
+        #     print(f"标题: {note.get('title', 'N/A')}")
+        #     print(f"作者: {note.get('author', 'N/A')}")
+        #     print(f"内容: {note.get('content', 'N/A')[:100]}...")  # 只显示前100个字符
+        #     print(f"URL: {note.get('note_url', 'N/A')}")
+        #     print(f"点赞: {note.get('likes', 'N/A')}")
+        #     print(f"收藏: {note.get('collects', 'N/A')}")
+        #     print(f"评论: {note.get('comments', 'N/A')}")
+        #     print(f"收集时间: {note.get('collect_time', 'N/A')}")
+        #     print("-" * 50) 
 
         # 2 测试收集评论
         # print("\n开始测试收集评论...")
