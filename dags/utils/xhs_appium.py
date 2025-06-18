@@ -2532,7 +2532,7 @@ class XHSOperator:
                     ))
                 ).click()
             
-    def comments_reply(self, note_url: str, author: str, comment_content: str, reply_content: str, skip_url_open: bool = False):
+    def comments_reply(self, note_url: str, author: str, comment_content: str, reply_content: str, skip_url_open: bool = False,has_image:bool=False):
         """
         回复评论
         Args:
@@ -2712,6 +2712,9 @@ class XHSOperator:
                 # 输入回复内容
                 reply_input.clear()
                 reply_input.send_keys(reply_content)
+
+                if has_image:
+                    self.comments_reply_image()
                 
                 # 点击发送按钮
                 send_button = WebDriverWait(self.driver, 1).until(
