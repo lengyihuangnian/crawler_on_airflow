@@ -2512,6 +2512,7 @@ class XHSOperator:
             print('选择第一张照片成功')
         except Exception as e:
             print(f"点击屏幕失败: {str(e)}")
+        #单选版本的点击图片后会自动返回评论界面
         try:
             choice_btn=WebDriverWait(self.driver, 2).until(
                     EC.presence_of_element_located((
@@ -2523,14 +2524,9 @@ class XHSOperator:
                 choice_btn.click()
             print('图片选择完成')
         except Exception as e:
-            print('图片选择失败')
+            print('选择成功，返回评论界面')
             #返回评论界面
-            WebDriverWait(self.driver, 2).until(
-                    EC.presence_of_element_located((
-                        AppiumBy.XPATH,
-                        "//android.widget.ImageView[@content-desc='关闭']"
-                    ))
-                ).click()
+           
             
     def comments_reply(self, note_url: str, author: str, comment_content: str, reply_content: str, skip_url_open: bool = False,has_image:bool=False):
         """
